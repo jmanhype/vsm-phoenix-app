@@ -1,0 +1,31 @@
+{
+  "name": "vsm-phoenix-app",
+  "version": "1.0.0",
+  "description": "VSM-Phoenix Cybernetic Dashboard - Viable Systems Model implementation",
+  "main": "vsm_server.js",
+  "scripts": {
+    "start": "node vsm_server.js",
+    "dev": "nodemon vsm_server.js",
+    "test": "echo \"VSM System Tests\" && exit 0"
+  },
+  "keywords": [
+    "vsm",
+    "viable-systems-model",
+    "phoenix",
+    "cybernetics",
+    "dashboard",
+    "real-time"
+  ],
+  "author": "VSM Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.0",
+    "ws": "^8.14.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

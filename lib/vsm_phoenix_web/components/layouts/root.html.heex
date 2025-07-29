@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" class="[scrollbar-gutter:stable]">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title suffix=" · VSM Phoenix">
+      <%= assigns[:page_title] || "Dashboard" %>
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+    </script>
+  </head>
+  <body class="bg-gray-50 antialiased">
+    <div class="min-h-screen flex flex-col">
+      <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex justify-between items-center py-6">
+            <div class="flex items-center">
+              <h1 class="text-2xl font-bold text-gray-900">VSM Phoenix Dashboard</h1>
+            </div>
+            <nav class="flex space-x-8">
+              <.link navigate={~p"/"} class="text-gray-500 hover:text-gray-700">Dashboard</.link>
+              <.link navigate={~p"/dev/dashboard"} class="text-gray-500 hover:text-gray-700">Dev Dashboard</.link>
+            </nav>
+          </div>
+        </div>
+      </header>
+      
+      <main class="flex-1">
+        <.flash_group flash={@flash} />
+        <%= @inner_content %>
+      </main>
+      
+      <footer class="bg-white border-t border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <p class="text-center text-sm text-gray-500">
+            VSM Phoenix Dashboard - Cybernetic Systems Monitoring
+          </p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
