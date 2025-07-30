@@ -533,7 +533,7 @@ defmodule VsmPhoenix.System5.Queen do
     budget_score = if constraints["budget"] && option =~ "increase", do: -0.2, else: 0.1
     
     # Adjust based on time constraint  
-    time_score = if constraints["time"] =~ "hours" && option =~ "delay", do: -0.3, else: 0.1
+    time_score = if constraints["time"] && constraints["time"] =~ "hours" && option =~ "delay", do: -0.3, else: 0.1
     
     # Policy alignment score
     policy_score = if option =~ "customer", do: 0.2, else: 0.0
@@ -542,7 +542,11 @@ defmodule VsmPhoenix.System5.Queen do
   end
   
   defp generate_reasoning(params, state) do
-    "Based on current policies and constraints (budget: #{params["constraints"]["budget"]}, time: #{params["constraints"]["time"]}), " <>
+    constraints = params["constraints"] || %{}
+    budget_info = if constraints["budget"], do: "budget: #{constraints["budget"]}", else: "no budget constraint"
+    time_info = if constraints["time"], do: "time: #{constraints["time"]}", else: "no time constraint"
+    
+    "Based on current policies and constraints (#{budget_info}, #{time_info}), " <>
     "this option best balances customer satisfaction with operational viability while maintaining system coherence."
   end
   

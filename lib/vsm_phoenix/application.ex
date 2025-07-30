@@ -22,7 +22,7 @@ defmodule VsmPhoenix.Application do
       VsmPhoenixWeb.Telemetry,
       
       # Start the Ecto repository
-      VsmPhoenix.Repo,
+      # VsmPhoenix.Repo, # Temporarily disabled due to Postgrex issues
       
       # Start the PubSub system
       {Phoenix.PubSub, name: VsmPhoenix.PubSub},

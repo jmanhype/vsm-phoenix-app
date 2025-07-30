@@ -175,7 +175,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
     <div class="min-h-screen bg-gray-900 text-white">
       <!-- Header -->
       <div class="bg-gray-800 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="px-4 sm:px-6 lg:px-8">
           <div class="flex justify-between items-center py-6">
             <div class="flex items-center">
               <div class="flex-shrink-0">
@@ -225,7 +225,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       
       <!-- Alerts -->
       <%= if length(@alerts) > 0 do %>
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="px-4 sm:px-6 lg:px-8 py-4">
           <div class="bg-gray-800 rounded-lg p-4">
             <div class="flex justify-between items-center mb-3">
               <h3 class="text-lg font-semibold">System Alerts</h3>
@@ -256,7 +256,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       <% end %>
       
       <!-- Main Dashboard -->
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="px-4 sm:px-6 lg:px-8 py-8">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           <!-- System 5 - Queen -->

@@ -49,7 +49,7 @@ defmodule VsmPhoenix.MixProject do
       {:phoenix_pubsub, "~> 2.1"},
       {:quantum, "~> 3.5"},
       {:tidewave, github: "tidewave-ai/tidewave_phoenix", branch: "main"},
-      {:amqp, "~> 3.3"},
+      # {:amqp, "~> 3.3"}, # Disabled due to OTP 27 compatibility
       {:hackney, "~> 1.9"},
       {:hermes_mcp, github: "cloudwalk/hermes-mcp", branch: "main"},
       {:goldrush, github: "DeadZen/goldrush", branch: "develop-elixir", override: true},

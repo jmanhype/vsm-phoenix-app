@@ -285,7 +285,7 @@ defmodule VsmPhoenix.System3.Control do
     # Try to free up resources through optimization
     optimization = targeted_optimization(:allocation, state)
     
-    if optimization.freed_resources_sufficient?(request) do
+    if freed_resources_sufficient?(optimization, request, state) do
       new_state = apply_optimization(optimization, state)
       attempt_allocation(request, new_state.resource_pools)
       |> case do
@@ -555,5 +555,23 @@ defmodule VsmPhoenix.System3.Control do
       avg_utilization > 0.5 -> :moderate
       true -> :low
     end
+  end
+  
+  defp freed_resources_sufficient?(optimization, request, state) do
+    # Estimate if the optimization can free enough resources
+    estimated_freed = optimization.estimated_improvement
+    
+    # Check if the freed resources would satisfy the request
+    request.resources
+    |> Enum.all?(fn {resource_type, amount} ->
+      pool = state.resource_pools[resource_type] || state.resource_pools[String.to_atom(resource_type)]
+      if pool do
+        available = pool.total - pool.allocated
+        freed_amount = pool.allocated * estimated_freed
+        (available + freed_amount) >= amount
+      else
+        false
+      end
+    end)
   end
 end
