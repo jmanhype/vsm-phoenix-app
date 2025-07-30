@@ -48,6 +48,10 @@ defmodule VsmPhoenix.System3.Control do
     GenServer.cast(@name, {:allocate_for_adaptation, proposal})
   end
   
+  def get_resource_state do
+    GenServer.call(@name, :get_resource_state)
+  end
+  
   def audit_resource_usage do
     GenServer.call(@name, :audit_resource_usage)
   end
@@ -168,6 +172,23 @@ defmodule VsmPhoenix.System3.Control do
     }
     
     {:reply, metrics, state}
+  end
+  
+  @impl true
+  def handle_call(:get_resource_state, _from, state) do
+    # Return comprehensive resource state
+    resource_state = %{
+      resource_pools: state.resource_pools,
+      allocations: state.allocations,
+      performance_metrics: state.performance_metrics,
+      optimization_rules: Map.keys(state.optimization_rules),
+      conflict_history_count: length(state.conflict_history),
+      current_efficiency: state.performance_metrics.efficiency,
+      available_resources: calculate_available_resources(state.resource_pools),
+      resource_pressure: calculate_resource_pressure(state)
+    }
+    
+    {:reply, {:ok, resource_state}, state}
   end
   
   @impl true
@@ -514,5 +535,25 @@ defmodule VsmPhoenix.System3.Control do
   
   defp schedule_optimization_cycle do
     Process.send_after(self(), :optimization_cycle, 30_000)  # Every 30 seconds
+  end
+  
+  defp calculate_available_resources(resource_pools) do
+    Enum.map(resource_pools, fn {pool_name, pool} ->
+      available = pool.total - pool.allocated
+      {pool_name, %{available: available, percentage: available / pool.total * 100}}
+    end)
+    |> Enum.into(%{})
+  end
+  
+  defp calculate_resource_pressure(state) do
+    # Calculate overall resource pressure
+    avg_utilization = calculate_utilization(state.resource_pools)
+    
+    cond do
+      avg_utilization > 0.9 -> :critical
+      avg_utilization > 0.7 -> :high
+      avg_utilization > 0.5 -> :moderate
+      true -> :low
+    end
   end
 end

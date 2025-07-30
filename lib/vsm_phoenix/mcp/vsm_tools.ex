@@ -12,6 +12,7 @@ defmodule VsmPhoenix.MCP.VsmTools do
   alias VsmPhoenix.System3.Control
   alias VsmPhoenix.System4.Intelligence
   alias VsmPhoenix.System5.Queen
+  alias VsmPhoenix.MCP.VsmTools.HiveCoordination
   
   @behaviour HermesMCP.Tool
   
@@ -19,7 +20,7 @@ defmodule VsmPhoenix.MCP.VsmTools do
   List all available VSM tools
   """
   def list_tools do
-    [
+    base_tools = [
       %{
         name: "vsm_scan_environment",
         description: "Scan environment for variety and anomalies via System 4",
@@ -117,6 +118,10 @@ defmodule VsmPhoenix.MCP.VsmTools do
         }
       }
     ]
+    
+    # Combine base VSM tools with hive coordination tools
+    hive_tools = HiveCoordination.list_hive_tools()
+    base_tools ++ hive_tools
   end
   
   @doc """
@@ -149,6 +154,10 @@ defmodule VsmPhoenix.MCP.VsmTools do
         
       "vsm_query_meta_systems" ->
         query_meta_systems(params)
+        
+      # Hive coordination tools
+      "hive_" <> _ ->
+        HiveCoordination.execute_hive_tool(tool_name, params)
         
       _ ->
         {:error, "Unknown tool: #{tool_name}"}

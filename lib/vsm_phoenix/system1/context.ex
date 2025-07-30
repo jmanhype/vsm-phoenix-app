@@ -116,6 +116,25 @@ defmodule VsmPhoenix.System1.Context do
       end
       
       @impl true
+      def handle_call(:get_operational_state, _from, state) do
+        # Return comprehensive operational state
+        operational_state = %{
+          context_type: @context_type,
+          context_name: @context_name,
+          capabilities: capabilities(),
+          metrics: state.metrics,
+          configuration: state.configuration,
+          active_operations: map_size(state.active_operations || %{}),
+          operational_status: determine_operational_status(state),
+          coordination_links: state.coordination_links || [],
+          resource_usage: calculate_resource_usage(state),
+          health_status: calculate_context_health(state)
+        }
+        
+        {:reply, {:ok, operational_state}, state}
+      end
+      
+      @impl true
       def handle_call({:coordinate_with, other_context, message}, _from, state) do
         # Use System 2 for coordination
         case Coordinator.coordinate_message(@context_name, other_context, message) do
@@ -330,6 +349,37 @@ defmodule VsmPhoenix.System1.Context do
         """
         # TODO: Real AMQP connection
         {:ok, :fake_channel}
+      end
+      
+      # Helper functions
+      
+      defp determine_operational_status(state) do
+        health = calculate_context_health(state)
+        
+        cond do
+          health > 0.9 -> :optimal
+          health > 0.7 -> :healthy
+          health > 0.5 -> :degraded
+          health > 0.3 -> :stressed
+          true -> :critical
+        end
+      end
+      
+      defp calculate_resource_usage(state) do
+        # Calculate resource usage based on active operations
+        active_ops = Map.get(state, :active_operations, %{})
+        
+        if map_size(active_ops) == 0 do
+          %{cpu: 0.0, memory: 0.0, io: 0.0}
+        else
+          # Simulate resource usage calculation
+          ops_count = map_size(active_ops)
+          %{
+            cpu: min(ops_count * 0.1, 1.0),
+            memory: min(ops_count * 0.05, 1.0),
+            io: min(ops_count * 0.02, 1.0)
+          }
+        end
       end
       
       # Callbacks for contexts to implement

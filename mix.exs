@@ -52,7 +52,8 @@ defmodule VsmPhoenix.MixProject do
       {:amqp, "~> 3.3"},
       {:hackney, "~> 1.9"},
       {:hermes_mcp, github: "cloudwalk/hermes-mcp", branch: "main"},
-      {:goldrush, github: "DeadZen/goldrush", branch: "develop-elixir", override: true}
+      {:goldrush, github: "DeadZen/goldrush", branch: "develop-elixir", override: true},
+      {:meck, "~> 0.9", only: :test}
     ]
   end
 

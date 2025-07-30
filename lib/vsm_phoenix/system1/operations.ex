@@ -57,6 +57,10 @@ defmodule VsmPhoenix.System1.Operations do
     end
   end
   
+  def get_operational_state do
+    GenServer.call(@context_name, :get_operational_state)
+  end
+  
   # Override callbacks
   
   @impl true

@@ -571,8 +571,15 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
     
     # Update operations metrics if it's from System 1
     if context in [:operations_context, :supply_chain, :customer_service, :production] do
+      # Handle both number and map formats for health
+      health_score = case health do
+        %{score: score} -> score
+        score when is_number(score) -> score
+        _ -> 0.95
+      end
+      
       operations_metrics = Map.merge(socket.assigns.operations_metrics, %{
-        health: health.score || 0.95,
+        health: health_score,
         last_update: DateTime.utc_now()
       })
       

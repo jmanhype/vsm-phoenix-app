@@ -79,3 +79,36 @@ config :tidewave,
   endpoint: "http://localhost:4003",
   api_key: "test_key",
   timeout: 1_000
+
+# MCP Test Configuration
+config :vsm_phoenix, :mcp,
+  # Disable external MAGG in tests by default
+  magg_enabled: false,
+  magg_binary: "echo",  # Mock MAGG with echo command
+  magg_timeout: 1_000,  # 1 second timeout for tests
+  
+  # Disable LLM variety analysis in tests
+  enable_llm_variety: false,
+  
+  # Mock external client configuration
+  external_client_timeout: 1_000,
+  external_client_retries: 1,
+  
+  # Autonomous acquisition settings
+  autonomous_acquisition: [
+    enabled: false,  # Disable in tests
+    evaluation_threshold: 0.8,
+    integration_timeout: 1_000
+  ]
+
+# Test mode configuration
+config :vsm_phoenix, :test_mode, true
+
+# Disable MCP servers in test
+config :vsm_phoenix, :disable_mcp_servers, true
+
+# Disable MAGG in test
+config :vsm_phoenix, :disable_magg, true
+
+# Disable Hermes clients
+config :vsm_phoenix, :disable_hermes, true

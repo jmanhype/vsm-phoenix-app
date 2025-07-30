@@ -58,6 +58,14 @@ defmodule VsmPhoenix.System5.Queen do
     GenServer.cast(@name, {:pain_signal, intensity, context})
   end
   
+  def get_governance_state do
+    GenServer.call(@name, :get_governance_state)
+  end
+  
+  def synthesize_adaptive_policy(anomaly_data, constraints \\ %{}) do
+    GenServer.call(@name, {:synthesize_adaptive_policy, anomaly_data, constraints})
+  end
+  
   # Server Callbacks
   
   @impl true
@@ -180,6 +188,44 @@ defmodule VsmPhoenix.System5.Queen do
     }
     
     {:reply, metrics, state}
+  end
+  
+  @impl true
+  def handle_call(:get_governance_state, _from, state) do
+    # Return comprehensive governance state
+    governance_state = %{
+      policies: state.policies,
+      strategic_direction: state.strategic_direction,
+      viability_metrics: state.viability_metrics,
+      identity: state.identity,
+      algedonic_state: state.algedonic_state,
+      decision_count: length(state.decisions),
+      active_policy_types: Map.keys(state.policies),
+      current_focus: determine_current_focus(state)
+    }
+    
+    {:reply, {:ok, governance_state}, state}
+  end
+  
+  @impl true
+  def handle_call({:synthesize_adaptive_policy, anomaly_data, constraints}, _from, state) do
+    Logger.info("Queen: Synthesizing adaptive policy for anomaly")
+    
+    # Use PolicySynthesizer for the actual synthesis
+    case PolicySynthesizer.synthesize_policy_from_anomaly(anomaly_data) do
+      {:ok, policy} ->
+        # Apply constraints if any
+        constrained_policy = apply_policy_constraints(policy, constraints)
+        
+        # Store the new policy
+        new_policies = Map.put(state.policies, policy.id, constrained_policy)
+        new_state = %{state | policies: new_policies}
+        
+        {:reply, {:ok, constrained_policy}, new_state}
+        
+      error ->
+        {:reply, error, state}
+    end
   end
   
   @impl true
@@ -426,6 +472,44 @@ defmodule VsmPhoenix.System5.Queen do
   defp calculate_decision_consistency(decisions) do
     # Analyze consistency of recent decisions
     if length(decisions) < 2, do: 1.0, else: 0.85
+  end
+  
+  defp determine_current_focus(state) do
+    # Determine what the governance system is currently focused on
+    cond do
+      state.algedonic_state[:pain_level] > 0.7 -> :crisis_management
+      state.viability_metrics.system_health < 0.5 -> :viability_restoration
+      state.algedonic_state[:pleasure_level] > 0.8 -> :opportunity_exploitation
+      true -> :steady_state_governance
+    end
+  end
+  
+  defp apply_policy_constraints(policy, constraints) do
+    # Apply any constraints to the policy
+    constrained_policy = policy
+    
+    # Apply budget constraints
+    constrained_policy = if constraints[:max_budget] do
+      Map.update(constrained_policy, :resource_limits, %{}, fn limits ->
+        Map.put(limits, :budget, constraints.max_budget)
+      end)
+    else
+      constrained_policy
+    end
+    
+    # Apply time constraints
+    constrained_policy = if constraints[:max_duration] do
+      Map.put(constrained_policy, :time_limit, constraints.max_duration)
+    else
+      constrained_policy
+    end
+    
+    # Apply approval requirements
+    if constraints[:require_human_approval] do
+      Map.put(constrained_policy, :auto_executable, false)
+    else
+      constrained_policy
+    end
   end
   
   defp evaluate_best_option(params, state) do

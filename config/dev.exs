@@ -1,5 +1,11 @@
 import Config
 
+# Enable MCP servers
+config :vsm_phoenix, :disable_mcp_servers, false
+
+# Disable MAGG to prevent startup crashes (MCP still works without it)
+config :vsm_phoenix, :disable_magg, true
+
 # Configure your database
 config :vsm_phoenix, VsmPhoenix.Repo,
   username: "postgres",
@@ -119,3 +125,8 @@ config :vsm_phoenix, :vsm,
 # Disable Quantum in development to avoid interference
 config :vsm_phoenix, VsmPhoenix.Scheduler,
   jobs: []
+
+# Import local config if it exists
+if File.exists?("config/dev.local.exs") do
+  import_config "dev.local.exs"
+end

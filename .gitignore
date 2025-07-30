@@ -1,76 +1,78 @@
-# The directory Mix will write compiled artifacts to.
-/_build/
+# Dependencies
+/deps
+/_build
+/node_modules
 
-# If you run "mix test --cover", coverage assets end up here.
-/cover/
-
-# The directory Mix downloads your dependencies sources to.
-/deps/
-
-# Where third-party dependencies like ExDoc output generated docs.
-/doc/
-
-# Ignore .fetch files in case you like to edit your project deps locally.
+# Build artifacts
+/cover
 /.fetch
-
-# If the VM crashes, it generates a dump, let's ignore it too.
 erl_crash.dump
+*.beam
+/config/*.secret.exs
 
-# Also ignore archive artifacts (built via "mix archive.build").
-*.ez
+# Production artifacts
+/priv/static/
+/priv/gettext/.sobelow
 
-# Ignore package tarball (built via "mix hex.build").
-vsm_phoenix-*.tar
-
-# Temporary files, for example, from tests.
-/tmp/
-
-# Ignore .elixir_ls
+# Development
 .elixir_ls/
-
-# Node modules for assets
-/assets/node_modules/
-
-# Generated assets
-/priv/static/assets/
-
-# Database files
-*.db
-*.db-*
-
-# Ignore Phoenix uploads
-/priv/static/uploads
-
-# IDE files
-.idea/
 .vscode/
-*.swp
-*.swo
-*~
+.idea/
+*.iml
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# Environment variables
-.env
-.env.*
-
 # Logs
 /logs
 *.log
 
-# Hive Mind / Swarm data
-.hive-mind/
-.swarm/
+# Environment
+.env
+.env.*
+!.env.example
+
+# Temporary files
+*.tmp
+*.temp
+/tmp
+inspect
 
 # Test artifacts
-/test_*.sh
-/debug_*.exs
-/simple_*.exs
-/verify_*.exs
-/trace_*.exs
-/test_*.exs
-/dashboard_test_results.md
-/PROOF_*.exs
-/MISSION_*.md
+/test/reports
+/test/coverage
+test_results.txt
+
+# Documentation build
+/doc
+/docs/_build
+
+# Phoenix specific
+/priv/cert
+
+# Ignore Phoenix uploads
+/uploads
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*~
+*.swp
+*.swo
+
+# Runtime directories
+/.magg
+/.swarm
+/.hive-mind
+
+# Archive directories
+logs_archive/
+
+# Screenshots (except in assets)
+*.png
+!assets/static/images/**/*.png

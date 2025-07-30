@@ -44,14 +44,41 @@ defmodule VsmPhoenix.Application do
       []
     else
       [
-        # Start Hermes MCP Client for enhanced VSM capabilities
-        {VsmPhoenix.MCP.HermesClient, [transport: :stdio]},
+        # Registry for External MCP Clients
+        {Registry, keys: :unique, name: VsmPhoenix.MCP.ExternalClientRegistry},
+        
+        # MCP Server Registry
+        {VsmPhoenix.MCP.MCPRegistry, []},
+        
+        # Supervisor for External MCP Clients
+        VsmPhoenix.MCP.ExternalClientSupervisor,
+        
+        # MAGG Integration Manager for discovering and managing external MCP servers
+        # Only start if MAGG is enabled and available
+      ] ++ if Application.get_env(:vsm_phoenix, :disable_magg, false) do
+        []
+      else
+        [{VsmPhoenix.MCP.MaggIntegrationManager, [auto_connect: false]}]
+      end ++ [
+        
+        # Start REAL Hermes STDIO Client that actually works
+        {VsmPhoenix.MCP.HermesStdioClient, []},
+        
+        # Keep the old client for backward compatibility
+        {VsmPhoenix.MCP.HermesClient, []},
         
         # Start VSM MCP Server to expose VSM as MCP tools
         {VsmPhoenix.MCP.VsmMcpServer, [auto_register: true]},
         
-        # Start NEW Real Hermes VSM MCP Server  
-        {VsmPhoenix.MCP.VsmServer, [transport: :stdio]}
+        # CYBERNETIC HIVE MIND COMPONENTS
+        # Start the Hive Mind MCP Server (bulletproof stdio transport)
+        {VsmPhoenix.MCP.HiveMindServer, [discovery: true]},
+        
+        # Start VSM Spawner for recursive VSM creation
+        {VsmPhoenix.Hive.Spawner, []},
+        
+        # Autonomous MCP Acquisition System
+        VsmPhoenix.MCP.AcquisitionSupervisor
       ]
     end ++ [
       

@@ -85,6 +85,24 @@ defmodule VsmPhoenix.Goldrush.Plugins.PolicyLearner do
   end
   
   @doc """
+  Record successful variety acquisition for learning
+  """
+  def record_successful_acquisition(acquisition_data) do
+    Logger.info("📈 Recording successful acquisition: #{inspect(acquisition_data[:server])}")
+    
+    # Store in learning data for future policy decisions
+    :telemetry.execute(
+      [:vsm, :policy_learner, :acquisition_success],
+      %{count: 1},
+      %{
+        server: acquisition_data[:server],
+        capability: acquisition_data[:capability],
+        timestamp: DateTime.utc_now()
+      }
+    )
+  end
+  
+  @doc """
   Trigger policy evolution based on learning
   """
   def evolve_ineffective_policies(state) do

@@ -53,6 +53,14 @@ defmodule VsmPhoenix.System4.Intelligence do
     GenServer.cast(@name, {:tidewave_insights, insights})
   end
   
+  def get_intelligence_state do
+    GenServer.call(@name, :get_intelligence_state)
+  end
+  
+  def analyze_variety_patterns(variety_data, scope \\ :full) do
+    GenServer.call(@name, {:analyze_variety_patterns, variety_data, scope})
+  end
+  
   # Server Callbacks
   
   @impl true
@@ -164,6 +172,42 @@ defmodule VsmPhoenix.System4.Intelligence do
     }
     
     {:reply, health, state}
+  end
+  
+  @impl true
+  def handle_call(:get_intelligence_state, _from, state) do
+    # Return comprehensive intelligence state
+    intelligence_state = %{
+      environmental_data: state.environmental_data,
+      current_adaptations: state.current_adaptations,
+      metrics: state.intelligence_metrics,
+      tidewave_status: if(state.tidewave_connection, do: :connected, else: :disconnected),
+      learning_data_count: length(state.learning_data),
+      adaptation_models: Map.keys(state.adaptation_models)
+    }
+    
+    {:reply, {:ok, intelligence_state}, state}
+  end
+  
+  @impl true
+  def handle_call({:analyze_variety_patterns, variety_data, scope}, _from, state) do
+    Logger.info("Intelligence: Analyzing variety patterns - scope: #{scope}")
+    
+    # Analyze the variety data for patterns and insights
+    analysis = %{
+      pattern_count: map_size(variety_data[:novel_patterns] || %{}),
+      emergence_level: assess_emergence_level(variety_data),
+      recursive_potential: variety_data[:recursive_potential] || [],
+      meta_system_recommendation: should_spawn_meta_system?(variety_data),
+      adaptation_strategy: recommend_adaptation_strategy(variety_data, state),
+      variety_score: calculate_variety_score(variety_data)
+    }
+    
+    # Update learning data with this analysis
+    new_learning_data = [{DateTime.utc_now(), analysis} | state.learning_data]
+    new_state = %{state | learning_data: Enum.take(new_learning_data, 1000)}
+    
+    {:reply, {:ok, analysis}, new_state}
   end
   
   @impl true
@@ -287,22 +331,40 @@ defmodule VsmPhoenix.System4.Intelligence do
       timestamp: DateTime.utc_now()
     }
     
-    # HERE'S THE MAGIC - LLM adds infinite variety!
-    case LLMVarietySource.analyze_for_variety(base_scan) do
-      {:ok, variety_expansion} ->
-        Logger.info("🔥 LLM VARIETY EXPLOSION: #{inspect(variety_expansion)}")
-        
-        # Check if we should spawn a meta-system
-        if variety_expansion.meta_system_seeds != %{} do
-          Logger.info("🌀 RECURSIVE META-SYSTEM OPPORTUNITY DETECTED!")
-          LLMVarietySource.pipe_to_system1_meta_generation(variety_expansion)
+    # LLM analysis is optional - don't let it crash the system
+    final_scan = if Application.get_env(:vsm_phoenix, :enable_llm_variety, false) do
+      # Run LLM analysis in a separate task with timeout
+      task = Task.async(fn ->
+        try do
+          LLMVarietySource.analyze_for_variety(base_scan)
+        rescue
+          e -> 
+            Logger.error("LLM variety analysis failed: #{inspect(e)}")
+            {:error, :llm_unavailable}
         end
-        
-        Map.merge(base_scan, %{llm_variety: variety_expansion})
-        
-      _ ->
-        base_scan
+      end)
+      
+      case Task.yield(task, 3000) || Task.shutdown(task) do
+        {:ok, {:ok, variety_expansion}} ->
+          Logger.info("🔥 LLM VARIETY EXPLOSION: #{inspect(variety_expansion)}")
+          
+          # Check if we should spawn a meta-system
+          if variety_expansion.meta_system_seeds != %{} do
+            Logger.info("🌀 RECURSIVE META-SYSTEM OPPORTUNITY DETECTED!")
+            spawn(fn -> LLMVarietySource.pipe_to_system1_meta_generation(variety_expansion) end)
+          end
+          
+          Map.merge(base_scan, %{llm_variety: variety_expansion})
+          
+        _ ->
+          Logger.debug("LLM variety analysis skipped or timed out")
+          base_scan
+      end
+    else
+      base_scan
     end
+    
+    final_scan
   end
   
   defp generate_market_signals do
@@ -602,5 +664,48 @@ defmodule VsmPhoenix.System4.Intelligence do
     end
     
     anomalies
+  end
+  
+  defp assess_emergence_level(variety_data) do
+    # Assess the level of emergence in the variety data
+    emergent_properties = variety_data[:emergent_properties] || %{}
+    
+    cond do
+      map_size(emergent_properties) > 5 -> :high
+      map_size(emergent_properties) > 2 -> :medium
+      map_size(emergent_properties) > 0 -> :low
+      true -> :none
+    end
+  end
+  
+  defp should_spawn_meta_system?(variety_data) do
+    # Determine if variety complexity warrants meta-system spawning
+    variety_data[:meta_system_seeds] != %{} ||
+    length(variety_data[:recursive_potential] || []) > 3
+  end
+  
+  defp recommend_adaptation_strategy(variety_data, state) do
+    # Recommend adaptation strategy based on variety patterns
+    emergence = assess_emergence_level(variety_data)
+    current_load = length(state.current_adaptations)
+    
+    cond do
+      emergence == :high && current_load < 3 -> :transformational
+      emergence == :medium -> :incremental
+      current_load > 5 -> :defensive
+      true -> :balanced
+    end
+  end
+  
+  defp calculate_variety_score(variety_data) do
+    # Calculate overall variety score
+    factors = [
+      map_size(variety_data[:novel_patterns] || %{}) * 0.3,
+      length(variety_data[:recursive_potential] || []) * 0.2,
+      (if variety_data[:meta_system_seeds], do: 0.3, else: 0),
+      (if variety_data[:emergent_properties], do: 0.2, else: 0)
+    ]
+    
+    Enum.sum(factors)
   end
 end

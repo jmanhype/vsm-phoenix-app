@@ -15,45 +15,56 @@ defmodule VsmPhoenix.System4.LLMVarietySource do
   def analyze_for_variety(context) do
     Logger.info("🔌 LLM Variety Source: Using Hermes MCP for analysis")
     
-    # Try Hermes MCP first
-    case HermesClient.analyze_variety(context) do
-      {:ok, variety_expansion} ->
-        Logger.info("🔥 Hermes MCP discovered #{map_size(variety_expansion.novel_patterns)} new patterns!")
-        
-        # Check if we need meta-system spawning
-        case HermesClient.check_meta_system_need(variety_expansion) do
-          {:ok, %{needs_meta_system: true} = meta_info} ->
-            Logger.info("🌀 MCP recommends meta-system spawning: #{meta_info.reason}")
-            variety_expansion = Map.put(variety_expansion, :meta_system_config, meta_info.recommended_config)
-          _ ->
-            :ok
-        end
-        
-        {:ok, variety_expansion}
-        
-      {:error, _mcp_error} ->
-        # Fallback to direct Claude API
-        Logger.info("📡 Falling back to direct LLM API")
-        
-        prompt = build_variety_prompt(context)
-        
-        case call_claude(prompt) do
-          {:ok, insights} ->
-            # This is where the magic happens - LLM creates NEW variety
-            variety_expansion = %{
-              novel_patterns: extract_patterns(insights),
-              emergent_properties: identify_emergence(insights),
-              recursive_potential: find_recursive_opportunities(insights),
-              meta_system_seeds: generate_meta_seeds(insights)
-            }
-            
-            Logger.info("LLM discovered #{map_size(variety_expansion.novel_patterns)} new patterns!")
-            {:ok, variety_expansion}
-            
-          {:error, reason} ->
-            Logger.error("LLM variety generation failed: #{inspect(reason)}")
-            {:error, reason}
-        end
+    # Try Hermes MCP first with timeout protection
+    try do
+      case GenServer.call(HermesClient, {:analyze_variety, context}, 2000) do
+        {:ok, variety_expansion} ->
+          Logger.info("🔥 Hermes MCP discovered #{map_size(variety_expansion.novel_patterns)} new patterns!")
+          
+          # Check if we need meta-system spawning
+          case HermesClient.check_meta_system_need(variety_expansion) do
+            {:ok, %{needs_meta_system: true} = meta_info} ->
+              Logger.info("🌀 MCP recommends meta-system spawning: #{meta_info.reason}")
+              variety_expansion = Map.put(variety_expansion, :meta_system_config, meta_info.recommended_config)
+            _ ->
+              :ok
+          end
+          
+          {:ok, variety_expansion}
+          
+        {:error, _mcp_error} ->
+          # Fallback to direct Claude API
+          Logger.info("📡 Falling back to direct LLM API")
+          
+          prompt = build_variety_prompt(context)
+          
+          case call_claude(prompt) do
+            {:ok, insights} ->
+              # This is where the magic happens - LLM creates NEW variety
+              variety_expansion = %{
+                novel_patterns: extract_patterns(insights),
+                emergent_properties: identify_emergence(insights),
+                recursive_potential: find_recursive_opportunities(insights),
+                meta_system_seeds: generate_meta_seeds(insights)
+              }
+              
+              Logger.info("LLM discovered #{map_size(variety_expansion.novel_patterns)} new patterns!")
+              {:ok, variety_expansion}
+              
+            {:error, reason} ->
+              Logger.error("LLM variety generation failed: #{inspect(reason)}")
+              {:error, reason}
+          end
+      end
+    catch
+      :exit, {:timeout, _} ->
+        Logger.error("HermesClient timeout - falling back to basic variety analysis")
+        {:ok, %{
+          novel_patterns: %{},
+          emergent_properties: %{},
+          recursive_potential: [],
+          meta_system_seeds: %{}
+        }}
     end
   end
   
@@ -89,6 +100,39 @@ defmodule VsmPhoenix.System4.LLMVarietySource do
         Logger.error("Meta-system spawn failed: #{inspect(error)}")
         error
     end
+  end
+  
+  def check_availability do
+    # Check if LLM variety source is available
+    if @anthropic_api_key && @anthropic_api_key != "" do
+      {:ok, :available}
+    else
+      # Try Hermes MCP as backup
+      case HermesClient.ping() do
+        :pong -> {:ok, :available_via_mcp}
+        _ -> {:error, :no_llm_available}
+      end
+    end
+  end
+  
+  def analyze_request(request) do
+    Logger.info("🔍 Analyzing request for variety patterns")
+    
+    # Quick analysis of request for variety potential
+    variety_indicators = %{
+      has_uncertainty: String.contains?(request, ["unknown", "unclear", "ambiguous"]),
+      has_complexity: String.contains?(request, ["complex", "multi", "various"]),
+      has_emergence: String.contains?(request, ["new", "novel", "unexpected"]),
+      has_recursion: String.contains?(request, ["recursive", "self", "meta"])
+    }
+    
+    variety_score = Enum.count(variety_indicators, fn {_, v} -> v end) / 4.0
+    
+    {:ok, %{
+      variety_score: variety_score,
+      indicators: variety_indicators,
+      recommendation: if(variety_score > 0.5, do: :high_variety, else: :low_variety)
+    }}
   end
   
   defp build_variety_prompt(context) do
@@ -178,29 +222,47 @@ defmodule VsmPhoenix.System4.LLMVarietySource do
   
   defp spawn_meta_control(variety_data) do
     # Spawn a meta System 3 inside System 1
-    {:ok, pid} = GenServer.start_link(
+    case GenServer.start_link(
       VsmPhoenix.System3.Control,
       %{meta: true, variety_source: variety_data}
-    )
-    pid
+    ) do
+      {:ok, pid} -> 
+        Logger.info("🎯 Meta System 3 spawned: #{inspect(pid)}")
+        pid
+      {:error, reason} ->
+        Logger.error("Failed to spawn meta System 3: #{inspect(reason)}")
+        nil
+    end
   end
   
   defp spawn_meta_intelligence(variety_data) do
     # Spawn a meta System 4 with its own LLM connection!
-    {:ok, pid} = GenServer.start_link(
+    case GenServer.start_link(
       VsmPhoenix.System4.Intelligence,
       %{meta: true, llm_enabled: true, variety_data: variety_data}
-    )
-    pid
+    ) do
+      {:ok, pid} ->
+        Logger.info("🧠 Meta System 4 spawned with LLM: #{inspect(pid)}")
+        pid
+      {:error, reason} ->
+        Logger.error("Failed to spawn meta System 4: #{inspect(reason)}")
+        nil
+    end
   end
   
   defp spawn_meta_governance(variety_data) do
     # Spawn a meta System 5 - a Queen within a Queen!
-    {:ok, pid} = GenServer.start_link(
+    case GenServer.start_link(
       VsmPhoenix.System5.Queen,
-      %{meta: true, recursive_depth: :infinite}
-    )
-    pid
+      %{meta: true, recursive_depth: :infinite, variety_data: variety_data}
+    ) do
+      {:ok, pid} ->
+        Logger.info("👑 Meta System 5 Queen spawned: #{inspect(pid)}")
+        pid
+      {:error, reason} ->
+        Logger.error("Failed to spawn meta System 5: #{inspect(reason)}")
+        nil
+    end
   end
   
   defp connect_via_amqp(meta_pid, variety_data) do
@@ -225,8 +287,58 @@ defmodule VsmPhoenix.System4.LLMVarietySource do
     VsmPhoenix.AMQP.RecursiveProtocol.establish(meta_pid, connection_config)
   end
   
-  defp find_behavioral_patterns(insights), do: %{}
-  defp find_structural_patterns(insights), do: %{}
-  defp find_temporal_patterns(insights), do: %{}
-  defp find_emergent_patterns(insights), do: %{}
+  defp find_behavioral_patterns(insights) when is_binary(insights) do
+    # Extract behavioral patterns from LLM insights
+    patterns = %{}
+    
+    # Look for action patterns
+    if String.contains?(insights, ["behavior", "action", "response"]) do
+      Map.put(patterns, :action_patterns, extract_text_patterns(insights, ~r/action.*?pattern.*?:.*?([^.]+)/i))
+    else
+      patterns
+    end
+  end
+  
+  defp find_structural_patterns(insights) when is_binary(insights) do
+    # Extract structural patterns from LLM insights
+    patterns = %{}
+    
+    # Look for organizational patterns
+    if String.contains?(insights, ["structure", "organization", "hierarchy"]) do
+      Map.put(patterns, :organizational, extract_text_patterns(insights, ~r/structure.*?:.*?([^.]+)/i))
+    else
+      patterns
+    end
+  end
+  
+  defp find_temporal_patterns(insights) when is_binary(insights) do
+    # Extract time-based patterns from LLM insights
+    patterns = %{}
+    
+    # Look for timing patterns
+    if String.contains?(insights, ["time", "temporal", "sequence", "periodic"]) do
+      Map.put(patterns, :timing, extract_text_patterns(insights, ~r/time.*?pattern.*?:.*?([^.]+)/i))
+    else
+      patterns
+    end
+  end
+  
+  defp find_emergent_patterns(insights) when is_binary(insights) do
+    # Extract emergent patterns from LLM insights
+    patterns = %{}
+    
+    # Look for emergence indicators
+    if String.contains?(insights, ["emergent", "emerging", "novel", "unexpected"]) do
+      Map.put(patterns, :emergent, extract_text_patterns(insights, ~r/emerg.*?:.*?([^.]+)/i))
+    else
+      patterns
+    end
+  end
+  
+  defp extract_text_patterns(text, regex) do
+    case Regex.run(regex, text) do
+      [_, match] -> String.trim(match)
+      _ -> "Pattern detected in text"
+    end
+  end
 end

@@ -53,6 +53,15 @@ defmodule VsmPhoenix.MCP.HermesClient do
   end
   
   @doc """
+  Check if the MCP server is responsive
+  """
+  def ping do
+    GenServer.call(@name, :ping, 5000)
+  catch
+    :exit, _ -> :pang
+  end
+  
+  @doc """
   List available MCP tools
   """
   def list_tools do
@@ -196,6 +205,16 @@ defmodule VsmPhoenix.MCP.HermesClient do
   @impl true
   def handle_call(:list_tools, _from, state) do
     {:reply, {:ok, Map.keys(state.tools)}, state}
+  end
+  
+  @impl true
+  def handle_call(:ping, _from, state) do
+    # Check if MCP connection is active
+    if state.mcp_client && state.status == :connected do
+      {:reply, :pong, state}
+    else
+      {:reply, :pang, state}
+    end
   end
   
   # Private Functions

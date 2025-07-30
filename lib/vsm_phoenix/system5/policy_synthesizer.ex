@@ -19,10 +19,10 @@ defmodule VsmPhoenix.System5.PolicySynthesizer do
   # API key loaded at runtime now
   
   def synthesize_policy_from_anomaly(anomaly_data) do
-    Logger.info("🧠 S5 Policy Synthesis: Using Hermes MCP for policy generation")
+    Logger.info("🧠 S5 Policy Synthesis: Using REAL Hermes STDIO Client")
     
-    # Try Hermes MCP first
-    case HermesClient.synthesize_policy(anomaly_data) do
+    # Try REAL Hermes STDIO Client that works
+    case VsmPhoenix.MCP.HermesStdioClient.synthesize_policy(anomaly_data) do
       {:ok, policy} ->
         Logger.info("✅ MCP Policy synthesized: #{policy.id}")
         
@@ -340,8 +340,53 @@ defmodule VsmPhoenix.System5.PolicySynthesizer do
     """
   end
   
-  defp parse_meta_policies(response), do: %{}
-  defp parse_recursion_rules(response), do: %{}
-  defp parse_autonomy_boundaries(response), do: %{}
-  defp parse_learning_protocols(response), do: %{}
+  defp parse_meta_policies(_response), do: %{}
+  defp parse_recursion_rules(_response), do: %{}
+  defp parse_autonomy_boundaries(_response), do: %{}
+  defp parse_learning_protocols(_response), do: %{}
+  
+  def handle_acquisition_failure(failure_data) do
+    """
+    Learn from acquisition failures to improve future attempts
+    """
+    Logger.warning("📊 Handling acquisition failure: #{inspect(failure_data.reason)}")
+    
+    # Store failure pattern for learning
+    failure_pattern = %{
+      server: failure_data.server,
+      reason: failure_data.reason,
+      timestamp: DateTime.utc_now(),
+      capability_gap: failure_data.capability_gap
+    }
+    
+    # Synthesize adaptive policy if pattern repeats
+    if should_synthesize_failure_policy?(failure_pattern) do
+      policy_prompt = """
+      Multiple acquisition failures detected for capability: #{failure_data.capability_gap}
+      
+      Failures: #{inspect(failure_pattern)}
+      
+      Generate an adaptive policy to:
+      1. Work around this capability gap
+      2. Find alternative solutions
+      3. Prevent future failures
+      """
+      
+      case call_claude_for_policy(policy_prompt) do
+        {:ok, policy} ->
+          Logger.info("✅ Synthesized failure adaptation policy")
+          {:ok, policy}
+        error ->
+          error
+      end
+    else
+      # Just log for now
+      {:ok, :logged}
+    end
+  end
+  
+  defp should_synthesize_failure_policy?(_pattern) do
+    # In production, check if pattern repeats
+    false
+  end
 end

@@ -59,8 +59,17 @@ defmodule VsmPhoenix.PerformanceMonitor do
   
   @impl true
   def handle_info(:collect_metrics, state) do
-    # Direct collection instead of self-call
-    {_reply, new_state} = handle_call(:collect_metrics, nil, state)
+    # Collect metrics directly without calling handle_call
+    metrics = collect_system_metrics()
+    
+    # Update state with new metrics
+    new_state = %{state | 
+      current_metrics: metrics,
+      metrics_history: [metrics | Enum.take(state.metrics_history, 100)]
+    }
+    
+    # Check for alerts
+    new_state = %{new_state | alerts: check_alerts(metrics, state)}
     
     # Schedule next collection
     schedule_collection()
@@ -76,9 +85,23 @@ defmodule VsmPhoenix.PerformanceMonitor do
       process_count: length(Process.list()),
       system_info: %{
         uptime: :erlang.statistics(:wall_clock) |> elem(0),
-        scheduler_utilization: :scheduler.utilization(1) |> List.first() |> elem(1)
+        scheduler_utilization: get_scheduler_utilization()
       }
     }
+  end
+
+  defp get_scheduler_utilization do
+    # Safer scheduler utilization check
+    try do
+      case :scheduler.utilization(1) do
+        [utilization | _] when is_tuple(utilization) -> elem(utilization, 1)
+        _ -> 0.0
+      end
+    rescue
+      _ -> 0.0
+    catch
+      _, _ -> 0.0
+    end
   end
   
   defp schedule_collection do
@@ -99,5 +122,25 @@ defmodule VsmPhoenix.PerformanceMonitor do
     else
       %{trend: :stable}  # Simplified
     end
+  end
+
+  defp check_alerts(metrics, _state) do
+    # Check for performance alerts based on metrics
+    alerts = []
+    
+    # Check memory usage
+    if metrics[:memory_usage] do
+      total_memory = metrics.memory_usage[:total] || 0
+      if total_memory > 1_000_000_000 do  # 1GB threshold
+        alerts = [%{type: :memory_high, message: "Memory usage exceeds 1GB", value: total_memory} | alerts]
+      end
+    end
+    
+    # Check process count
+    if metrics[:process_count] && metrics.process_count > 10000 do
+      alerts = [%{type: :process_high, message: "Process count exceeds 10000", value: metrics.process_count} | alerts]
+    end
+    
+    alerts
   end
 end
