@@ -36,6 +36,9 @@ defmodule VsmPhoenix.Application do
       # Start Goldrush Manager with plugins
       VsmPhoenix.Goldrush.Manager,
       
+      # Start AMQP/RabbitMQ Supervisor
+      VsmPhoenix.AMQP.Supervisor,
+      
       # Start Hermes Server Registry first
       Hermes.Server.Registry,
       
