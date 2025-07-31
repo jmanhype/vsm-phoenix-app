@@ -87,8 +87,10 @@ config :vsm_phoenix, :mcp,
   magg_binary: "echo",  # Mock MAGG with echo command
   magg_timeout: 1_000,  # 1 second timeout for tests
   
-  # Disable LLM variety analysis in tests
-  enable_llm_variety: false,
+  # ENABLE LLM variety analysis in tests
+  enable_llm_variety: true,
+  llm_timeout: 5_000,  # Shorter timeout for tests
+  variety_threshold: 0.5,  # Lower threshold for testing
   
   # Mock external client configuration
   external_client_timeout: 1_000,

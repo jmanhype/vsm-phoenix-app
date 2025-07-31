@@ -86,18 +86,26 @@ config :vsm_phoenix, :vsm,
   # More verbose logging in development
   debug_mode: true,
   
+  # ENABLE LLM VARIETY DETECTION!
+  enable_llm_variety: true,
+  llm_timeout: 30_000,  # 30 seconds for LLM calls
+  llm_cache_ttl: 300_000,  # 5 minute cache
+  variety_threshold: 0.7,  # Trigger meta-system at 70% variety
+  
   # Faster intervals for development
   queen: [
     policy_check_interval: 10_000,  # 10 seconds
     viability_threshold: 0.6,
-    intervention_threshold: 0.5
+    intervention_threshold: 0.5,
+    enable_llm_synthesis: true  # Enable LLM policy synthesis
   ],
   
   intelligence: [
     scan_interval: 30_000,  # 30 seconds
     tidewave_enabled: true,
     adaptation_timeout: 60_000,  # 1 minute
-    learning_rate: 0.2
+    learning_rate: 0.2,
+    llm_variety_enabled: true  # Enable LLM variety scanning
   ],
   
   control: [
