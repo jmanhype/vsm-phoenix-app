@@ -91,30 +91,11 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
   defp setup_vsm_topology(connection) do
     {:ok, channel} = AMQP.Channel.open(connection)
     
-    # Declare VSM exchanges (match existing types if they exist)
-    try do
-      AMQP.Exchange.declare(channel, "vsm.recursive", :topic, durable: true)
-    rescue
-      _ -> Logger.debug("Exchange vsm.recursive already exists")
-    end
-    
-    try do
-      AMQP.Exchange.declare(channel, "vsm.algedonic", :fanout, durable: true)
-    rescue  
-      _ -> Logger.debug("Exchange vsm.algedonic already exists")
-    end
-    
-    try do
-      AMQP.Exchange.declare(channel, "vsm.coordination", :fanout, durable: true)
-    rescue
-      _ -> Logger.debug("Exchange vsm.coordination already exists")
-    end
-    
-    try do
-      AMQP.Exchange.declare(channel, "vsm.meta", :topic, durable: true)
-    rescue
-      _ -> Logger.debug("Exchange vsm.meta already exists")
-    end
+    # Declare VSM exchanges - handle existing exchanges gracefully
+    declare_exchange_safe(channel, "vsm.recursive", :topic)
+    declare_exchange_safe(channel, "vsm.algedonic", :direct) # Use direct to match existing
+    declare_exchange_safe(channel, "vsm.coordination", :fanout)
+    declare_exchange_safe(channel, "vsm.meta", :topic)
     
     # Declare main VSM queues
     AMQP.Queue.declare(channel, "vsm.system5.policy", durable: true)
@@ -129,6 +110,24 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
     AMQP.Channel.close(channel)
     
     Logger.info("📋 VSM topology created in RabbitMQ")
+  end
+  
+  defp declare_exchange_safe(channel, name, type) do
+    try do
+      AMQP.Exchange.declare(channel, name, type, durable: true)
+      Logger.debug("✅ Exchange #{name} declared as #{type}")
+    rescue
+      e in MatchError ->
+        Logger.debug("Exchange #{name} already exists: #{inspect(e)}")
+      e ->
+        # Check if it's a precondition failed error
+        error_message = inspect(e)
+        if String.contains?(error_message, "PRECONDITION_FAILED") do
+          Logger.warning("⚠️  Exchange #{name} exists with different type")
+        else
+          Logger.debug("Exchange #{name} error: #{error_message}")
+        end
+    end
   end
   
   defp get_or_create_channel(state, purpose) do
