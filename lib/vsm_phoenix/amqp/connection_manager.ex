@@ -93,7 +93,7 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
     
     # Declare VSM exchanges - handle existing exchanges gracefully
     declare_exchange_safe(channel, "vsm.recursive", :topic)
-    declare_exchange_safe(channel, "vsm.algedonic", :direct) # Use direct to match existing
+    declare_exchange_safe(channel, "vsm.algedonic", :fanout) # Use fanout to match existing
     declare_exchange_safe(channel, "vsm.coordination", :fanout)
     declare_exchange_safe(channel, "vsm.meta", :topic)
     
