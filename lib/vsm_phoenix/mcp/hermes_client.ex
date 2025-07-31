@@ -276,7 +276,7 @@ defmodule VsmPhoenix.MCP.HermesClient do
         
       {:error, :server_not_available} ->
         Logger.error("❌ VSM MCP Server not available - FAILING FAST")
-        {:error, "VSM MCP Server not responding - check if VsmPhoenix.MCP.VsmServer is running"}
+        {:error, "VSM MCP Server not responding - check if HiveMindServer is running"}
         
       {:error, reason} ->
         Logger.error("❌ VSM MCP Tool execution failed: #{inspect(reason)}")

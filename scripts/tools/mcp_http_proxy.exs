@@ -52,7 +52,9 @@ defmodule McpHttpProxy do
 end
 
 # Start HTTP server
-{:ok, _} = Plug.Cowboy.http(McpHttpProxy, [])
+require Logger
+
+{:ok, _} = Plug.Cowboy.http(McpHttpProxy, [], port: 4000)
 Logger.info("🚀 MCP HTTP Proxy started on http://localhost:4000")
 Logger.info("📡 Forwarding HTTP requests to MCP stdio server")
 Logger.info("🧪 Ready for curl commands!")

@@ -20,6 +20,49 @@ defmodule VsmPhoenix.MCP.VsmTools do
   List all available VSM tools
   """
   def list_tools do
+    # Tools from registered Hermes components
+    hermes_tools = [
+      %{
+        name: "analyze_variety",
+        description: "Analyze variety data and return patterns and recommendations",
+        inputSchema: %{
+          type: "object",
+          properties: %{
+            variety_data: %{type: "object"},
+            context: %{type: "object"}
+          },
+          required: ["variety_data"]
+        }
+      },
+      %{
+        name: "synthesize_policy",
+        description: "Synthesize policy from anomaly data",
+        inputSchema: %{
+          type: "object",
+          properties: %{
+            anomaly_type: %{type: "string"},
+            severity: %{type: "number", minimum: 0, maximum: 1},
+            context: %{type: "object"}
+          },
+          required: ["anomaly_type", "severity"]
+        }
+      },
+      %{
+        name: "check_meta_system_need",
+        description: "Check if a meta-system needs to be spawned",
+        inputSchema: %{
+          type: "object",
+          properties: %{
+            complexity_level: %{type: "string"},
+            resource_strain: %{type: "number"},
+            anomaly_count: %{type: "integer"}
+          },
+          required: ["complexity_level"]
+        }
+      }
+    ]
+    
+    # Additional VSM tools
     base_tools = [
       %{
         name: "vsm_scan_environment",
@@ -119,9 +162,9 @@ defmodule VsmPhoenix.MCP.VsmTools do
       }
     ]
     
-    # Combine base VSM tools with hive coordination tools
+    # Combine all tools: Hermes components + VSM tools + hive coordination tools
     hive_tools = HiveCoordination.list_hive_tools()
-    base_tools ++ hive_tools
+    hermes_tools ++ base_tools ++ hive_tools
   end
   
   @doc """
@@ -131,6 +174,20 @@ defmodule VsmPhoenix.MCP.VsmTools do
     Logger.info("🔧 Executing VSM MCP tool: #{tool_name}")
     
     case tool_name do
+      # Hermes component tools (these are handled by Hermes itself)
+      "analyze_variety" ->
+        # This is handled by the AnalyzeVariety component through Hermes
+        {:ok, %{status: "delegated_to_hermes", tool: tool_name}}
+        
+      "synthesize_policy" ->
+        # Delegate to our synthesize_policy implementation
+        synthesize_policy(params)
+        
+      "check_meta_system_need" ->
+        # This is handled by the CheckMetaSystemNeed component through Hermes
+        {:ok, %{status: "delegated_to_hermes", tool: tool_name}}
+        
+      # VSM tools
       "vsm_scan_environment" ->
         scan_environment(params)
         

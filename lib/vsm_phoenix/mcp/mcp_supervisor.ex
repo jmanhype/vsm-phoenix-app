@@ -54,11 +54,9 @@ defmodule VsmPhoenix.MCP.MCPSupervisor do
         # Keep the old client for backward compatibility
         {VsmPhoenix.MCP.HermesClient, []},
         
-        # Start VSM MCP Server to expose VSM as MCP tools
-        {VsmPhoenix.MCP.VsmMcpServer, [auto_register: true]},
-        
         # CYBERNETIC HIVE MIND COMPONENTS
-        # Start the Hive Mind MCP Server (bulletproof stdio transport)
+        # HiveMindServer is the primary MCP implementation
+        # It provides VSM-to-VSM communication via stdio transport
         {VsmPhoenix.MCP.HiveMindServer, [discovery: true]},
         
         # Start VSM Spawner for recursive VSM creation

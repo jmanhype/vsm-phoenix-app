@@ -14,6 +14,13 @@ defmodule VsmPhoenixWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # MCP pipeline - skips CSRF protection for MCP endpoints
+  pipeline :mcp do
+    plug :accepts, ["json", "application/msgpack"]
+    plug :fetch_session
+    plug :put_secure_browser_headers
+  end
+
   scope "/", VsmPhoenixWeb do
     pipe_through :browser
 
@@ -29,6 +36,25 @@ defmodule VsmPhoenixWeb.Router do
     get "/system/:level", VSMController, :system_status
     post "/system5/decision", VSMController, :queen_decision
     post "/algedonic/:signal", VSMController, :algedonic_signal
+  end
+
+  # MCP routes - Handled by MCPController
+  # JSON-RPC requests are processed and forwarded to appropriate VSM systems
+  scope "/mcp", VsmPhoenixWeb do
+    pipe_through :mcp
+
+    # Forward all MCP requests to the Hermes Plug which handles:
+    # - JSON-RPC protocol
+    # - Tool discovery and execution  
+    # - Streaming responses
+    # - Error handling
+    # Use MCPController instead of direct Hermes forwarding
+    # Hermes.Server.Transport.StreamableHTTP.Plug requires specific setup
+    get "/", MCPController, :health
+    post "/", MCPController, :handle
+    get "/health", MCPController, :health
+    post "/rpc", MCPController, :handle
+    options "/*path", MCPController, :options
   end
 
   # Other scopes may use custom stacks.

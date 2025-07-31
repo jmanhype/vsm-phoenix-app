@@ -105,7 +105,7 @@ config :vsm_phoenix, :vsm,
 
 # Tidewave Integration Configuration (if available)
 config :tidewave,
-  endpoint: "http://localhost:4001",
+  endpoint: "http://localhost:4000",
   api_key: System.get_env("TIDEWAVE_API_KEY"),
   timeout: 30_000
 
