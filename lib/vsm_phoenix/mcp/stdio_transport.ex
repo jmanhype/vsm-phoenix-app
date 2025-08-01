@@ -57,15 +57,23 @@ defmodule VsmPhoenix.MCP.StdioTransport do
   @impl true
   def handle_info({port, {:data, {:eol, line}}}, %{port: port} = state) do
     # Handle line-based data from MCP server
-    case Jason.decode(line) do
+    complete_line = state.buffer <> line
+    case Jason.decode(complete_line) do
       {:ok, message} ->
-        state = handle_message(message, state)
+        state = handle_message(message, %{state | buffer: ""})
         {:noreply, state}
         
       {:error, reason} ->
         Logger.error("Failed to decode MCP message: #{inspect(reason)}")
-        {:noreply, state}
+        Logger.error("Message was: #{inspect(complete_line)}")
+        {:noreply, %{state | buffer: ""}}
     end
+  end
+  
+  @impl true
+  def handle_info({port, {:data, {:noeol, partial}}}, %{port: port} = state) do
+    # Handle partial line - accumulate in buffer
+    {:noreply, %{state | buffer: state.buffer <> partial}}
   end
   
   @impl true

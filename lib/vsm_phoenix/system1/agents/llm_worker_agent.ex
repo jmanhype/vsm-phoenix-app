@@ -137,14 +137,33 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
     Logger.info("🔄 Attempting to connect to #{length(servers)} MCP servers...")
     
     Enum.map(servers, fn server ->
-      Logger.info("🔌 Connecting to: #{server}")
-      case Client.connect(mcp_client, server) do
-        {:ok, info} ->
-          Logger.info("✅ Connected to MCP server: #{server}")
-          {server, info}
-        error ->
-          Logger.error("❌ Failed to connect to #{server}: #{inspect(error)}")
+      Logger.info("🔌 Connecting to: #{inspect(server)}")
+      
+      # Convert server map to command string
+      command = case server do
+        %{"command" => cmd, "args" => args} when is_list(args) ->
+          Enum.join([cmd | args], " ")
+        %{"command" => cmd} ->
+          cmd
+        cmd when is_binary(cmd) ->
+          cmd
+        _ ->
+          Logger.error("❌ Invalid server format: #{inspect(server)}")
           nil
+      end
+      
+      if command do
+        case Client.connect(mcp_client, command) do
+          {:ok, info} ->
+            server_name = Map.get(server, "name", command)
+            Logger.info("✅ Connected to MCP server: #{server_name}")
+            {server_name, info}
+          error ->
+            Logger.error("❌ Failed to connect to #{inspect(server)}: #{inspect(error)}")
+            nil
+        end
+      else
+        nil
       end
     end)
     |> Enum.filter(& &1)
