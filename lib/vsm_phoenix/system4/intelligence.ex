@@ -131,10 +131,17 @@ defmodule VsmPhoenix.System4.Intelligence do
     end
     
     # Publish environmental alert to AMQP
-    if insights.alert_level in [:high, :critical] do
+    # Determine alert level based on requires_adaptation and challenge urgency
+    alert_level = cond do
+      insights.requires_adaptation && insights.challenge && insights.challenge.urgency == :high -> :critical
+      insights.requires_adaptation -> :high
+      true -> :normal
+    end
+    
+    if alert_level in [:high, :critical] do
       alert = %{
         type: "environmental_alert",
-        level: insights.alert_level,
+        level: alert_level,
         scope: scope,
         insights: insights,
         anomalies: anomalies,

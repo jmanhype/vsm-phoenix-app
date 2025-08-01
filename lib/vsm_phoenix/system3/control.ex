@@ -57,6 +57,14 @@ defmodule VsmPhoenix.System3.Control do
     GenServer.call(@name, :audit_resource_usage)
   end
   
+  @doc """
+  Direct audit bypass - inspect any S1 agent without S2 coordination
+  WARNING: This bypasses normal coordination - use with caution!
+  """
+  def audit(target_s1, options \\ []) do
+    GenServer.call(@name, {:audit_s1_direct, target_s1, options})
+  end
+  
   # Server Callbacks
   
   @impl true
@@ -219,6 +227,46 @@ defmodule VsmPhoenix.System3.Control do
     }
     
     {:reply, audit_report, state}
+  end
+  
+  @impl true
+  def handle_call({:audit_s1_direct, target_s1, options}, _from, state) do
+    Logger.warning("🔍 S3 AUDIT BYPASS: Direct inspection of #{target_s1}")
+    
+    # Generate audit request
+    audit_request = %{
+      type: "audit_command",
+      operation: Keyword.get(options, :operation, :dump_state),
+      target: target_s1,
+      requester: "system3_control",
+      timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
+      bypass_coordination: true,
+      audit_id: "AUDIT-#{:erlang.system_time(:millisecond)}"
+    }
+    
+    # Send via dedicated audit channel to bypass S2
+    result = VsmPhoenix.System3.AuditChannel.send_audit_command(target_s1, audit_request)
+    
+    # Log audit action with telemetry
+    audit_entry = %{
+      timestamp: DateTime.utc_now(),
+      action: :direct_audit,
+      target: target_s1,
+      operation: audit_request.operation,
+      result: elem(result, 0),
+      audit_id: audit_request.audit_id
+    }
+    
+    # Emit telemetry event
+    :telemetry.execute(
+      [:vsm, :system3, :audit],
+      %{count: 1},
+      %{target: target_s1, operation: audit_request.operation, bypass: true}
+    )
+    
+    final_state = log_audit(state, audit_entry)
+    
+    {:reply, result, final_state}
   end
   
   @impl true

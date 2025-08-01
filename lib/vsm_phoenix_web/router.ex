@@ -32,10 +32,21 @@ defmodule VsmPhoenixWeb.Router do
   scope "/api/vsm", VsmPhoenixWeb do
     pipe_through :api
 
+    # Existing VSM system routes
     get "/status", VSMController, :status
     get "/system/:level", VSMController, :system_status
     post "/system5/decision", VSMController, :queen_decision
     post "/algedonic/:signal", VSMController, :algedonic_signal
+    
+    # NEW: S1 Agent Management Routes (The Missing HTTP Bridge!)
+    post "/agents", AgentController, :create           # Spawn agent
+    get "/agents", AgentController, :index             # List all agents  
+    get "/agents/:id", AgentController, :show          # Get agent details
+    post "/agents/:id/command", AgentController, :execute_command  # Execute command
+    delete "/agents/:id", AgentController, :delete     # Terminate agent
+    
+    # NEW: S3 Audit Bypass Route
+    post "/audit/bypass", AgentController, :audit_bypass  # Direct S1 inspection
   end
 
   # MCP routes - Handled by MCPController

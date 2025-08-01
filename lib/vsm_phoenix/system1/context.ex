@@ -33,6 +33,10 @@ defmodule VsmPhoenix.System1.Context do
         GenServer.call(@context_name, {:execute_operation, operation})
       end
       
+      def execute_operation(pid, operation_type, parameters) when is_pid(pid) do
+        GenServer.call(pid, {:execute_operation, %{type: operation_type, data: parameters}})
+      end
+      
       def get_state do
         GenServer.call(@context_name, :get_state)
       end
@@ -68,6 +72,9 @@ defmodule VsmPhoenix.System1.Context do
           _ -> nil
         end
         
+        # Setup AMQP for audit commands
+        audit_channel = setup_audit_amqp(@context_name)
+        
         base_state = %{
           context_name: @context_name,
           context_type: @context_type,
@@ -77,6 +84,7 @@ defmodule VsmPhoenix.System1.Context do
           resources: %{},
           coordination_state: %{},
           amqp_channel: amqp_channel,
+          audit_channel: audit_channel,
           last_health: 1.0
         }
         
@@ -250,6 +258,52 @@ defmodule VsmPhoenix.System1.Context do
         {:noreply, new_state}
       end
       
+      @impl true
+      def handle_info({:basic_deliver, payload, meta}, state) do
+        # Handle AMQP messages, including audit commands
+        case Jason.decode(payload) do
+          {:ok, message} ->
+            Logger.info("#{@context_name} received AMQP message: #{message["type"]}")
+            
+            new_state = case message["type"] do
+              "audit_command" ->
+                handle_audit_command(message, meta, state)
+              _ ->
+                Logger.debug("Unknown message type: #{message["type"]}")
+                state
+            end
+            
+            # Acknowledge message
+            if state.audit_channel do
+              AMQP.Basic.ack(state.audit_channel, meta.delivery_tag)
+            end
+            
+            {:noreply, new_state}
+            
+          {:error, reason} ->
+            Logger.error("Failed to decode AMQP message: #{inspect(reason)}")
+            {:noreply, state}
+        end
+      end
+      
+      @impl true
+      def handle_info({:basic_consume_ok, %{consumer_tag: consumer_tag}}, state) do
+        Logger.info("#{@context_name}: AMQP consumer registered: #{consumer_tag}")
+        {:noreply, state}
+      end
+      
+      @impl true
+      def handle_info({:basic_cancel, _meta}, state) do
+        Logger.warning("#{@context_name}: AMQP consumer cancelled")
+        {:noreply, state}
+      end
+      
+      @impl true
+      def handle_info({:basic_cancel_ok, _meta}, state) do
+        Logger.info("#{@context_name}: AMQP consumer cancel confirmed")
+        {:noreply, state}
+      end
+      
       # Private Functions
       
       defp request_resources_if_needed(operation, state) do
@@ -380,6 +434,101 @@ defmodule VsmPhoenix.System1.Context do
         state
       end
       
+      defp setup_audit_amqp(context_name) do
+        # Setup AMQP channel for receiving audit commands from S3
+        case VsmPhoenix.AMQP.ConnectionManager.get_channel(:audit) do
+          {:ok, channel} ->
+            try do
+              # Declare queue for this context to receive audit commands
+              queue_name = "vsm.s1.#{context_name}.command"
+              {:ok, _queue} = AMQP.Queue.declare(channel, queue_name, durable: true)
+              
+              # Bind to audit exchange
+              :ok = AMQP.Exchange.declare(channel, "vsm.audit", :fanout, durable: true)
+              :ok = AMQP.Queue.bind(channel, queue_name, "vsm.audit")
+              
+              # Start consuming audit commands
+              {:ok, _consumer_tag} = AMQP.Basic.consume(channel, queue_name)
+              
+              Logger.info("📊 #{context_name}: Audit channel ready")
+              channel
+            catch
+              error, reason ->
+                Logger.error("Failed to setup audit AMQP: #{inspect({error, reason})}")
+                nil
+            end
+            
+          {:error, reason} ->
+            Logger.error("Could not get audit channel: #{inspect(reason)}")
+            nil
+        end
+      end
+      
+      defp handle_audit_command(message, meta, state) do
+        Logger.warning("🔍 #{@context_name}: Received audit command from S3")
+        
+        # Extract audit details
+        audit_type = message["audit_type"] || "state_dump"
+        correlation_id = message["correlation_id"]
+        
+        # Perform audit based on type
+        audit_result = case audit_type do
+          "state_dump" ->
+            %{
+              context_name: @context_name,
+              operational_state: state.operational_state,
+              metrics: state.metrics,
+              resource_usage: calculate_resource_usage(state),
+              health: calculate_health(state),
+              timestamp: DateTime.utc_now()
+            }
+            
+          "metrics_only" ->
+            %{
+              context_name: @context_name,
+              metrics: state.metrics,
+              health: calculate_health(state),
+              timestamp: DateTime.utc_now()
+            }
+            
+          "resource_audit" ->
+            %{
+              context_name: @context_name,
+              resources: state.resources,
+              usage: calculate_resource_usage(state),
+              timestamp: DateTime.utc_now()
+            }
+            
+          _ ->
+            %{error: "Unknown audit type: #{audit_type}"}
+        end
+        
+        # Send response back via AMQP
+        if state.audit_channel && correlation_id do
+          response = Jason.encode!(%{
+            type: "audit_response",
+            correlation_id: correlation_id,
+            context: @context_name,
+            result: audit_result
+          })
+          
+          # Publish to audit response queue
+          :ok = AMQP.Basic.publish(
+            state.audit_channel,
+            "",  # Default exchange
+            "vsm.audit.responses",
+            response,
+            content_type: "application/json"
+          )
+        end
+        
+        # Log audit activity
+        Logger.info("🔍 Audit completed for #{@context_name} - Type: #{audit_type}")
+        
+        # Store audit in history (optional)
+        state
+      end
+      
       defp start_meta_control(meta_config) do
         {:ok, pid} = GenServer.start_link(
           VsmPhoenix.System3.Control,
@@ -442,6 +591,113 @@ defmodule VsmPhoenix.System1.Context do
             io: min(ops_count * 0.02, 1.0)
           }
         end
+      end
+      
+      defp setup_audit_amqp(context_name) do
+        case VsmPhoenix.AMQP.ConnectionManager.get_channel(:audit) do
+          {:ok, channel} ->
+            try do
+              # Declare queue for this context's audit commands
+              queue_name = "vsm.s1.#{context_name}.command"
+              {:ok, _queue} = AMQP.Queue.declare(channel, queue_name, durable: true)
+              
+              # Bind to audit exchange
+              :ok = AMQP.Queue.bind(channel, queue_name, "vsm.audit", routing_key: queue_name)
+              
+              # Start consuming
+              {:ok, _consumer_tag} = AMQP.Basic.consume(channel, queue_name)
+              
+              Logger.info("🔍 #{context_name}: Audit AMQP setup complete, listening on #{queue_name}")
+              channel
+            rescue
+              error ->
+                Logger.error("#{context_name}: Failed to setup audit AMQP: #{inspect(error)}")
+                nil
+            end
+            
+          {:error, reason} ->
+            Logger.error("#{context_name}: Could not get audit channel: #{inspect(reason)}")
+            nil
+        end
+      end
+      
+      defp handle_audit_command(message, meta, state) do
+        Logger.warning("🔍 #{@context_name}: AUDIT BYPASS - Direct inspection requested")
+        
+        operation = message["operation"] || :dump_state
+        
+        # Execute audit operation
+        audit_response = case operation do
+          "dump_state" ->
+            %{
+              status: "success",
+              context: @context_name,
+              state: %{
+                operational_state: state.operational_state,
+                metrics: state.metrics,
+                resources: state.resources,
+                coordination_state: state.coordination_state,
+                health: calculate_health(state),
+                active_operations: :queue.len(state.operations_queue),
+                configuration: Map.get(state, :configuration, %{}),
+                meta_systems: Map.keys(Map.get(state, :meta_vsms, %{}))
+              },
+              timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+            }
+            
+          "get_metrics" ->
+            %{
+              status: "success",
+              context: @context_name,
+              metrics: state.metrics,
+              timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+            }
+            
+          "get_resources" ->
+            %{
+              status: "success",
+              context: @context_name,
+              resources: state.resources,
+              timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+            }
+            
+          _ ->
+            %{
+              status: "error",
+              context: @context_name,
+              error: "Unknown audit operation: #{operation}",
+              timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+            }
+        end
+        
+        # Send response back if reply_to is specified
+        if message["reply_to"] && state.audit_channel do
+          response_payload = Jason.encode!(audit_response)
+          
+          :ok = AMQP.Basic.publish(
+            state.audit_channel,
+            "vsm.audit",
+            message["reply_to"],
+            response_payload,
+            correlation_id: message["correlation_id"] || meta.correlation_id,
+            content_type: "application/json"
+          )
+          
+          Logger.info("🔍 #{@context_name}: Audit response sent to #{message["reply_to"]}")
+        end
+        
+        # Emit telemetry for audit
+        :telemetry.execute(
+          [:vsm, :system1, :audit],
+          %{count: 1},
+          %{
+            context: @context_name,
+            operation: operation,
+            requester: message["requester"]
+          }
+        )
+        
+        state
       end
       
       # Callbacks for contexts to implement

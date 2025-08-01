@@ -94,8 +94,15 @@ defmodule VsmPhoenix.Application do
       # System 3 - Control and Resource Management
       VsmPhoenix.System3.Control,
       
+      # System 3 - Audit Channel (Direct S1 inspection bypass)
+      VsmPhoenix.System3.AuditChannel,
+      
       # System 2 - Coordination (must start before System 1)
       VsmPhoenix.System2.Coordinator,
+      
+      # System 1 - Registry and Supervisor for S1 agents
+      VsmPhoenix.System1.Registry,
+      VsmPhoenix.System1.Supervisor,
       
       # System 1 - Operational Contexts (depends on System 2)
       VsmPhoenix.System1.Operations,

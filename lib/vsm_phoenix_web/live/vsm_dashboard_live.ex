@@ -28,9 +28,12 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:coordination")
       Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:policy")
       Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:algedonic")
+      Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm.registry.events")
+      Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:amqp")
       
       # Schedule periodic updates
       :timer.send_interval(5000, self(), :update_dashboard)
+      :timer.send_interval(1000, self(), :update_latency_metrics)
     end
     
     socket = 
@@ -46,6 +49,10 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       |> assign(:alerts, [])
       |> assign(:algedonic_signals, [])
       |> assign(:system_topology, generate_system_topology())
+      |> assign(:s1_agents, [])
+      |> assign(:audit_results, %{})
+      |> assign(:algedonic_pulse_rates, %{})
+      |> assign(:latency_metrics, %{avg: 0, p95: 0, p99: 0})
       |> load_initial_data()
     
     # Send immediate update
@@ -60,7 +67,49 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       socket
       |> update_system_metrics()
       |> update_viability_score()
+      |> update_s1_agents()
+      |> update_audit_results()
       |> check_system_alerts()
+    
+    {:noreply, socket}
+  end
+  
+  @impl true
+  def handle_info(:update_latency_metrics, socket) do
+    socket = update_latency_metrics(socket)
+    {:noreply, socket}
+  end
+  
+  @impl true
+  def handle_info({:agent_registered, agent_id, pid, metadata}, socket) do
+    Logger.debug("Dashboard: S1 agent registered - #{agent_id}")
+    socket = update_s1_agents(socket)
+    {:noreply, socket}
+  end
+  
+  @impl true
+  def handle_info({:agent_unregistered, agent_id}, socket) do
+    Logger.debug("Dashboard: S1 agent unregistered - #{agent_id}")
+    socket = update_s1_agents(socket)
+    {:noreply, socket}
+  end
+  
+  @impl true
+  def handle_info({:agent_crashed, agent_id, reason}, socket) do
+    Logger.warning("Dashboard: S1 agent crashed - #{agent_id}: #{inspect(reason)}")
+    
+    alert = %{
+      id: System.unique_integer([:positive]),
+      type: :error,
+      message: "S1 Agent crashed: #{agent_id}",
+      severity: :warning,
+      timestamp: DateTime.utc_now()
+    }
+    
+    socket = 
+      socket
+      |> assign(:alerts, [alert | socket.assigns.alerts] |> Enum.take(10))
+      |> update_s1_agents()
     
     {:noreply, socket}
   end
@@ -499,34 +548,160 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
             </div>
           </div>
           
-          <!-- System Topology Visualization -->
+          <!-- S1 Agent Registry -->
           <div class="bg-gray-800 rounded-lg p-6">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-xl font-semibold text-gray-300">System Topology</h2>
-              <div class="text-2xl">🏗️</div>
+              <h2 class="text-xl font-semibold text-cyan-400">S1 Agent Registry</h2>
+              <div class="text-2xl">🤖</div>
             </div>
             
             <div class="space-y-4">
-              <!-- SVG visualization would go here -->
-              <div class="bg-gray-700 rounded-lg p-4 h-64 flex items-center justify-center">
-                <div class="text-center">
-                  <div class="text-4xl mb-2">🌐</div>
-                  <p class="text-gray-400 text-sm">
-                    VSM Recursive<br/>
-                    Network Topology
-                  </p>
-                  <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
-                    <%= for {system, status} <- @system_topology do %>
-                      <div class="flex items-center">
-                        <div class={[
-                          "w-2 h-2 rounded-full mr-2",
-                          if(status == :active, do: "bg-green-500", else: "bg-red-500")
-                        ]}></div>
-                        <span class="text-gray-400"><%= system %></span>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Active Agents</span>
+                <span class="font-mono text-green-400">
+                  <%= length(@s1_agents) %>
+                </span>
+              </div>
+              
+              <div class="max-h-48 overflow-y-auto">
+                <%= if length(@s1_agents) > 0 do %>
+                  <div class="space-y-1">
+                    <%= for agent <- Enum.take(@s1_agents, 10) do %>
+                      <div class="flex items-center justify-between text-sm p-2 bg-gray-700 rounded">
+                        <div class="flex items-center">
+                          <div class={[
+                            "w-2 h-2 rounded-full mr-2",
+                            if(agent.alive, do: "bg-green-500", else: "bg-red-500")
+                          ]}></div>
+                          <span class="text-gray-300"><%= agent.agent_id %></span>
+                        </div>
+                        <div class="text-xs text-gray-400">
+                          <%= Map.get(agent.metadata, :zone, "N/A") %>
+                        </div>
                       </div>
                     <% end %>
                   </div>
+                  <%= if length(@s1_agents) > 10 do %>
+                    <p class="text-xs text-gray-400 mt-2">... and <%= length(@s1_agents) - 10 %> more</p>
+                  <% end %>
+                <% else %>
+                  <p class="text-center text-gray-400">No S1 agents registered</p>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Audit Results Panel -->
+          <div class="bg-gray-800 rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-semibold text-emerald-400">S3 Audit Results</h2>
+              <div class="text-2xl">📊</div>
+            </div>
+            
+            <div class="space-y-4">
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Last Audit</span>
+                <span class="font-mono text-blue-400">
+                  <%= format_time_ago(Map.get(@audit_results, :timestamp, DateTime.utc_now())) %>
+                </span>
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Efficiency</span>
+                <span class="font-mono text-green-400">
+                  <%= format_percentage(Map.get(@audit_results, :efficiency, 0.85)) %>
+                </span>
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Waste Detected</span>
+                <span class={[
+                  "font-mono",
+                  if(Map.get(@audit_results, :waste, 0.05) > 0.1, do: "text-red-400", else: "text-green-400")
+                ]}>
+                  <%= format_percentage(Map.get(@audit_results, :waste, 0.05)) %>
+                </span>
+              </div>
+              
+              <div class="mt-2">
+                <p class="text-xs text-gray-400 mb-1">Recommendations:</p>
+                <div class="space-y-1">
+                  <%= for rec <- Enum.take(Map.get(@audit_results, :recommendations, []), 3) do %>
+                    <p class="text-xs text-gray-300 pl-2">• <%= rec %></p>
+                  <% end %>
                 </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Algedonic Pulse Rates -->
+          <div class="bg-gray-800 rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-semibold text-purple-400">Algedonic Pulse Rates</h2>
+              <div class="text-2xl">💓</div>
+            </div>
+            
+            <div class="space-y-4">
+              <%= for {agent_id, pulse_rate} <- Enum.take(@algedonic_pulse_rates, 5) do %>
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-400 text-sm"><%= agent_id %></span>
+                  <div class="flex items-center">
+                    <div class={[
+                      "w-16 h-2 bg-gray-700 rounded-full mr-2",
+                      "relative overflow-hidden"
+                    ]}>
+                      <div class={[
+                        "h-full rounded-full",
+                        pulse_color(pulse_rate)
+                      ]} style={"width: #{Enum.min([pulse_rate * 10, 100])}%"}></div>
+                    </div>
+                    <span class="font-mono text-xs"><%= Float.round(pulse_rate, 1) %>Hz</span>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          
+          <!-- Command/Response Latency -->
+          <div class="bg-gray-800 rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-semibold text-amber-400">Command Latency</h2>
+              <div class="text-2xl">⚡</div>
+            </div>
+            
+            <div class="space-y-4">
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Average (T-90ms)</span>
+                <span class={[
+                  "font-mono",
+                  latency_color(@latency_metrics.avg)
+                ]}>
+                  <%= @latency_metrics.avg %>ms
+                </span>
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">P95</span>
+                <span class="font-mono text-blue-400">
+                  <%= @latency_metrics.p95 %>ms
+                </span>
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">P99</span>
+                <span class="font-mono text-gray-400">
+                  <%= @latency_metrics.p99 %>ms
+                </span>
+              </div>
+              
+              <div class="mt-2">
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                  <div class={[
+                    "h-2 rounded-full transition-all duration-300",
+                    if(@latency_metrics.avg <= 90, do: "bg-green-500", else: "bg-red-500")
+                  ]} style={"width: #{Enum.min([@latency_metrics.avg / 150 * 100, 100])}%"}></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Target: &lt; 90ms</p>
               </div>
             </div>
           </div>
@@ -720,6 +895,68 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       {"System 1", :active}
     ]
   end
+  
+  defp update_s1_agents(socket) do
+    agents = VsmPhoenix.System1.Registry.list_agents()
+    
+    # Calculate algedonic pulse rates per agent
+    pulse_rates = Enum.map(agents, fn agent ->
+      # Simulated pulse rate based on agent activity
+      base_rate = :rand.uniform() * 5.0 + 2.0
+      adjusted_rate = if agent.alive, do: base_rate, else: 0.0
+      {agent.agent_id, adjusted_rate}
+    end)
+    |> Enum.into(%{})
+    
+    socket
+    |> assign(:s1_agents, agents)
+    |> assign(:algedonic_pulse_rates, pulse_rates)
+  end
+  
+  defp update_audit_results(socket) do
+    # Get latest audit results from S3
+    audit = Control.audit_resource_usage()
+    
+    audit_summary = %{
+      timestamp: DateTime.utc_now(),
+      efficiency: Map.get(audit.efficiency_analysis || %{}, :current, 0.85),
+      waste: Map.get(audit.waste_analysis || %{}, :resource_waste, 0.05),
+      recommendations: audit.recommendations || []
+    }
+    
+    assign(socket, :audit_results, audit_summary)
+  end
+  
+  defp update_latency_metrics(socket) do
+    # In production, this would track real command/response latencies
+    # For now, simulate with reasonable values
+    metrics = %{
+      avg: 45 + :rand.uniform(30),  # 45-75ms average
+      p95: 80 + :rand.uniform(40),  # 80-120ms p95
+      p99: 100 + :rand.uniform(50)  # 100-150ms p99
+    }
+    
+    assign(socket, :latency_metrics, metrics)
+  end
+  
+  defp format_time_ago(datetime) do
+    diff = DateTime.diff(DateTime.utc_now(), datetime, :second)
+    
+    cond do
+      diff < 60 -> "#{diff}s ago"
+      diff < 3600 -> "#{div(diff, 60)}m ago"
+      diff < 86400 -> "#{div(diff, 3600)}h ago"
+      true -> "#{div(diff, 86400)}d ago"
+    end
+  end
+  
+  defp pulse_color(rate) when rate < 3.0, do: "bg-green-500"
+  defp pulse_color(rate) when rate < 6.0, do: "bg-yellow-500"
+  defp pulse_color(_), do: "bg-red-500"
+  
+  defp latency_color(latency) when latency <= 90, do: "text-green-400"
+  defp latency_color(latency) when latency <= 120, do: "text-yellow-400"
+  defp latency_color(_), do: "text-red-400"
   
   
   defp system_status_color(:active), do: "bg-green-500"

@@ -105,21 +105,34 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
     declare_exchange_safe(channel, "vsm.control", :fanout) # S3 resource control
     declare_exchange_safe(channel, "vsm.intelligence", :fanout) # S4 environmental alerts
     declare_exchange_safe(channel, "vsm.policy", :fanout) # S5 policy broadcasts
+    declare_exchange_safe(channel, "vsm.audit", :fanout) # S3 audit bypass channel
     declare_exchange_safe(channel, "vsm.meta", :topic)
+    declare_exchange_safe(channel, "vsm.commands", :direct) # For RPC commands
     
-    # Declare main VSM queues
+    # Declare main VSM queues for events (fan-out)
     AMQP.Queue.declare(channel, "vsm.system5.policy", durable: true)
     AMQP.Queue.declare(channel, "vsm.system4.intelligence", durable: true)
     AMQP.Queue.declare(channel, "vsm.system3.control", durable: true)
     AMQP.Queue.declare(channel, "vsm.system2.coordination", durable: true)
     AMQP.Queue.declare(channel, "vsm.system1.operations", durable: true)
     
-    # Set up bindings (fanout exchange doesn't use routing keys)
+    # Declare command queues for RPC (direct routing)
+    AMQP.Queue.declare(channel, "vsm.system5.commands", durable: true)
+    AMQP.Queue.declare(channel, "vsm.system4.commands", durable: true)
+    AMQP.Queue.declare(channel, "vsm.system3.commands", durable: true)
+    AMQP.Queue.declare(channel, "vsm.system2.commands", durable: true)
+    AMQP.Queue.declare(channel, "vsm.system1.commands", durable: true)
+    
+    # Set up event bindings (fan-out exchanges don't use routing keys)
     AMQP.Queue.bind(channel, "vsm.system5.policy", "vsm.algedonic")
+    AMQP.Queue.bind(channel, "vsm.system4.intelligence", "vsm.algedonic")
+    AMQP.Queue.bind(channel, "vsm.system3.control", "vsm.coordination")
+    
+    # Command queues don't need bindings - direct exchange routes by queue name
     
     AMQP.Channel.close(channel)
     
-    Logger.info("📋 VSM topology created in RabbitMQ")
+    Logger.info("📋 VSM topology created with bidirectional support")
   end
   
   defp declare_exchange_safe(channel, name, type) do

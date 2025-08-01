@@ -17,6 +17,9 @@ defmodule VsmPhoenix.AMQP.Supervisor do
       # Start AMQP connection manager
       {VsmPhoenix.AMQP.ConnectionManager, []},
       
+      # Start command router with RPC support
+      {VsmPhoenix.AMQP.CommandRouter, []},
+      
       # Start recursive protocol handler
       # {VsmPhoenix.AMQP.RecursiveProtocol, [meta_pid: self(), config: %{identity: "vsm_main"}]}
     ]

@@ -96,6 +96,25 @@ defmodule VsmPhoenixWeb.Telemetry do
       counter("vsm.system.messages.total",
         tags: [:system_level, :message_type],
         description: "Total inter-system messages"
+      ),
+      
+      # VSM Audit Metrics
+      counter("vsm.system3.audit",
+        tags: [:target, :operation, :bypass],
+        description: "System 3 audit operations"
+      ),
+      summary("vsm.system3.audit.complete",
+        unit: {:native, :millisecond},
+        tags: [:target, :operation, :success],
+        description: "Audit operation completion time"
+      ),
+      counter("vsm.system3.audit.timeout",
+        tags: [:target, :operation],
+        description: "Audit operation timeouts"
+      ),
+      counter("vsm.system1.audit",
+        tags: [:context, :operation, :requester],
+        description: "System 1 audit requests received"
       )
     ]
   end

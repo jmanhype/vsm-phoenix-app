@@ -206,6 +206,21 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
     {:reply, :ok, state}
   end
   
+  def handle_info({:basic_consume_ok, %{consumer_tag: consumer_tag}}, state) do
+    Logger.info("🌀 VSMCP: Consumer registered: #{consumer_tag}")
+    {:noreply, state}
+  end
+  
+  def handle_info({:basic_cancel, _meta}, state) do
+    Logger.warning("VSMCP: Consumer cancelled")
+    {:noreply, state}
+  end
+  
+  def handle_info({:basic_cancel_ok, _meta}, state) do
+    Logger.info("VSMCP: Consumer cancel confirmed")
+    {:noreply, state}
+  end
+  
   def terminate(_reason, state) do
     AMQP.Connection.close(state.connection)
   end

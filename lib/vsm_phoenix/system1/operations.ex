@@ -13,6 +13,38 @@ defmodule VsmPhoenix.System1.Operations do
   alias VsmPhoenix.System3.Control
   alias VsmPhoenix.System4.Intelligence
   alias VsmPhoenix.System5.Queen
+  alias VsmPhoenix.System1.Supervisor, as: S1Supervisor
+  
+  # Public API for S1 agent management
+  
+  def spawn_agent(agent_type, opts \\ []) do
+    S1Supervisor.spawn_agent(agent_type, opts)
+  end
+  
+  def spawn_agents(agent_specs) when is_list(agent_specs) do
+    S1Supervisor.spawn_agents(agent_specs)
+  end
+  
+  def terminate_agent(agent_id) do
+    S1Supervisor.terminate_agent(agent_id)
+  end
+  
+  def list_agents do
+    S1Supervisor.list_agents()
+  end
+  
+  def get_agent_metrics(agent_id) do
+    case Registry.lookup(agent_id) do
+      {:ok, _pid, %{type: :sensor}} ->
+        VsmPhoenix.System1.Agents.SensorAgent.get_metrics(agent_id)
+      {:ok, _pid, %{type: :worker}} ->
+        VsmPhoenix.System1.Agents.WorkerAgent.get_work_metrics(agent_id)
+      {:ok, _pid, %{type: :api}} ->
+        VsmPhoenix.System1.Agents.ApiAgent.get_api_metrics(agent_id)
+      _ ->
+        {:error, :agent_not_found}
+    end
+  end
   
   # Public API for meta-system spawning
   
@@ -59,6 +91,10 @@ defmodule VsmPhoenix.System1.Operations do
   
   def get_operational_state do
     GenServer.call(@context_name, :get_operational_state)
+  end
+  
+  def execute_operation(pid, operation_type, parameters) when is_pid(pid) do
+    GenServer.call(pid, {:execute_operation, %{type: operation_type, data: parameters}})
   end
   
   # Override callbacks
