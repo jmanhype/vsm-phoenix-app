@@ -18,6 +18,12 @@ A complete Phoenix application implementing Stafford Beer's Viable Systems Model
 - **[🔌 MCP Integration](./docs/diagrams/07_mcp_integration.md)** - 35+ tools with dynamic discovery and VSMCP protocol
 - **[🔍 S3 Audit Bypass](./docs/diagrams/08_s3_audit_bypass.md)** - Direct System 1 inspection without coordination
 
+### Operational Flow Diagrams
+- **[🔄 Adaptation Proposal Lifecycle](./docs/diagrams/09_adaptation_proposal_lifecycle.md)** - Environmental adaptation workflow
+- **[🔍 Environmental Scanning Process](./docs/diagrams/10_environmental_scanning.md)** - Intelligence gathering and variety amplification
+- **[📊 Performance Monitoring Flow](./docs/diagrams/11_performance_monitoring.md)** - Real-time telemetry and health monitoring
+- **[🌐 API Integration Flows](./docs/diagrams/12_api_integration.md)** - REST, MCP, WebSocket, and webhook protocols
+
 ## 🏛️ Architecture Overview
 
 This application implements the full VSM hierarchy with Phoenix LiveView for real-time monitoring and AMQP for distributed messaging:

@@ -81,19 +81,43 @@ This directory contains comprehensive architectural diagrams for the VSM Phoenix
 - Comprehensive audit reporting with recommendations
 - Integration with dashboard and policy synthesis
 
-## Phase 3 Diagrams (Operational - Planned)
+## Phase 3 Diagrams (Operational - Completed)
 
-### 09. Adaptation Proposal Lifecycle
-**Overview**: System 4 to System 5 adaptation workflow with approval and implementation.
+### [09. Adaptation Proposal Lifecycle](./09_adaptation_proposal_lifecycle.md)
+**Overview**: Complete adaptation workflow from System 4's environmental detection through System 5's policy synthesis and implementation.
 
-### 10. Environmental Scanning Process
-**Overview**: Intelligence gathering, LLM variety amplification, and anomaly detection.
+**Key Features**:
+- Environmental trigger detection and variety explosion analysis
+- System 4 to System 5 adaptation proposal workflow
+- Policy synthesis and implementation cascade
+- Feedback loops and adaptation outcome tracking
 
-### 11. Performance Monitoring Flow
-**Overview**: Telemetry collection, metrics aggregation, and health monitoring.
+### [10. Environmental Scanning Process](./10_environmental_scanning.md)
+**Overview**: Comprehensive environmental scanning with intelligence gathering, LLM variety amplification, and multi-dimensional anomaly detection.
 
-### 12. API Integration Flows
-**Overview**: REST API endpoints, JSON-RPC MCP protocols, and external interfaces.
+**Key Features**:
+- Multi-source intelligence gathering (Tidewave, LLM, direct sensors)
+- Adaptive scanning frequency based on variety levels
+- Real-time anomaly detection and escalation
+- Continuous learning and baseline adjustment
+
+### [11. Performance Monitoring Flow](./11_performance_monitoring.md)
+**Overview**: Real-time telemetry collection, metrics aggregation, health monitoring, and viability assessment across all VSM systems.
+
+**Key Features**:
+- 5-second telemetry collection from all agents
+- Comprehensive health assessment and viability scoring
+- Alert management with automatic escalation
+- Real-time dashboard integration and visualization
+
+### [12. API Integration Flows](./12_api_integration.md)
+**Overview**: Multi-protocol API architecture including REST endpoints, JSON-RPC MCP protocols, WebSocket real-time updates, and external system webhooks.
+
+**Key Features**:
+- RESTful VSM system management APIs
+- MCP JSON-RPC protocol implementation
+- Real-time WebSocket dashboard updates
+- External webhook integration and routing
 
 ## Additional Specialized Diagrams (40+ Total Available)
 
