@@ -2,6 +2,16 @@
 
 A complete Phoenix application implementing Stafford Beer's Viable Systems Model (VSM) with advanced cybernetic features including recursive spawning, MCP integration, AMQP messaging, real-time monitoring, and algedonic signal processing.
 
+## 📊 Architecture Diagrams
+
+**[📋 Complete Diagram Collection](./docs/diagrams/README.md)** - 40+ available diagrams covering all system aspects
+
+### Essential Architecture Diagrams
+- **[🏛️ VSM System Hierarchy](./docs/diagrams/01_vsm_hierarchy.md)** - Complete 5-level VSM with recursive spawning
+- **[🔄 AMQP Exchange Topology](./docs/diagrams/02_amqp_topology.md)** - Messaging infrastructure with 6 exchanges
+- **[🧠 Policy Synthesis Workflow](./docs/diagrams/03_policy_synthesis.md)** - Autonomous LLM-powered governance
+- **[📺 LiveView Dashboard Architecture](./docs/diagrams/04_liveview_dashboard.md)** - Real-time monitoring with 7 PubSub channels
+
 ## 🏛️ Architecture Overview
 
 This application implements the full VSM hierarchy with Phoenix LiveView for real-time monitoring and AMQP for distributed messaging:
