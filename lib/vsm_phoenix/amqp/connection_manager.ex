@@ -10,6 +10,13 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
   
+  @doc """
+  Get a channel for a specific purpose
+  """
+  def get_channel(purpose) do
+    GenServer.call(__MODULE__, {:get_channel, purpose})
+  end
+  
   def init(_opts) do
     Logger.info("🐰 Initializing RabbitMQ Connection Manager")
     
@@ -93,8 +100,11 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
     
     # Declare VSM exchanges - handle existing exchanges gracefully
     declare_exchange_safe(channel, "vsm.recursive", :topic)
-    declare_exchange_safe(channel, "vsm.algedonic", :fanout) # Use fanout to match existing
-    declare_exchange_safe(channel, "vsm.coordination", :fanout)
+    declare_exchange_safe(channel, "vsm.algedonic", :fanout) # S1→S5 pain/pleasure signals
+    declare_exchange_safe(channel, "vsm.coordination", :fanout) # S2 anti-oscillation
+    declare_exchange_safe(channel, "vsm.control", :fanout) # S3 resource control
+    declare_exchange_safe(channel, "vsm.intelligence", :fanout) # S4 environmental alerts
+    declare_exchange_safe(channel, "vsm.policy", :fanout) # S5 policy broadcasts
     declare_exchange_safe(channel, "vsm.meta", :topic)
     
     # Declare main VSM queues

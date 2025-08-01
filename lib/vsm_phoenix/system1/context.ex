@@ -17,6 +17,7 @@ defmodule VsmPhoenix.System1.Context do
       alias Phoenix.PubSub
       alias VsmPhoenix.System2.Coordinator
       alias VsmPhoenix.System3.Control
+      alias AMQP
       
       @context_name unquote(opts[:name]) || __MODULE__
       @context_type unquote(opts[:type]) || :generic
@@ -61,6 +62,12 @@ defmodule VsmPhoenix.System1.Context do
         PubSub.subscribe(@pubsub, "vsm:context:#{@context_name}")
         PubSub.subscribe(@pubsub, "vsm:system1")
         
+        # Get AMQP channel for algedonic signals
+        amqp_channel = case VsmPhoenix.AMQP.ConnectionManager.get_channel(:algedonic) do
+          {:ok, channel} -> channel
+          _ -> nil
+        end
+        
         base_state = %{
           context_name: @context_name,
           context_type: @context_type,
@@ -68,7 +75,9 @@ defmodule VsmPhoenix.System1.Context do
           metrics: initial_metrics(),
           operations_queue: :queue.new(),
           resources: %{},
-          coordination_state: %{}
+          coordination_state: %{},
+          amqp_channel: amqp_channel,
+          last_health: 1.0
         }
         
         # Allow context to customize initialization
@@ -189,6 +198,17 @@ defmodule VsmPhoenix.System1.Context do
         # Perform health check
         health = calculate_health(state)
         
+        # Calculate viability delta
+        old_health = Map.get(state, :last_health, health)
+        delta = health - old_health
+        
+        # Publish algedonic signal if significant change
+        state = if abs(delta) > 0.05 do
+          publish_algedonic_signal(delta, health, state)
+        else
+          state
+        end
+        
         # Report to System 3
         PubSub.broadcast(@pubsub, "vsm:health", {
           :health_report,
@@ -202,6 +222,7 @@ defmodule VsmPhoenix.System1.Context do
         else
           state
         end
+        |> Map.put(:last_health, health)
         
         schedule_health_check()
         {:noreply, new_state}
@@ -316,6 +337,47 @@ defmodule VsmPhoenix.System1.Context do
       
       defp schedule_health_check do
         Process.send_after(self(), :health_check, 30_000)  # Every 30 seconds
+      end
+      
+      defp publish_algedonic_signal(delta, health, state) do
+        if state.amqp_channel do
+          Logger.info("📡 Publishing algedonic signal - delta: #{delta}, health: #{health}")
+          
+          # Determine signal type
+          signal_type = cond do
+            delta < -0.1 -> :pain  # Significant decrease
+            delta > 0.1 -> :pleasure  # Significant increase
+            true -> :neutral
+          end
+          
+          # Create algedonic message
+          message = Jason.encode!(%{
+            context: @context_name,
+            context_type: @context_type,
+            signal_type: signal_type,
+            viability_delta: delta,
+            current_health: health,
+            timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+          })
+          
+          # Publish to algedonic exchange
+          try do
+            :ok = AMQP.Basic.publish(
+              state.amqp_channel,
+              "vsm.algedonic",  # fanout exchange
+              "",  # routing key ignored for fanout
+              message,
+              content_type: "application/json"
+            )
+          catch
+            error, reason ->
+              Logger.error("Failed to publish algedonic signal: #{inspect({error, reason})}")
+          end
+        else
+          Logger.debug("No AMQP channel available for algedonic signals")
+        end
+        
+        state
       end
       
       defp start_meta_control(meta_config) do

@@ -14,6 +14,7 @@ defmodule VsmPhoenix.System3.Control do
   
   alias VsmPhoenix.System2.Coordinator
   alias VsmPhoenix.System1.{Context, Operations}
+  alias AMQP
   
   @name __MODULE__
   
@@ -78,8 +79,12 @@ defmodule VsmPhoenix.System3.Control do
       },
       optimization_rules: load_optimization_rules(),
       conflict_history: [],
-      audit_log: []
+      audit_log: [],
+      amqp_channel: nil
     }
+    
+    # Set up AMQP for resource control
+    state = setup_amqp_control(state)
     
     # Schedule periodic optimization
     schedule_optimization_cycle()
@@ -108,7 +113,19 @@ defmodule VsmPhoenix.System3.Control do
           allocation_id: allocation_id
         }
         
-        {:reply, {:ok, allocation_id}, log_audit(new_state, audit_entry)}
+        # Publish allocation event to AMQP
+        allocation_event = %{
+          type: "resource_allocated",
+          allocation_id: allocation_id,
+          request: request,
+          pools: updated_pools,
+          timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+        }
+        
+        final_state = log_audit(new_state, audit_entry)
+        publish_resource_event(allocation_event, final_state)
+        
+        {:reply, {:ok, allocation_id}, final_state}
         
       {:error, reason} ->
         # Try optimization before rejecting
@@ -573,5 +590,154 @@ defmodule VsmPhoenix.System3.Control do
         false
       end
     end)
+  end
+  
+  # AMQP Functions
+  
+  defp setup_amqp_control(state) do
+    case VsmPhoenix.AMQP.ConnectionManager.get_channel(:control) do
+      {:ok, channel} ->
+        try do
+          # Create control queue
+          {:ok, _queue} = AMQP.Queue.declare(channel, "vsm.system3.control", durable: true)
+          
+          # Bind to control exchange
+          :ok = AMQP.Queue.bind(channel, "vsm.system3.control", "vsm.control")
+          
+          # Start consuming control messages
+          {:ok, consumer_tag} = AMQP.Basic.consume(channel, "vsm.system3.control")
+          
+          Logger.info("📊 Control: AMQP consumer active! Tag: #{consumer_tag}")
+          Logger.info("📊 Control: Listening for resource control messages on vsm.control exchange")
+          
+          Map.put(state, :amqp_channel, channel)
+        rescue
+          error ->
+            Logger.error("Control: Failed to set up AMQP: #{inspect(error)}")
+            state
+        end
+        
+      {:error, reason} ->
+        Logger.error("Control: Could not get AMQP channel: #{inspect(reason)}")
+        # Schedule retry
+        Process.send_after(self(), :retry_amqp_setup, 5000)
+        state
+    end
+  end
+  
+  defp publish_resource_event(event, state) do
+    if state[:amqp_channel] do
+      payload = Jason.encode!(event)
+      
+      :ok = AMQP.Basic.publish(
+        state.amqp_channel,
+        "vsm.control",
+        "",
+        payload,
+        content_type: "application/json"
+      )
+      
+      Logger.debug("📊 Published resource event: #{event["type"]}")
+    end
+  end
+  
+  # AMQP Handlers
+  
+  @impl true
+  def handle_info({:basic_deliver, payload, meta}, state) do
+    # Handle AMQP resource control messages
+    case Jason.decode(payload) do
+      {:ok, message} ->
+        Logger.info("📊 Control received AMQP message: #{message["type"]}")
+        
+        new_state = process_control_message(message, state)
+        
+        # Acknowledge the message
+        if state[:amqp_channel] do
+          AMQP.Basic.ack(state.amqp_channel, meta.delivery_tag)
+        end
+        
+        {:noreply, new_state}
+        
+      {:error, _} ->
+        Logger.error("Control: Failed to decode AMQP message")
+        {:noreply, state}
+    end
+  end
+  
+  @impl true
+  def handle_info({:basic_consume_ok, _meta}, state) do
+    Logger.info("📊 Control: AMQP consumer registered successfully")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_cancel, _meta}, state) do
+    Logger.warning("Control: AMQP consumer cancelled")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_cancel_ok, _meta}, state) do
+    Logger.info("Control: AMQP consumer cancel confirmed")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info(:retry_amqp_setup, state) do
+    Logger.info("Control: Retrying AMQP setup...")
+    new_state = setup_amqp_control(state)
+    {:noreply, new_state}
+  end
+  
+  defp process_control_message(message, state) do
+    case message["type"] do
+      "resource_request" ->
+        # Handle resource allocation requests via AMQP
+        request = message["request"]
+        if request do
+          # Process allocation asynchronously
+          spawn(fn ->
+            result = GenServer.call(@name, {:allocate_resources, request})
+            
+            # Publish result back
+            response = %{
+              type: "resource_response",
+              request_id: message["request_id"],
+              result: result,
+              timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+            }
+            
+            GenServer.cast(@name, {:publish_resource_event, response})
+          end)
+        end
+        state
+        
+      "optimization_request" ->
+        # Handle optimization requests
+        target = message["target"] || :global
+        spawn(fn ->
+          GenServer.call(@name, {:optimize_performance, target})
+        end)
+        state
+        
+      "emergency_reallocation" ->
+        # Handle emergency reallocations
+        viability = message["viability_metrics"]
+        if viability do
+          GenServer.cast(@name, {:emergency_reallocation, viability})
+        end
+        state
+        
+      _ ->
+        Logger.debug("Control: Unknown control message type: #{message["type"]}")
+        state
+    end
+  end
+  
+  @impl true
+  def handle_cast({:publish_resource_event, event}, state) do
+    publish_resource_event(event, state)
+    {:noreply, state}
   end
 end

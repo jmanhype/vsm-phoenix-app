@@ -14,6 +14,7 @@ defmodule VsmPhoenix.System2.Coordinator do
   
   alias Phoenix.PubSub
   alias VsmPhoenix.System1.{Context, Operations}
+  alias AMQP
   
   @name __MODULE__
   @pubsub VsmPhoenix.PubSub
@@ -71,8 +72,12 @@ defmodule VsmPhoenix.System2.Coordinator do
         oscillations_dampened: 0,
         synchronizations: 0,
         effectiveness: 1.0
-      }
+      },
+      amqp_channel: nil
     }
+    
+    # Set up AMQP for coordination
+    state = setup_amqp_coordination(state)
     
     # Schedule periodic synchronization check
     schedule_synchronization_check()
@@ -195,7 +200,20 @@ defmodule VsmPhoenix.System2.Coordinator do
     # Apply coordination rules to broadcast
     coordinated_message = apply_broadcast_coordination(topic, message, state)
     
-    # Broadcast the coordinated message
+    # Broadcast via AMQP if available
+    if state[:amqp_channel] do
+      amqp_message = %{
+        type: "coordination_broadcast",
+        topic: topic,
+        message: coordinated_message,
+        timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
+        source: "system2_coordinator"
+      }
+      
+      publish_coordination_message(amqp_message, state)
+    end
+    
+    # Also broadcast via PubSub for local subscribers
     PubSub.broadcast(@pubsub, topic, coordinated_message)
     
     # Record in message history
@@ -232,6 +250,53 @@ defmodule VsmPhoenix.System2.Coordinator do
     # Check for oscillation patterns
     new_state = check_for_oscillations(topic, message, state)
     
+    {:noreply, new_state}
+  end
+  
+  @impl true
+  def handle_info({:basic_deliver, payload, meta}, state) do
+    # Handle AMQP coordination messages
+    case Jason.decode(payload) do
+      {:ok, message} ->
+        Logger.info("🔄 Coordinator received AMQP message: #{message["type"]}")
+        
+        new_state = process_coordination_message(message, state)
+        
+        # Acknowledge the message
+        if state[:amqp_channel] do
+          AMQP.Basic.ack(state.amqp_channel, meta.delivery_tag)
+        end
+        
+        {:noreply, new_state}
+        
+      {:error, _} ->
+        Logger.error("Coordinator: Failed to decode AMQP message")
+        {:noreply, state}
+    end
+  end
+  
+  @impl true
+  def handle_info({:basic_consume_ok, _meta}, state) do
+    Logger.info("🔄 Coordinator: AMQP consumer registered successfully")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_cancel, _meta}, state) do
+    Logger.warning("Coordinator: AMQP consumer cancelled")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_cancel_ok, _meta}, state) do
+    Logger.info("Coordinator: AMQP consumer cancel confirmed")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info(:retry_amqp_setup, state) do
+    Logger.info("Coordinator: Retrying AMQP setup...")
+    new_state = setup_amqp_coordination(state)
     {:noreply, new_state}
   end
   
@@ -468,5 +533,97 @@ defmodule VsmPhoenix.System2.Coordinator do
   
   defp schedule_synchronization_check do
     Process.send_after(self(), :synchronization_check, 10_000)  # Every 10 seconds
+  end
+  
+  defp setup_amqp_coordination(state) do
+    case VsmPhoenix.AMQP.ConnectionManager.get_channel(:coordination) do
+      {:ok, channel} ->
+        try do
+          # Create coordination queue
+          {:ok, _queue} = AMQP.Queue.declare(channel, "vsm.system2.coordination", durable: true)
+          
+          # Bind to coordination exchange  
+          :ok = AMQP.Queue.bind(channel, "vsm.system2.coordination", "vsm.coordination")
+          
+          # Start consuming coordination messages
+          {:ok, consumer_tag} = AMQP.Basic.consume(channel, "vsm.system2.coordination")
+          
+          Logger.info("🔄 Coordinator: AMQP consumer active! Tag: #{consumer_tag}")
+          Logger.info("🔄 Coordinator: Listening for coordination messages on vsm.coordination exchange")
+          
+          Map.put(state, :amqp_channel, channel)
+        rescue
+          error ->
+            Logger.error("Coordinator: Failed to set up AMQP: #{inspect(error)}")
+            state
+        end
+        
+      {:error, reason} ->
+        Logger.error("Coordinator: Could not get AMQP channel: #{inspect(reason)}")
+        # Schedule retry
+        Process.send_after(self(), :retry_amqp_setup, 5000)
+        state
+    end
+  end
+  
+  defp process_coordination_message(message, state) do
+    case message["type"] do
+      "sync_request" ->
+        # Handle synchronization requests
+        contexts = message["contexts"] || []
+        if length(contexts) > 0 do
+          GenServer.call(self(), {:synchronize_operations, contexts})
+        end
+        state
+        
+      "oscillation_alert" ->
+        # Handle oscillation alerts
+        context_id = message["context_id"]
+        signal = message["signal"]
+        if context_id && signal do
+          GenServer.call(self(), {:dampen_oscillation, context_id, signal})
+        end
+        state
+        
+      "coordination_rule" ->
+        # Update coordination rules dynamically
+        new_rule = message["rule"]
+        if new_rule do
+          update_coordination_rules(state, new_rule)
+        else
+          state
+        end
+        
+      _ ->
+        Logger.debug("Coordinator: Unknown coordination message type: #{message["type"]}")
+        state
+    end
+  end
+  
+  defp update_coordination_rules(state, new_rule) do
+    # Merge new rule into existing rules
+    updated_rules = Map.merge(state.coordination_rules, new_rule, fn _k, v1, v2 ->
+      case {v1, v2} do
+        {%{} = m1, %{} = m2} -> Map.merge(m1, m2)
+        {_, v2} -> v2
+      end
+    end)
+    %{state | coordination_rules: updated_rules}
+  end
+  
+  defp publish_coordination_message(message, state) do
+    if state[:amqp_channel] do
+      payload = Jason.encode!(message)
+      
+      :ok = AMQP.Basic.publish(
+        state.amqp_channel,
+        "vsm.coordination",
+        "",
+        payload,
+        content_type: "application/json"
+      )
+      
+      Logger.debug("🔄 Published coordination message: #{message["type"]}")
+    end
   end
 end

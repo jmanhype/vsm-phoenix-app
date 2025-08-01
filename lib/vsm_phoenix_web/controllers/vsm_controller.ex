@@ -5,6 +5,7 @@ defmodule VsmPhoenixWeb.VSMController do
   alias VsmPhoenix.System3.Control
   alias VsmPhoenix.System2.Coordinator
   alias VsmPhoenix.System1.Operations
+  alias AMQP
 
   def status(conn, _params) do
     status = %{
@@ -65,13 +66,45 @@ defmodule VsmPhoenixWeb.VSMController do
 
   def algedonic_signal(conn, %{"signal" => signal_type} = params) do
     case signal_type do
-      "pleasure" ->
-        :ok = Queen.send_pleasure_signal(params["intensity"] || 0.5, params["context"])
-        json(conn, %{status: "pleasure_signal_sent", timestamp: DateTime.utc_now()})
-
-      "pain" ->
-        :ok = Queen.send_pain_signal(params["intensity"] || 0.5, params["context"])
-        json(conn, %{status: "pain_signal_sent", timestamp: DateTime.utc_now()})
+      signal when signal in ["pleasure", "pain"] ->
+        # REAL VSM: Publish to AMQP, not direct GenServer call!
+        intensity = params["intensity"] || 0.5
+        context = params["source"] || params["context"] || "api_test"
+        
+        # Get AMQP channel
+        case VsmPhoenix.AMQP.ConnectionManager.get_channel(:algedonic_publisher) do
+          {:ok, channel} ->
+            # Create algedonic message
+            message = Jason.encode!(%{
+              signal_type: signal_type,
+              intensity: intensity,
+              context: context,
+              viability_delta: if(signal_type == "pain", do: -intensity, else: intensity),
+              current_health: 0.5,  # This would come from actual system state
+              timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
+              source: "api_endpoint"
+            })
+            
+            # Publish to algedonic fanout exchange
+            :ok = AMQP.Basic.publish(
+              channel,
+              "vsm.algedonic",  # fanout exchange
+              "",  # routing key ignored for fanout
+              message,
+              content_type: "application/json"
+            )
+            
+            json(conn, %{
+              status: "#{signal_type}_signal_published_to_amqp", 
+              exchange: "vsm.algedonic",
+              timestamp: DateTime.utc_now()
+            })
+            
+          {:error, reason} ->
+            conn
+            |> put_status(:service_unavailable)
+            |> json(%{error: "AMQP not available: #{inspect(reason)}"})
+        end
 
       _ ->
         conn

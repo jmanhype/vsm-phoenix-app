@@ -16,6 +16,7 @@ defmodule VsmPhoenix.System5.Queen do
   alias VsmPhoenix.System3.Control
   alias VsmPhoenix.System2.Coordinator
   alias VsmPhoenix.System5.PolicySynthesizer
+  alias AMQP
   
   @name __MODULE__
   
@@ -97,7 +98,10 @@ defmodule VsmPhoenix.System5.Queen do
     # Schedule periodic viability checks
     schedule_viability_check()
     
-    {:ok, state}
+    # Set up AMQP consumer for algedonic signals
+    state_with_amqp = setup_algedonic_consumer(state)
+    
+    {:ok, state_with_amqp}
   end
   
   @impl true
@@ -361,6 +365,57 @@ defmodule VsmPhoenix.System5.Queen do
     {:noreply, state}
   end
   
+  @impl true
+  def handle_info({:basic_deliver, payload, meta}, state) do
+    IO.puts("👑👑👑 QUEEN RECEIVED AMQP MESSAGE! Payload: #{inspect(payload)}")
+    # Handle AMQP message from algedonic channel
+    case Jason.decode(payload) do
+      {:ok, message} ->
+        Logger.info("👑 Queen received algedonic signal: #{message["signal_type"]} from #{message["context"]}")
+        
+        # Process the algedonic signal
+        IO.puts("🔥 CALLING process_algedonic_signal")
+        new_state = process_algedonic_signal(message, state)
+        IO.puts("🔥 RETURNED from process_algedonic_signal")
+        
+        # Acknowledge the message
+        if state[:amqp_channel] do
+          AMQP.Basic.ack(state.amqp_channel, meta.delivery_tag)
+        end
+        
+        {:noreply, new_state}
+        
+      {:error, _} ->
+        Logger.error("Queen: Failed to decode algedonic message")
+        {:noreply, state}
+    end
+  end
+  
+  @impl true
+  def handle_info({:basic_consume_ok, _meta}, state) do
+    Logger.info("👑 Queen: AMQP consumer registered successfully")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_cancel, _meta}, state) do
+    Logger.warning("Queen: AMQP consumer cancelled")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_cancel_ok, _meta}, state) do
+    Logger.info("Queen: AMQP consumer cancel confirmed")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info(:retry_amqp_setup, state) do
+    Logger.info("Queen: Retrying AMQP setup...")
+    new_state = setup_algedonic_consumer(state)
+    {:noreply, new_state}
+  end
+  
   # Private Functions
   
   defp calculate_viability(state) do
@@ -442,12 +497,15 @@ defmodule VsmPhoenix.System5.Queen do
   end
   
   defp propagate_policy_change(policy_type, policy_data) do
-    # Notify all systems of policy changes
+    # Notify all systems of policy changes via PubSub
     Phoenix.PubSub.broadcast(
       VsmPhoenix.PubSub,
       "vsm:policy",
       {:policy_update, policy_type, policy_data}
     )
+    
+    # Also broadcast via AMQP
+    GenServer.cast(@name, {:broadcast_policy_amqp, policy_type, policy_data})
   end
   
   defp calculate_viability(intelligence, control, coordination) do
@@ -616,12 +674,112 @@ defmodule VsmPhoenix.System5.Queen do
     Process.send_after(self(), :check_viability, 30_000)  # Check every 30 seconds
   end
   
+  defp setup_algedonic_consumer(state) do
+    case VsmPhoenix.AMQP.ConnectionManager.get_channel(:algedonic_consumer) do
+      {:ok, channel} ->
+        try do
+          # Ensure queue exists first
+          {:ok, _queue} = AMQP.Queue.declare(channel, "vsm.system5.policy", durable: true)
+          
+          # Bind queue to algedonic exchange (fanout)
+          :ok = AMQP.Queue.bind(channel, "vsm.system5.policy", "vsm.algedonic")
+          
+          # Set up consumer for algedonic signals
+          {:ok, consumer_tag} = AMQP.Basic.consume(channel, "vsm.system5.policy")
+          
+          Logger.info("👑 Queen: AMQP consumer active! Tag: #{consumer_tag}")
+          Logger.info("👑 Queen: Listening for algedonic signals on vsm.system5.policy via vsm.algedonic exchange")
+          
+          Map.put(state, :amqp_channel, channel)
+        rescue
+          error ->
+            Logger.error("Queen: Failed to set up AMQP consumer: #{inspect(error)}")
+            state
+        end
+        
+      {:error, reason} ->
+        Logger.error("Queen: Could not get AMQP channel: #{inspect(reason)}")
+        # Schedule retry
+        Process.send_after(self(), :retry_amqp_setup, 5000)
+        state
+    end
+  end
+  
   defp summarize_system_state(state) do
     %{
       viability_metrics: state.viability_metrics,
       active_policies: Map.keys(state.policies),
       recent_algedonic: Enum.take(state.algedonic_signals, 5),
       decision_count: length(state.decisions)
+    }
+  end
+  
+  defp process_algedonic_signal(message, state) do
+    signal_type = String.to_atom(message["signal_type"])
+    delta = message["viability_delta"]
+    health = message["current_health"]
+    context = message["context"]
+    
+    # Record the signal
+    new_signal = {signal_type, abs(delta), context, DateTime.utc_now()}
+    new_algedonic_signals = [new_signal | state.algedonic_signals] |> Enum.take(1000)
+    
+    # Update viability metrics based on signal
+    updated_metrics = case signal_type do
+      :pain -> update_viability_from_signal(state.viability_metrics, :pain, abs(delta))
+      :pleasure -> update_viability_from_signal(state.viability_metrics, :pleasure, abs(delta))
+      _ -> state.viability_metrics
+    end
+    
+    # Handle pain signals with potential intervention
+    state = if signal_type == :pain && abs(delta) > 0.2 do
+      Logger.warning("👑 Queen: Significant pain signal (#{delta}) - evaluating intervention")
+      
+      # Request immediate adaptation if needed
+      if health < 0.5 do
+        Intelligence.generate_adaptation_proposal(%{
+          type: :algedonic_response,
+          urgency: :high,
+          pain_level: abs(delta),
+          context: context,
+          current_health: health
+        })
+      end
+      
+      state
+    else
+      state
+    end
+    
+    # Broadcast updated viability to dashboard
+    Phoenix.PubSub.broadcast(
+      VsmPhoenix.PubSub, 
+      "vsm:health", 
+      {:viability_update, updated_metrics}
+    )
+    
+    # Broadcast algedonic signal to dashboard
+    algedonic_message = %{
+      signal_type: signal_type,
+      delta: delta,
+      health: health,
+      context: context,
+      timestamp: message["timestamp"]
+    }
+    
+    IO.puts("📢 BROADCASTING ALGEDONIC SIGNAL: #{inspect(algedonic_message)}")
+    
+    broadcast_result = Phoenix.PubSub.broadcast(
+      VsmPhoenix.PubSub,
+      "vsm:algedonic",
+      {:algedonic_signal, algedonic_message}
+    )
+    
+    IO.puts("📢 BROADCAST RESULT: #{inspect(broadcast_result)}")
+    
+    %{state | 
+      algedonic_signals: new_algedonic_signals,
+      viability_metrics: updated_metrics
     }
   end
   
@@ -660,6 +818,13 @@ defmodule VsmPhoenix.System5.Queen do
         :low -> schedule_mitigation(mitigation, 30_000)
       end
     end)
+    
+    # Broadcast policy execution via AMQP
+    GenServer.cast(@name, {:broadcast_policy_amqp, :policy_executed, %{
+      policy_id: policy.id,
+      policy_type: policy.type,
+      executed_at: DateTime.utc_now()
+    }})
   end
   
   defp execute_immediate_mitigation(mitigation, _state) do
@@ -669,5 +834,34 @@ defmodule VsmPhoenix.System5.Queen do
   
   defp schedule_mitigation(mitigation, delay) do
     Process.send_after(self(), {:execute_mitigation, mitigation}, delay)
+  end
+  
+  @impl true
+  def handle_cast({:broadcast_policy_amqp, policy_type, policy_data}, state) do
+    # Broadcast policy changes via AMQP
+    if state[:amqp_channel] do
+      policy_message = %{
+        type: "policy_update",
+        policy_type: to_string(policy_type),
+        policy_data: policy_data,
+        source: "system5_queen",
+        timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+      }
+      
+      payload = Jason.encode!(policy_message)
+      
+      # Publish to policy fanout exchange
+      :ok = AMQP.Basic.publish(
+        state.amqp_channel,
+        "vsm.policy",  # fanout exchange for policies
+        "",
+        payload,
+        content_type: "application/json"
+      )
+      
+      Logger.info("👑 Queen: Broadcast policy update via AMQP - #{policy_type}")
+    end
+    
+    {:noreply, state}
   end
 end

@@ -15,6 +15,7 @@ defmodule VsmPhoenix.System4.Intelligence do
   alias VsmPhoenix.System5.Queen
   alias VsmPhoenix.System3.Control
   alias VsmPhoenix.System4.LLMVarietySource
+  alias AMQP
   
   @name __MODULE__
   
@@ -87,11 +88,15 @@ defmodule VsmPhoenix.System4.Intelligence do
         adaptation_success_rate: 0.9,
         innovation_index: 0.7
       },
-      learning_data: []
+      learning_data: [],
+      amqp_channel: nil
     }
     
     # Initialize Tidewave connection
     {:ok, tidewave} = init_tidewave_connection()
+    
+    # Set up AMQP for environmental alerts
+    state = setup_amqp_intelligence(state)
     
     # Schedule periodic environmental scanning
     schedule_environmental_scan()
@@ -123,6 +128,20 @@ defmodule VsmPhoenix.System4.Intelligence do
       # Generate adaptation proposal internally without recursive call
       proposal = generate_internal_adaptation_proposal(insights.challenge, state)
       Queen.approve_adaptation(proposal)
+    end
+    
+    # Publish environmental alert to AMQP
+    if insights.alert_level in [:high, :critical] do
+      alert = %{
+        type: "environmental_alert",
+        level: insights.alert_level,
+        scope: scope,
+        insights: insights,
+        anomalies: anomalies,
+        timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+      }
+      
+      publish_environmental_alert(alert, new_state)
     end
     
     {:reply, insights, new_state}
@@ -707,5 +726,153 @@ defmodule VsmPhoenix.System4.Intelligence do
     ]
     
     Enum.sum(factors)
+  end
+  
+  # AMQP Functions
+  
+  defp setup_amqp_intelligence(state) do
+    case VsmPhoenix.AMQP.ConnectionManager.get_channel(:intelligence) do
+      {:ok, channel} ->
+        try do
+          # Create intelligence queue
+          {:ok, _queue} = AMQP.Queue.declare(channel, "vsm.system4.intelligence", durable: true)
+          
+          # Bind to intelligence exchange
+          :ok = AMQP.Queue.bind(channel, "vsm.system4.intelligence", "vsm.intelligence")
+          
+          # Start consuming intelligence messages
+          {:ok, consumer_tag} = AMQP.Basic.consume(channel, "vsm.system4.intelligence")
+          
+          Logger.info("🔍 Intelligence: AMQP consumer active! Tag: #{consumer_tag}")
+          Logger.info("🔍 Intelligence: Listening for environmental alerts on vsm.intelligence exchange")
+          
+          Map.put(state, :amqp_channel, channel)
+        rescue
+          error ->
+            Logger.error("Intelligence: Failed to set up AMQP: #{inspect(error)}")
+            state
+        end
+        
+      {:error, reason} ->
+        Logger.error("Intelligence: Could not get AMQP channel: #{inspect(reason)}")
+        # Schedule retry
+        Process.send_after(self(), :retry_amqp_setup, 5000)
+        state
+    end
+  end
+  
+  defp publish_environmental_alert(alert, state) do
+    if state[:amqp_channel] do
+      payload = Jason.encode!(alert)
+      
+      :ok = AMQP.Basic.publish(
+        state.amqp_channel,
+        "vsm.intelligence",
+        "",
+        payload,
+        content_type: "application/json"
+      )
+      
+      Logger.info("🔍 Published environmental alert: #{alert["type"]}")
+    end
+  end
+  
+  # AMQP Handlers
+  
+  @impl true
+  def handle_info({:basic_deliver, payload, meta}, state) do
+    # Handle AMQP intelligence messages
+    case Jason.decode(payload) do
+      {:ok, message} ->
+        Logger.info("🔍 Intelligence received AMQP message: #{message["type"]}")
+        
+        new_state = process_intelligence_message(message, state)
+        
+        # Acknowledge the message
+        if state[:amqp_channel] do
+          AMQP.Basic.ack(state.amqp_channel, meta.delivery_tag)
+        end
+        
+        {:noreply, new_state}
+        
+      {:error, _} ->
+        Logger.error("Intelligence: Failed to decode AMQP message")
+        {:noreply, state}
+    end
+  end
+  
+  @impl true
+  def handle_info({:basic_consume_ok, _meta}, state) do
+    Logger.info("🔍 Intelligence: AMQP consumer registered successfully")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_cancel, _meta}, state) do
+    Logger.warning("Intelligence: AMQP consumer cancelled")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_cancel_ok, _meta}, state) do
+    Logger.info("Intelligence: AMQP consumer cancel confirmed")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info(:retry_amqp_setup, state) do
+    Logger.info("Intelligence: Retrying AMQP setup...")
+    new_state = setup_amqp_intelligence(state)
+    {:noreply, new_state}
+  end
+  
+  defp process_intelligence_message(message, state) do
+    case message["type"] do
+      "environmental_scan_request" ->
+        # Handle scan requests via AMQP
+        scope = message["scope"] || :full
+        spawn(fn ->
+          result = GenServer.call(@name, {:scan_environment, scope})
+          
+          # Publish results back
+          scan_result = %{
+            type: "environmental_scan_result",
+            request_id: message["request_id"],
+            result: result,
+            timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+          }
+          
+          GenServer.cast(@name, {:publish_environmental_alert, scan_result})
+        end)
+        state
+        
+      "tidewave_data" ->
+        # Process Tidewave market intelligence
+        insights = message["insights"]
+        if insights do
+          GenServer.cast(@name, {:tidewave_insights, insights})
+        end
+        state
+        
+      "adaptation_request" ->
+        # Handle adaptation requests
+        challenge = message["challenge"]
+        if challenge do
+          spawn(fn ->
+            GenServer.call(@name, {:generate_adaptation, challenge})
+          end)
+        end
+        state
+        
+      _ ->
+        Logger.debug("Intelligence: Unknown intelligence message type: #{message["type"]}")
+        state
+    end
+  end
+  
+  @impl true
+  def handle_cast({:publish_environmental_alert, alert}, state) do
+    publish_environmental_alert(alert, state)
+    {:noreply, state}
   end
 end

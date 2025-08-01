@@ -27,6 +27,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:metrics")
       Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:coordination")
       Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:policy")
+      Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:algedonic")
       
       # Schedule periodic updates
       :timer.send_interval(5000, self(), :update_dashboard)
@@ -43,6 +44,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       |> assign(:operations_metrics, %{})
       |> assign(:viability_score, 0.0)
       |> assign(:alerts, [])
+      |> assign(:algedonic_signals, [])
       |> assign(:system_topology, generate_system_topology())
       |> load_initial_data()
     
@@ -112,6 +114,33 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
     
     # Trigger a full metrics refresh to get the latest values from all systems
     socket = update_system_metrics(socket)
+    
+    {:noreply, socket}
+  end
+  
+  @impl true
+  def handle_info({:algedonic_signal, signal}, socket) do
+    Logger.info("Dashboard: Received algedonic signal - #{signal.signal_type} (delta: #{signal.delta})")
+    IO.inspect(signal, label: "🎯 DASHBOARD RECEIVED SIGNAL")
+    
+    # Add signal to recent list (keep last 20)
+    new_signals = [signal | socket.assigns.algedonic_signals] |> Enum.take(20)
+    
+    # Add alert for significant signals
+    socket = if abs(signal.delta) > 0.2 do
+      alert = %{
+        id: System.unique_integer([:positive]),
+        type: signal.signal_type,
+        message: "#{String.capitalize(to_string(signal.signal_type))} signal from #{signal.context}: viability delta #{Float.round(signal.delta, 2)}",
+        severity: if(signal.signal_type == :pain, do: :warning, else: :info),
+        timestamp: DateTime.utc_now()
+      }
+      assign(socket, :alerts, [alert | socket.assigns.alerts] |> Enum.take(10))
+    else
+      socket
+    end
+    
+    socket = assign(socket, :algedonic_signals, new_signals)
     
     {:noreply, socket}
   end
@@ -501,6 +530,54 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               </div>
             </div>
           </div>
+          
+          <!-- Algedonic Signals -->
+          <div class="bg-gray-800 rounded-lg p-6 lg:col-span-2">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-semibold text-indigo-400">Algedonic Signals</h2>
+              <div class="text-2xl">📡</div>
+            </div>
+            
+            <div class="space-y-4">
+              <%= if length(@algedonic_signals) > 0 do %>
+                <div class="space-y-2 max-h-64 overflow-y-auto">
+                  <%= for signal <- @algedonic_signals do %>
+                    <div class={[
+                      "flex items-center p-3 rounded border-l-4",
+                      algedonic_signal_classes(signal.signal_type)
+                    ]}>
+                      <div class="flex-1">
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center space-x-2">
+                            <span class="text-2xl">
+                              <%= if signal.signal_type == :pain, do: "😣", else: "😊" %>
+                            </span>
+                            <div>
+                              <p class="text-sm font-medium">
+                                <%= String.capitalize(to_string(signal.signal_type)) %> Signal from <%= signal.context %>
+                              </p>
+                              <p class="text-xs text-gray-400">
+                                Delta: <%= Float.round(signal.delta, 3) %> | Health: <%= Float.round(signal.health, 2) %>
+                              </p>
+                            </div>
+                          </div>
+                          <span class="text-xs text-gray-400">
+                            <%= signal.timestamp %>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <div class="text-center py-8 text-gray-400">
+                  <div class="text-3xl mb-2">🔇</div>
+                  <p>No algedonic signals received yet</p>
+                  <p class="text-sm mt-1">Signals will appear here when system viability changes</p>
+                </div>
+              <% end %>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -663,6 +740,13 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
   defp alert_classes(:success), do: "bg-green-900 border-green-500"
   defp alert_classes(:warning), do: "bg-yellow-900 border-yellow-500"
   defp alert_classes(:error), do: "bg-red-900 border-red-500"
+  defp alert_classes(:pain), do: "bg-red-900 border-red-500"
+  defp alert_classes(:pleasure), do: "bg-green-900 border-green-500"
+  defp alert_classes(_), do: "bg-gray-900 border-gray-500"
+  
+  defp algedonic_signal_classes(:pain), do: "bg-red-900 border-red-500"
+  defp algedonic_signal_classes(:pleasure), do: "bg-green-900 border-green-500"
+  defp algedonic_signal_classes(_), do: "bg-gray-900 border-gray-500"
   
   defp resource_bar_color(usage) when usage < 0.6, do: "bg-green-500"
   defp resource_bar_color(usage) when usage < 0.8, do: "bg-yellow-500"
