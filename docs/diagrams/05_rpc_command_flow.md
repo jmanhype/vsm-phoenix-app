@@ -22,8 +22,10 @@ sequenceDiagram
     CmdEx->>+S4Q: Route to System 4
     S4Q->>+S4: Deliver command
     S4->>S4: Process environmental scan
-    S4->>-ReplyTo: Response<br/>correlation_id: cmd-123<br/>status: completed
-    ReplyTo->>-S5: Deliver response
+    S4->>ReplyTo: Response<br/>correlation_id: cmd-123<br/>status: completed
+    ReplyTo->>S5: Deliver response
+    S4Q->>-S4: Complete
+    CmdEx->>-S4Q: Complete
 
     %% S5 to S3 Resource Command
     S5->>+CmdEx: Resource Allocation<br/>routing_key: system3.commands<br/>correlation_id: cmd-124
@@ -36,11 +38,15 @@ sequenceDiagram
     CmdEx->>+S1Q: Route to System 1
     S1Q->>+S1: Deliver command
     S1->>S1: Spawn new agent
-    S1->>-ReplyTo: Agent Created<br/>correlation_id: cmd-125
+    S1->>ReplyTo: Agent Created<br/>correlation_id: cmd-125
     ReplyTo->>S3: Agent spawn result
+    S1Q->>-S1: Complete
+    CmdEx->>-S1Q: Complete
     
-    S3->>-ReplyTo: Resource allocated<br/>correlation_id: cmd-124
-    ReplyTo->>-S5: Final result
+    S3->>ReplyTo: Resource allocated<br/>correlation_id: cmd-124
+    ReplyTo->>S5: Final result
+    S3Q->>-S3: Complete
+    CmdEx->>-S3Q: Complete
 
     Note over S5,S1: Command flows down, responses flow up
 ```
