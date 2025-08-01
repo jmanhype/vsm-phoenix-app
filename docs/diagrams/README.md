@@ -43,19 +43,43 @@ This directory contains comprehensive architectural diagrams for the VSM Phoenix
 - Performance charts and resource monitoring
 - Interactive control panels and alerts
 
-## Phase 2 Diagrams (High Value - Planned)
+## Phase 2 Diagrams (High Value - Completed)
 
-### 05. RPC Command Flow
-**Overview**: Hierarchical command routing and execution patterns across VSM systems.
+### [05. RPC Command Flow Architecture](./05_rpc_command_flow.md)
+**Overview**: Hierarchical command routing and execution patterns across VSM systems using AMQP RPC with direct-reply-to.
 
-### 06. Agent Lifecycle Architecture  
-**Overview**: Complete agent management from spawn to termination with 4 agent types.
+**Key Features**:
+- System 5 → System 4 → System 3 → System 1 command cascades
+- AMQP RPC patterns with correlation IDs and timeouts
+- Emergency command handling and recovery
+- Performance characteristics and throughput metrics
 
-### 07. MCP Integration Architecture
-**Overview**: Model Context Protocol integration with 35+ tools and external server connections.
+### [06. Agent Lifecycle Architecture](./06_agent_lifecycle.md)  
+**Overview**: Complete agent management lifecycle from spawn to termination for all 4 agent types with automatic MCP integration.
 
-### 08. S3 Audit Bypass Flow
-**Overview**: Direct System 3 inspection of System 1 operations bypassing coordination.
+**Key Features**:
+- Worker, LLM Worker, Sensor, and API agent types
+- Health monitoring and automatic restart mechanisms
+- MCP server auto-connection and tool discovery
+- State management and graceful shutdown procedures
+
+### [07. MCP Integration Architecture](./07_mcp_integration.md)
+**Overview**: Comprehensive Model Context Protocol integration with 35+ tools, dynamic server discovery, and VSMCP recursive protocol.
+
+**Key Features**:
+- Dynamic MCP server discovery via NPM, GitHub, and MAGG
+- 35+ available tools across filesystem, web, communication domains
+- VSMCP protocol for VSM-to-VSM communication
+- Connection pooling and error handling strategies
+
+### [08. S3 Audit Bypass Architecture](./08_s3_audit_bypass.md)
+**Overview**: System 3* audit bypass mechanism for direct inspection of System 1 agents without System 2 coordination.
+
+**Key Features**:
+- Direct agent state inspection bypassing coordination
+- Resource usage analysis and performance optimization
+- Comprehensive audit reporting with recommendations
+- Integration with dashboard and policy synthesis
 
 ## Phase 3 Diagrams (Operational - Planned)
 
