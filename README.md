@@ -12,6 +12,12 @@ A complete Phoenix application implementing Stafford Beer's Viable Systems Model
 - **[🧠 Policy Synthesis Workflow](./docs/diagrams/03_policy_synthesis.md)** - Autonomous LLM-powered governance
 - **[📺 LiveView Dashboard Architecture](./docs/diagrams/04_liveview_dashboard.md)** - Real-time monitoring with 7 PubSub channels
 
+### Business-Critical Diagrams
+- **[⚡ RPC Command Flow](./docs/diagrams/05_rpc_command_flow.md)** - Hierarchical command routing with AMQP RPC
+- **[🔄 Agent Lifecycle](./docs/diagrams/06_agent_lifecycle.md)** - Complete agent management from spawn to termination
+- **[🔌 MCP Integration](./docs/diagrams/07_mcp_integration.md)** - 35+ tools with dynamic discovery and VSMCP protocol
+- **[🔍 S3 Audit Bypass](./docs/diagrams/08_s3_audit_bypass.md)** - Direct System 1 inspection without coordination
+
 ## 🏛️ Architecture Overview
 
 This application implements the full VSM hierarchy with Phoenix LiveView for real-time monitoring and AMQP for distributed messaging:
