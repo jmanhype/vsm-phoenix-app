@@ -462,7 +462,7 @@ graph TB
     
     TideParam -->|Ignored| InternalGen[Internal Data Generation]
     
-    Note over TideParam,InternalGen: Parameter exists but unused
+    TideParam -.-> UnusedNote[Parameter exists<br/>but unused]
     
     InternalGen --> MarketGen[generate_market_signals]
     MarketGen --> TideRef[One signal references<br/>source: tidewave]
@@ -477,10 +477,12 @@ graph TB
     classDef current fill:#90EE90,stroke:#333,stroke-width:2px
     classDef mock fill:#FFE4B5,stroke:#333,stroke-width:2px
     classDef future fill:#E6E6FA,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    classDef note fill:#FFFFCC,stroke:#333,stroke-width:1px
     
     class S4Init,ScanCall current
     class TideInit,MockConn,ConnState,TideParam mock
     class FutureTide,MarketData,Insights,Predictions future
+    class UnusedNote note
 ```
 
 ## Performance Monitoring
