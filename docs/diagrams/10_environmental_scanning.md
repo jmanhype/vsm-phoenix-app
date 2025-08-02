@@ -130,11 +130,11 @@ graph TB
     HermesCheck -->|No/Timeout| ClaudeFallback[Claude API Fallback]
     
     HermesAnalysis --> VarietyExpansion[Variety Expansion]
-    HermesAnalysis --> MetaCheck[check_meta_system_need()]
+    HermesAnalysis --> MetaCheck[check_meta_system_need]
     
-    ClaudeFallback --> Prompt[build_variety_prompt()]
-    ClaudeFallback --> ExtractPatterns[extract_patterns()]
-    ClaudeFallback --> MetaSeeds[generate_meta_seeds()]
+    ClaudeFallback --> Prompt[build_variety_prompt]
+    ClaudeFallback --> ExtractPatterns[extract_patterns]
+    ClaudeFallback --> MetaSeeds[generate_meta_seeds]
     
     MetaCheck -->|needs_meta_system| MetaConfig[Meta System Config]
     MetaSeeds -->|seeds exist| MetaSpawn[Spawn Meta VSM]
@@ -180,15 +180,15 @@ end
 
 ```mermaid
 flowchart TD
-    ScanData[Scan Results] --> DetectAnom[detect_anomalies()]
+    ScanData[Scan Results] --> DetectAnom[detect_anomalies]
     
-    DetectAnom --> BasicChecks[Basic Anomaly Checks<br/>(Very Limited)]
+    DetectAnom --> BasicChecks[Basic Anomaly Checks<br/>Very Limited]
     
     BasicChecks --> AnomalyList[Anomaly List]
     
     AnomalyList --> LoopAnom{For Each<br/>Anomaly}
     
-    LoopAnom --> CastQueen[GenServer.cast(Queen,<br/>{:anomaly_detected, anomaly})]
+    LoopAnom --> CastQueen[GenServer.cast to Queen<br/>anomaly_detected]
     
     CastQueen --> PolicySynth[Triggers Policy<br/>Synthesis in S5]
     
