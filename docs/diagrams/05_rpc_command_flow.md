@@ -1,426 +1,398 @@
 # RPC Command Flow Architecture
 
 ## Overview
-This diagram shows the hierarchical command routing and execution patterns across VSM systems using AMQP RPC with direct-reply-to, demonstrating the cybernetic control mechanisms.
+This diagram shows the implemented AMQP RPC command flow using Direct-reply-to pattern for efficient bidirectional communication between VSM systems. The implementation uses CommandRPC and CommandRouter modules for simplified API.
 
 ```mermaid
 sequenceDiagram
-    participant S5 as System 5 Queen
-    participant CmdEx as Commands Exchange
-    participant S4Q as System 4 Queue
-    participant S4 as System 4 Intelligence
-    participant S3Q as System 3 Queue
-    participant S3 as System 3 Control
-    participant S1Q as System 1 Queue
-    participant S1 as System 1 Operations
-    participant ReplyTo as Direct Reply Queue
+    participant Client as CommandRPC Client
+    participant Router as CommandRouter
+    participant ConnMgr as ConnectionManager
+    participant Queue as Target Queue
+    participant Handler as Command Handler
+    participant ReplyTo as amq.rabbitmq.reply-to
 
-    Note over S5,ReplyTo: Hierarchical Command Cascade Example
+    Note over Client,ReplyTo: Actual RPC Implementation Using Direct-reply-to
 
-    %% S5 to S4 Command
-    S5->>+CmdEx: Adaptation Command<br/>routing_key: system4.commands<br/>correlation_id: cmd-123<br/>reply_to: amq.rabbitmq.reply-to
-    CmdEx->>+S4Q: Route to System 4
-    S4Q->>+S4: Deliver command
-    S4->>S4: Process environmental scan
-    S4->>ReplyTo: Response<br/>correlation_id: cmd-123<br/>status: completed
-    ReplyTo->>S5: Deliver response
-    S4Q->>-S4: Complete
-    CmdEx->>-S4Q: Complete
-
-    %% S5 to S3 Resource Command
-    S5->>+CmdEx: Resource Allocation<br/>routing_key: system3.commands<br/>correlation_id: cmd-124
-    CmdEx->>+S3Q: Route to System 3
-    S3Q->>+S3: Deliver command
-    S3->>S3: Allocate resources
+    %% RPC Call Initiation
+    Client->>Router: CommandRPC.call(:system3, command)
+    Router->>ConnMgr: get_channel(:rpc)
+    ConnMgr->>Router: RPC channel
+    Router->>Router: generate_correlation_id()
     
-    %% S3 to S1 Cascaded Command
-    S3->>+CmdEx: Agent Spawn Command<br/>routing_key: system1.commands<br/>correlation_id: cmd-125<br/>reply_to: amq.rabbitmq.reply-to
-    CmdEx->>+S1Q: Route to System 1
-    S1Q->>+S1: Deliver command
-    S1->>S1: Spawn new agent
-    S1->>ReplyTo: Agent Created<br/>correlation_id: cmd-125
-    ReplyTo->>S3: Agent spawn result
-    S1Q->>-S1: Complete
-    CmdEx->>-S1Q: Complete
+    %% Message Publishing
+    Router->>Queue: Publish to vsm.system3.commands<br/>correlation_id: ABC123<br/>reply_to: amq.rabbitmq.reply-to
+    Router->>Router: Store pending RPC<br/>Set timeout timer
     
-    S3->>ReplyTo: Resource allocated<br/>correlation_id: cmd-124
-    ReplyTo->>S5: Final result
-    S3Q->>-S3: Complete
-    CmdEx->>-S3Q: Complete
+    %% Command Processing
+    Queue->>Handler: Deliver command message
+    Handler->>Handler: Execute handler function
+    Handler->>ReplyTo: Publish response<br/>correlation_id: ABC123
+    
+    %% Response Handling
+    ReplyTo->>Router: Response delivered
+    Router->>Router: Match correlation_id<br/>Cancel timeout timer
+    Router->>Client: {:ok, result}
 
-    Note over S5,S1: Command flows down, responses flow up
+    Note over Client,Handler: 5 second default timeout
+
+## Implemented Command Actions
+
+### CommandRPC API Examples
+```mermaid
+flowchart TD
+    API[CommandRPC API] --> Call[call/3]
+    API --> Cast[cast/2] 
+    API --> Multi[multi_call/2]
+    
+    Call --> S5Call[System 5 Commands]
+    Call --> S3Call[System 3 Commands]
+    Call --> S1Call[System 1 Commands]
+    
+    S5Call --> GetHealth[get_system_health]
+    S5Call --> SetPolicy[set_policy]
+    S5Call --> Emergency[emergency_override]
+    
+    S3Call --> AllocRes[allocate_resources]
+    S3Call --> OptDist[optimize_distribution]
+    S3Call --> EmShut[emergency_shutdown]
+    
+    S1Call --> GetOp[get_operational_status]
+    S1Call --> ExecOp[execute_operation]
+    S1Call --> GetSensor[get_sensor_data]
+    
+    classDef api fill:#e3f2fd,stroke:#333,stroke-width:2px
+    classDef method fill:#fff3e0,stroke:#333,stroke-width:2px
+    classDef action fill:#e8f5e9,stroke:#333,stroke-width:2px
+    
+    class API api
+    class Call,Cast,Multi method
+    class GetHealth,SetPolicy,Emergency,AllocRes,OptDist,EmShut,GetOp,ExecOp,GetSensor action
 ```
 
-## Command Types and Routing
+### Actual Command Flow Examples
+```mermaid
+sequenceDiagram
+    participant S5 as System 5
+    participant S3 as System 3
+    participant S1 as System 1
+    
+    Note over S5,S1: Example: Resource Conservation Policy
+    
+    %% S5 sets conservation policy
+    S5->>S5: CommandRPC.call(:system5, set_policy)
+    S5->>S3: CommandRPC.call(:system3, optimize_distribution)
+    S3-->>S5: {:ok, optimization_result}
+    
+    %% S3 queries S1 before allocation
+    S3->>S1: CommandRPC.call(:system1, get_operational_status)
+    S1-->>S3: {:ok, status_data}
+    
+    S3->>S1: CommandRPC.call(:system1, execute_operation)
+    S1-->>S3: {:ok, operation_id}
+    
+    Note over S5,S1: Responses use Direct-reply-to
+```
+
+## RPC Implementation Architecture
+
+### CommandRPC Module Structure
+```mermaid
+graph TB
+    CommandRPC[CommandRPC Module] --> CallFunc[call/3 Function]
+    CommandRPC --> CastFunc[cast/2 Function]
+    CommandRPC --> MultiCall[multi_call/2 Function]
+    CommandRPC --> RegisterH[register_handler/2]
+    
+    CallFunc --> Router[CommandRouter.send_command/3]
+    CastFunc --> FireForget[Fire-and-forget publish]
+    MultiCall --> ParallelTasks[Parallel Task.async calls]
+    
+    Router --> ConnMgr[ConnectionManager]
+    Router --> PendingRPC[Pending RPC tracking]
+    Router --> DirectReply[Direct-reply-to handling]
+    
+    classDef module fill:#e3f2fd,stroke:#333,stroke-width:2px
+    classDef function fill:#fff3e0,stroke:#333,stroke-width:2px
+    classDef internal fill:#f3e5f5,stroke:#333,stroke-width:2px
+    
+    class CommandRPC module
+    class CallFunc,CastFunc,MultiCall,RegisterH function
+    class Router,ConnMgr,PendingRPC,DirectReply internal
+```
+
+### Actual CommandRPC Implementation
+```elixir
+# Simple public API in CommandRPC module
+def call(target, command, opts \\ []) when is_atom(target) and is_map(command) do
+  timeout = Keyword.get(opts, :timeout, @default_timeout)
+  
+  # Delegates to CommandRouter for actual RPC
+  case CommandRouter.send_command(target, command, timeout) do
+    {:ok, result} ->
+      Logger.debug("✅ RPC call to #{target} succeeded")
+      {:ok, result}
+      
+    {:error, :timeout} ->
+      Logger.warn("⏱️  RPC call to #{target} timed out after #{timeout}ms")
+      {:error, :timeout}
+      
+    {:error, reason} = error ->
+      Logger.error("❌ RPC call to #{target} failed: #{inspect(reason)}")
+      error
+  end
+end
+
+# Fire-and-forget messaging
+def cast(target, command) when is_atom(target) and is_map(command) do
+  Task.start(fn ->
+    case ConnectionManager.get_channel(:command_cast) do
+      {:ok, channel} ->
+        message = Jason.encode!(%{
+          type: "command",
+          command: command,
+          timestamp: DateTime.utc_now(),
+          source: node(),
+          mode: "fire_and_forget"
+        })
+        
+        target_queue = "vsm.#{target}.commands"
+        AMQP.Basic.publish(channel, "", target_queue, message)
+        
+      {:error, reason} ->
+        Logger.error("Failed to cast command: #{inspect(reason)}")
+    end
+  end)
+  
+  :ok
+end
+```
+
+### CommandRouter RPC Handler
+```elixir
+# Inside CommandRouter module
+def handle_call({:send_command, target_system, command, timeout}, from, state) do
+  case ConnectionManager.get_channel(:rpc) do
+    {:ok, rpc_channel} ->
+      correlation_id = generate_correlation_id()
+      reply_queue = "amq.rabbitmq.reply-to"  # Special RabbitMQ queue
+      
+      # Ensure reply consumer is active
+      state = ensure_reply_consumer(state, rpc_channel, reply_queue)
+      
+      # Build command message
+      message = Jason.encode!(%{
+        type: "command",
+        command: command,
+        correlation_id: correlation_id,
+        reply_to: reply_queue,
+        timestamp: DateTime.utc_now(),
+        source: node()
+      })
+      
+      # Store pending RPC with timeout
+      new_state = put_in(state.pending_rpcs[correlation_id], %{
+        from: from,
+        timeout_ref: Process.send_after(self(), {:rpc_timeout, correlation_id}, timeout)
+      })
+      
+      # Publish to target queue
+      target_queue = "vsm.#{target_system}.commands"
+      AMQP.Basic.publish(rpc_channel, "", target_queue, message,
+        reply_to: reply_queue,
+        correlation_id: correlation_id
+      )
+      
+      {:noreply, new_state}
+      
+    {:error, reason} ->
+      {:reply, {:error, reason}, state}
+  end
+end
+```
+
+## Real Command Examples (From ExampleHandlers)
 
 ### System 5 Commands
-```mermaid
-flowchart TD
-    S5[System 5 Queen] --> PolicyCmd[Policy Commands]
-    S5 --> ResourceCmd[Resource Commands]
-    S5 --> EmergencyCmd[Emergency Commands]
-    
-    PolicyCmd --> S4Policy[Policy Update → S4]
-    PolicyCmd --> S3Policy[Policy Update → S3]
-    PolicyCmd --> S2Policy[Policy Update → S2]
-    PolicyCmd --> S1Policy[Policy Update → S1]
-    
-    ResourceCmd --> S3Resource[Resource Allocation → S3]
-    
-    EmergencyCmd --> S3Emergency[Emergency Stop → S3]
-    EmergencyCmd --> S1Emergency[Direct Agent Control → S1]
-    
-    classDef s5 fill:#ff9999,stroke:#333,stroke-width:2px
-    classDef command fill:#e1f5fe,stroke:#333,stroke-width:2px
-    classDef target fill:#f0f4c3,stroke:#333,stroke-width:2px
-    
-    class S5 s5
-    class PolicyCmd,ResourceCmd,EmergencyCmd command
-    class S4Policy,S3Policy,S2Policy,S1Policy,S3Resource,S3Emergency,S1Emergency target
-```
+```elixir
+# S5 queries overall system health (cross-system RPC)
+{:ok, health} = CommandRPC.call(:system5, %{
+  "action" => "get_system_health"
+})
 
-### System 4 Commands
-```mermaid
-flowchart TD
-    S4[System 4 Intelligence] --> AdaptCmd[Adaptation Commands]
-    S4 --> AlertCmd[Alert Commands]
-    S4 --> ScanCmd[Scan Commands]
-    
-    AdaptCmd --> S5Adapt[Adaptation Proposal → S5]
-    AlertCmd --> S5Alert[Environmental Alert → S5]
-    AlertCmd --> S3Alert[Resource Alert → S3]
-    ScanCmd --> S3Scan[Performance Scan → S3]
-    ScanCmd --> S1Scan[Agent Scan → S1]
-    
-    classDef s4 fill:#99ccff,stroke:#333,stroke-width:2px
-    classDef command fill:#e1f5fe,stroke:#333,stroke-width:2px
-    classDef target fill:#f0f4c3,stroke:#333,stroke-width:2px
-    
-    class S4 s4
-    class AdaptCmd,AlertCmd,ScanCmd command
-    class S5Adapt,S5Alert,S3Alert,S3Scan,S1Scan target
+# S5 sets a conservation policy with S3 coordination
+{:ok, policy} = CommandRPC.call(:system5, %{
+  "action" => "set_policy",
+  "policy_type" => "resource_conservation",
+  "parameters" => %{"threshold" => 0.8, "mode" => "aggressive"}
+})
+
+# S5 emergency override to any system
+{:ok, result} = CommandRPC.call(:system5, %{
+  "action" => "emergency_override",
+  "target_system" => "system3",
+  "override_command" => %{"action" => "emergency_shutdown"}
+})
 ```
 
 ### System 3 Commands
+```elixir
+# S3 allocates resources (queries S1 first)
+{:ok, allocation} = CommandRPC.call(:system3, %{
+  "action" => "allocate_resources",
+  "resource_type" => "compute",  # compute, memory, network, storage
+  "amount" => 20,
+  "requester" => "policy_enforcement"
+})
+
+# S3 optimizes distribution
+{:ok, optimization} = CommandRPC.call(:system3, %{
+  "action" => "optimize_distribution",
+  "optimization_goal" => "minimize_resource_usage",
+  "policy_id" => "policy_123"
+})
+
+# S3 emergency shutdown (cascades to S1)
+{:ok, shutdown} = CommandRPC.call(:system3, %{
+  "action" => "emergency_shutdown",
+  "reason" => "critical_overload"
+})
+```
+
+### System 1 Commands  
+```elixir
+# S1 operational status query
+{:ok, status} = CommandRPC.call(:system1, %{
+  "action" => "get_operational_status",
+  "subsystem" => "production_line_1"
+})
+
+# S1 sensor data retrieval
+{:ok, sensors} = CommandRPC.call(:system1, %{
+  "action" => "get_sensor_data",  
+  "sensor_ids" => ["temp_001", "pressure_002", "flow_003"]
+})
+
+# S1 execute operation
+{:ok, operation} = CommandRPC.call(:system1, %{
+  "action" => "execute_operation",
+  "operation" => "reduce_throughput",
+  "reason" => "high_sensor_readings"
+})
+```
+
+### Parallel Multi-System Commands
+```elixir
+# Batch RPC to multiple systems
+results = CommandRPC.multi_call([
+  {:system1, %{"action" => "get_operational_status"}},
+  {:system3, %{"action" => "get_resource_status"}},
+  {:system5, %{"action" => "get_active_policies"}}
+], timeout: 3000)
+
+# Fire-and-forget notifications
+CommandRPC.cast(:system1, %{
+  "action" => "log_event",
+  "event" => "policy_updated",
+  "details" => %{"policy_id" => "pol_123"}
+})
+```
+
+## Error Handling and Implementation Details
+
+### Timeout Handling in CommandRouter
+```elixir
+# Automatic timeout handling with correlation ID tracking
+def handle_info({:rpc_timeout, correlation_id}, state) do
+  case Map.pop(state.pending_rpcs, correlation_id) do
+    {nil, _} ->
+      {:noreply, state}
+      
+    {rpc_info, new_pending} ->
+      GenServer.reply(rpc_info.from, {:error, :timeout})
+      {:noreply, %{state | pending_rpcs: new_pending}}
+  end
+end
+```
+
+### Command Handler Registration
+```elixir
+# Systems register handlers to process incoming commands
+CommandRPC.register_handler(:system3, fn command, _meta ->
+  case command["action"] do
+    "allocate_resources" ->
+      # Handler can make RPC calls to other systems
+      {:ok, s1_status} = CommandRPC.call(:system1, %{
+        "action" => "get_operational_status",
+        "subsystem" => "resource_pool"
+      })
+      
+      # Process and return result
+      %{resource_id: "res_123", current_pool: s1_status}
+      
+    _ ->
+      {:error, "Unknown action"}
+  end
+end)
+```
+
+### Event Publishing (Upward Flow)
+```elixir
+# Events use fanout exchanges for broadcasting
+CommandRouter.publish_event(:control, %{
+  event: "resource_allocated",
+  details: %{resource_id: "res_123", amount: 10}
+})
+
+# Available event types and their exchanges:
+# :algedonic   -> vsm.algedonic (fanout)
+# :coordination -> vsm.coordination (fanout)
+# :control     -> vsm.control (fanout)
+# :intelligence -> vsm.intelligence (fanout)
+# :policy      -> vsm.policy (fanout)
+```
+
+## Direct-reply-to Pattern Benefits
+
+### Why RabbitMQ Direct-reply-to?
 ```mermaid
-flowchart TD
-    S3[System 3 Control] --> ResCmd[Resource Commands]
-    S3 --> AuditCmd[Audit Commands]
-    S3 --> OptCmd[Optimization Commands]
+graph LR
+    Traditional[Traditional RPC] --> TempQueue[Create temp queue]
+    Traditional --> Declare[Declare queue]
+    Traditional --> Bind[Bind to exchange]
+    Traditional --> Cleanup[Delete after use]
     
-    ResCmd --> S1Resource[Resource Assignment → S1]
-    AuditCmd --> S1Audit[Agent Audit → S1]
-    OptCmd --> S1Optimize[Performance Optimization → S1]
+    DirectReply[Direct-reply-to] --> NoQueue[No queue creation]
+    DirectReply --> FastReply[Immediate replies]
+    DirectReply --> AutoClean[Auto cleanup]
+    DirectReply --> LowLatency[Lower latency]
     
-    classDef s3 fill:#99ff99,stroke:#333,stroke-width:2px
-    classDef command fill:#e1f5fe,stroke:#333,stroke-width:2px
-    classDef target fill:#f0f4c3,stroke:#333,stroke-width:2px
+    classDef traditional fill:#ffcccc,stroke:#333,stroke-width:2px
+    classDef direct fill:#ccffcc,stroke:#333,stroke-width:2px
     
-    class S3 s3
-    class ResCmd,AuditCmd,OptCmd command
-    class S1Resource,S1Audit,S1Optimize target
+    class Traditional,TempQueue,Declare,Bind,Cleanup traditional
+    class DirectReply,NoQueue,FastReply,AutoClean,LowLatency direct
 ```
 
-## RPC Implementation Details
-
-### Command Structure
-```elixir
-defmodule VsmPhoenix.AMQP.Command do
-  @type t :: %__MODULE__{
-    id: String.t(),
-    system: atom(),
-    action: atom(),
-    payload: map(),
-    reply_to: String.t(),
-    correlation_id: String.t(),
-    timestamp: DateTime.t(),
-    timeout: integer(),
-    priority: integer()
-  }
-
-  defstruct [
-    :id,
-    :system,
-    :action,
-    :payload,
-    :reply_to,
-    :correlation_id,
-    :timestamp,
-    :timeout,
-    :priority
-  ]
-end
-```
-
-### RPC Client Implementation
-```elixir
-defmodule VsmPhoenix.AMQP.CommandRPC do
-  use GenServer
-  require Logger
-
-  def call_system(system, action, payload, opts \\ []) do
-    timeout = Keyword.get(opts, :timeout, 30_000)
-    priority = Keyword.get(opts, :priority, 0)
-    
-    command = %Command{
-      id: generate_id(),
-      system: system,
-      action: action,
-      payload: payload,
-      correlation_id: generate_correlation_id(),
-      timestamp: DateTime.utc_now(),
-      timeout: timeout,
-      priority: priority
-    }
-    
-    GenServer.call(__MODULE__, {:execute_command, command}, timeout + 1_000)
-  end
-
-  def handle_call({:execute_command, command}, from, state) do
-    # Store pending request
-    pending = Map.put(state.pending, command.correlation_id, {from, command})
-    
-    # Publish command with reply-to
-    message = %{
-      "command" => command.action,
-      "payload" => command.payload,
-      "timestamp" => DateTime.to_iso8601(command.timestamp)
-    }
-    
-    publish_options = [
-      routing_key: "#{command.system}.commands",
-      correlation_id: command.correlation_id,
-      reply_to: "amq.rabbitmq.reply-to",
-      priority: command.priority,
-      timestamp: DateTime.to_unix(command.timestamp)
-    ]
-    
-    case AMQP.Basic.publish(state.channel, "vsm.commands", 
-                           "", Jason.encode!(message), publish_options) do
-      :ok ->
-        # Set timeout
-        timer = Process.send_after(self(), {:timeout, command.correlation_id}, 
-                                  command.timeout)
-        timers = Map.put(state.timers, command.correlation_id, timer)
-        
-        {:noreply, %{state | pending: pending, timers: timers}}
-        
-      error ->
-        {:reply, error, state}
-    end
-  end
-end
-```
-
-### Response Handling
-```elixir
-def handle_info({:basic_deliver, payload, %{correlation_id: correlation_id} = meta}, state) do
-  case Map.pop(state.pending, correlation_id) do
-    {{from, command}, pending} ->
-      # Cancel timeout
-      case Map.pop(state.timers, correlation_id) do
-        {timer, timers} when timer != nil ->
-          Process.cancel_timer(timer)
-          
-          # Parse response and reply
-          case Jason.decode(payload) do
-            {:ok, response} ->
-              GenServer.reply(from, {:ok, response})
-              
-            error ->
-              GenServer.reply(from, {:error, :invalid_response, error})
-          end
-          
-          {:noreply, %{state | pending: pending, timers: timers}}
-          
-        {nil, timers} ->
-          Logger.warn("Response received for expired request: #{correlation_id}")
-          {:noreply, %{state | pending: pending, timers: timers}}
-      end
-      
-    {nil, _} ->
-      Logger.warn("Response received for unknown correlation_id: #{correlation_id}")
-      {:noreply, state}
-  end
-end
-
-def handle_info({:timeout, correlation_id}, state) do
-  case Map.pop(state.pending, correlation_id) do
-    {{from, command}, pending} ->
-      GenServer.reply(from, {:error, :timeout})
-      timers = Map.delete(state.timers, correlation_id)
-      
-      Logger.error("Command timeout: #{command.system}.#{command.action}")
-      
-      {:noreply, %{state | pending: pending, timers: timers}}
-      
-    {nil, _} ->
-      {:noreply, state}
-  end
-end
-```
-
-## Command Examples
-
-### Policy Distribution
-```elixir
-# System 5 distributes new policy to all systems
-policy = %{
-  type: :resource,
-  rule: "Max 80% CPU utilization",
-  scope: [:system3, :system1],
-  auto_executable: true
-}
-
-# Fanout to all systems via policy exchange (not RPC)
-VsmPhoenix.AMQP.publish("vsm.policy", "", policy)
-
-# But for individual system commands:
-{:ok, response} = CommandRPC.call_system(:system3, :apply_policy, policy)
-```
-
-### Resource Allocation Request
-```elixir
-# System 5 requests resource allocation from System 3
-allocation_request = %{
-  agent_type: :llm_worker,
-  cpu_cores: 4,
-  memory_gb: 8,
-  priority: :high,
-  duration: :permanent
-}
-
-{:ok, allocation} = CommandRPC.call_system(:system3, :allocate_resources, allocation_request)
-
-# System 3 then commands System 1 to spawn agent
-agent_config = %{
-  type: :llm_worker,
-  resources: allocation,
-  mcp_servers: ["filesystem", "web_search"]
-}
-
-{:ok, agent} = CommandRPC.call_system(:system1, :spawn_agent, agent_config)
-```
-
-### Environmental Adaptation
-```elixir
-# System 4 proposes adaptation to System 5
-adaptation = %{
-  trigger: :market_change,
-  type: :capability_acquisition,
-  recommendation: :acquire_powerpoint_mcp,
-  urgency: :medium,
-  impact_assessment: %{
-    systems_affected: [:system1],
-    resource_impact: :low,
-    risk_level: :low
-  }
-}
-
-{:ok, approval} = CommandRPC.call_system(:system5, :evaluate_adaptation, adaptation)
-
-if approval.approved do
-  # System 5 commands System 1 to acquire capability
-  {:ok, result} = CommandRPC.call_system(:system1, :acquire_capability, 
-                                        %{mcp_server: "powerpoint"})
-end
-```
-
-### Emergency Response
-```elixir
-# System 5 emergency command cascade
-emergency = %{
-  type: :system_overload,
-  severity: :critical,
-  affected_systems: [:system3, :system1]
-}
-
-# Parallel emergency commands
-tasks = [
-  Task.async(fn -> 
-    CommandRPC.call_system(:system3, :emergency_reallocation, emergency, timeout: 5_000)
-  end),
-  Task.async(fn ->
-    CommandRPC.call_system(:system1, :reduce_agent_load, emergency, timeout: 5_000)
-  end)
-]
-
-results = Task.await_many(tasks, 10_000)
-```
-
-## Error Handling and Recovery
-
-### Timeout Management
-- **Default Timeout**: 30 seconds for normal commands
-- **Emergency Timeout**: 5 seconds for critical commands
-- **Retry Logic**: Exponential backoff for failed commands
-- **Circuit Breaker**: Stop sending commands if system is unresponsive
-
-### Dead Letter Handling
-```elixir
-# Commands that fail to deliver go to dead letter queue
-def handle_basic_return(payload, %{routing_key: routing_key} = properties, state) do
-  Logger.error("Command undeliverable: #{routing_key}")
-  
-  # Attempt to parse and retry or store for manual intervention
-  case Jason.decode(payload) do
-    {:ok, command_data} ->
-      # Store in dead letter storage for retry or analysis
-      DeadLetterStorage.store(command_data, properties)
-      
-    error ->
-      Logger.error("Failed to parse undeliverable command: #{inspect(error)}")
-  end
-  
-  {:noreply, state}
-end
-```
-
-### System Recovery
-```elixir
-# When a system comes back online, replay missed commands
-def handle_system_recovery(system, state) do
-  missed_commands = DeadLetterStorage.get_for_system(system)
-  
-  for command <- missed_commands do
-    case CommandRPC.call_system(system, command.action, command.payload, 
-                               timeout: 10_000) do
-      {:ok, _} -> 
-        DeadLetterStorage.remove(command.id)
-        
-      error ->
-        Logger.warn("Recovery command failed: #{inspect(error)}")
-    end
-  end
-  
-  {:noreply, state}
-end
-```
-
-## Performance Characteristics
-
-### Throughput
-- **Commands/second**: ~500 per system under normal load
-- **Peak throughput**: ~2000 commands/second across all systems
-- **Latency**: <50ms for local commands, <200ms for complex operations
-
-### Reliability
-- **At-least-once delivery**: Manual ACK ensures processing
-- **Correlation tracking**: 100% request/response matching
-- **Timeout recovery**: Automatic cleanup of stale requests
-- **Dead letter processing**: Failed commands stored for analysis
-
-### Scalability
-- **Horizontal scaling**: Multiple command processors per system
-- **Load balancing**: Round-robin distribution to consumers
-- **Priority queues**: High-priority commands processed first
-- **Connection pooling**: Shared AMQP connections for efficiency
+### Performance Characteristics
+- **Default timeout**: 5 seconds (configurable per call)
+- **Correlation tracking**: Crypto-generated 16-byte IDs
+- **Connection pooling**: Separate channels for RPC vs events
+- **No queue declaration overhead**: Direct-reply-to is pre-existing
+- **Automatic cleanup**: No manual queue deletion needed
 
 ## Implementation Files
-- **Command RPC**: `/lib/vsm_phoenix/amqp/command_rpc.ex`
-- **Command Router**: `/lib/vsm_phoenix/amqp/command_router.ex`
-- **Command Structure**: `/lib/vsm_phoenix/amqp/command.ex`
-- **Dead Letter Handler**: `/lib/vsm_phoenix/amqp/dead_letter.ex`
-- **Connection Manager**: `/lib/vsm_phoenix/amqp/connection_manager.ex`
+- **CommandRPC**: `/lib/vsm_phoenix/amqp/command_rpc.ex` - Simple public API
+- **CommandRouter**: `/lib/vsm_phoenix/amqp/command_router.ex` - Core routing logic
+- **ExampleHandlers**: `/lib/vsm_phoenix/amqp/example_handlers.ex` - Working examples
+- **ConnectionManager**: `/lib/vsm_phoenix/amqp/connection_manager.ex` - Channel management
 
-This RPC command flow system enables true cybernetic control where higher-level systems can command lower-level systems while maintaining loose coupling and high reliability through message-based communication.
+## Key Implementation Notes
+
+1. **Command Structure**: Commands are simple maps with "action" field, not complex structs
+2. **Handler Registration**: Each system registers one handler function that switches on action
+3. **Bidirectional Flow**: Commands flow down (S5→S1), events flow up (S1→S5)
+4. **Fire-and-forget**: Use `cast/2` for non-critical notifications
+5. **Batch Operations**: Use `multi_call/2` for parallel RPC to multiple systems
+
+This implementation provides a clean, efficient RPC mechanism for VSM hierarchical control while maintaining the cybernetic principles of the architecture.
