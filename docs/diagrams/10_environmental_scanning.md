@@ -7,7 +7,7 @@ This diagram shows the actual System 4 environmental scanning implementation. No
 sequenceDiagram
     participant Timer as 60s Fixed Timer
     participant S4 as System 4 Intelligence
-    participant MockData as Simulated Data Sources
+    participant Tidewave as Tidewave (Not Used)
     participant LLM as LLM Variety Source
     participant Hermes as Hermes MCP
     participant Claude as Claude API
@@ -21,29 +21,25 @@ sequenceDiagram
     Timer->>S4: :scheduled_scan
     S4->>S4: handle_call({:scan_environment, :scheduled})
     
-    %% Environmental Scan (Simulated Data)
-    S4->>S4: perform_environmental_scan()
-    S4->>MockData: generate_market_signals()
-    MockData->>S4: Simulated market data
-    S4->>MockData: detect_technology_trends()
-    MockData->>S4: Hardcoded trends
-    S4->>MockData: check_regulatory_changes()
-    MockData->>S4: Empty/mock data
-    S4->>MockData: analyze_competition()
-    MockData->>S4: Placeholder data
+    %% Environmental Scan (All Simulated Internally)
+    S4->>S4: perform_environmental_scan(scope, _tidewave)
+    Note over S4,Tidewave: _tidewave parameter ignored!
+    
+    S4->>S4: generate_market_signals()
+    S4->>S4: detect_technology_trends()
+    S4->>S4: check_regulatory_changes()
+    S4->>S4: analyze_competition()
+    Note over S4: All data is simulated/hardcoded
     
     %% Optional LLM Variety Analysis
-    opt enable_llm_variety == true
+    opt LLM Variety Analysis Enabled
         S4->>LLM: analyze_for_variety(base_scan)
         
-        alt Hermes MCP Available (2s timeout)
-            LLM->>Hermes: {:analyze_variety, context}
+        alt Hermes MCP Available
+            LLM->>Hermes: analyze_variety(context)
             Hermes->>LLM: variety_expansion with patterns
             Hermes->>Hermes: check_meta_system_need()
-            
-            opt needs_meta_system == true
-                Hermes->>LLM: meta_system_config
-            end
+            Hermes->>LLM: meta_system_config (if needed)
         else Hermes Timeout or Error
             LLM->>Claude: Direct API call
             Claude->>LLM: insights
@@ -53,19 +49,18 @@ sequenceDiagram
         
         LLM->>S4: variety_expansion
         
-        opt meta_system_seeds != {}
-            S4->>S1: pipe_to_system1_meta_generation()
-            S1->>S1: spawn_meta_system()
-            Note over S1: Creates recursive VSM!
-        end
+        Note over S4,S1: If meta_system_seeds exist
+        S4->>S1: pipe_to_system1_meta_generation()
+        S1->>S1: spawn_meta_system()
+        Note over S1: Creates recursive VSM!
     end
     
     %% Anomaly Detection
     S4->>S4: detect_anomalies(scan_results)
     
     alt Anomalies Detected
-        loop For each anomaly
-            S4->>S5: {:anomaly_detected, anomaly}
+        loop Each anomaly
+            S4->>S5: anomaly_detected(anomaly)
             Note over S5: Triggers policy synthesis
         end
     end
@@ -73,13 +68,13 @@ sequenceDiagram
     %% Adaptation Check
     S4->>S4: analyze_scan_results()
     
-    alt requires_adaptation == true
+    alt Adaptation Required
         S4->>S4: generate_internal_adaptation_proposal()
         S4->>S5: Queen.approve_adaptation(proposal)
     end
     
     %% Alert Publishing
-    alt alert_level in [:high, :critical]
+    alt High or Critical Alert
         S4->>AMQP: publish_environmental_alert()
     end
     
