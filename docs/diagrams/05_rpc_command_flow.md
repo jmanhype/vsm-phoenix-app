@@ -35,10 +35,12 @@ sequenceDiagram
     Router->>Client: {:ok, result}
 
     Note over Client,Handler: 5 second default timeout
+```
 
 ## Implemented Command Actions
 
 ### CommandRPC API Examples
+
 ```mermaid
 flowchart TD
     API[CommandRPC API] --> Call[call/3]
