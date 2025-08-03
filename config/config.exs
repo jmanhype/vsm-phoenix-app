@@ -11,6 +11,9 @@ config :vsm_phoenix,
   ecto_repos: [VsmPhoenix.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+# Import Variety Engineering configuration
+import_config "variety_engineering.exs"
+
 # Configures the endpoint
 config :vsm_phoenix, VsmPhoenixWeb.Endpoint,
   url: [host: "localhost"],
@@ -101,6 +104,17 @@ config :vsm_phoenix, :vsm,
     health_check_interval: 30_000,  # 30 seconds
     max_processing_time: 1_000,  # 1 second
     customer_response_target: 500  # 500ms
+  ],
+  
+  # Telegram Agent Configuration
+  telegram: [
+    bot_token: System.get_env("TELEGRAM_BOT_TOKEN"),
+    webhook_mode: false,  # Use polling by default
+    webhook_url: System.get_env("TELEGRAM_WEBHOOK_URL"),
+    authorized_chats: [],  # Will be populated from env or runtime
+    admin_chats: [],  # Will be populated from env or runtime
+    rate_limit: 30,  # messages per minute per chat
+    command_timeout: 5_000  # 5 seconds
   ]
 
 # Tidewave Integration Configuration (if available)
@@ -108,6 +122,28 @@ config :tidewave,
   endpoint: "http://localhost:4000",
   api_key: System.get_env("TIDEWAVE_API_KEY"),
   timeout: 30_000
+
+# Telegram Integration Configuration
+config :vsm_phoenix, :telegram,
+  # Default webhook timeout
+  webhook_timeout: 30_000,
+  
+  # Maximum message length before truncation
+  max_message_length: 4096,
+  
+  # Rate limiting
+  rate_limit: %{
+    messages_per_minute: 30,
+    commands_per_minute: 20
+  },
+  
+  # Default bot features
+  default_features: %{
+    variety_monitoring: true,
+    vsm_status: true,
+    algedonic_signals: true,
+    auto_responses: true
+  }
 
 # Quantum Scheduler Configuration
 config :vsm_phoenix, VsmPhoenix.Scheduler,

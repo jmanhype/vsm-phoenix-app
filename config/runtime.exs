@@ -1,5 +1,16 @@
 import Config
 
+# Helper function to parse comma-separated chat IDs
+defp parse_chat_list(nil), do: []
+defp parse_chat_list(""), do: []
+defp parse_chat_list(chat_list) do
+  chat_list
+  |> String.split(",")
+  |> Enum.map(&String.trim/1)
+  |> Enum.map(&String.to_integer/1)
+  |> Enum.filter(& &1)
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
@@ -153,6 +164,16 @@ if config_env() == :prod do
       health_check_interval: String.to_integer(System.get_env("VSM_OPERATIONS_HEALTH_INTERVAL") || "45000"),
       max_processing_time: String.to_integer(System.get_env("VSM_MAX_PROCESSING_TIME") || "500"),
       customer_response_target: String.to_integer(System.get_env("VSM_CUSTOMER_RESPONSE_TARGET") || "200")
+    ],
+    
+    telegram: [
+      bot_token: System.get_env("TELEGRAM_BOT_TOKEN"),
+      webhook_mode: System.get_env("TELEGRAM_WEBHOOK_MODE") == "true",
+      webhook_url: System.get_env("TELEGRAM_WEBHOOK_URL"),
+      authorized_chats: parse_chat_list(System.get_env("TELEGRAM_AUTHORIZED_CHATS")),
+      admin_chats: parse_chat_list(System.get_env("TELEGRAM_ADMIN_CHATS")),
+      rate_limit: String.to_integer(System.get_env("TELEGRAM_RATE_LIMIT") || "30"),
+      command_timeout: String.to_integer(System.get_env("TELEGRAM_COMMAND_TIMEOUT") || "5000")
     ]
 
   # Tidewave Production Configuration

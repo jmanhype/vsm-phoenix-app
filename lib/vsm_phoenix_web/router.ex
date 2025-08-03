@@ -47,6 +47,11 @@ defmodule VsmPhoenixWeb.Router do
     
     # NEW: S3 Audit Bypass Route
     post "/audit/bypass", AgentController, :audit_bypass  # Direct S1 inspection
+    
+    # NEW: Telegram Integration Routes
+    post "/telegram/webhook/:agent_id", TelegramController, :webhook  # Telegram webhook
+    get "/telegram/health", TelegramController, :health  # Telegram health check
+    post "/telegram/set_webhook", TelegramController, :set_webhook  # Set webhook (for testing)
   end
 
   # MCP routes - Handled by MCPController

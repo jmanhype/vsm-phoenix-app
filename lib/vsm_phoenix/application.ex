@@ -107,6 +107,9 @@ defmodule VsmPhoenix.Application do
       # System 1 - Operational Contexts (depends on System 2)
       VsmPhoenix.System1.Operations,
       
+      # Variety Engineering - Implements Ashby's Law across VSM hierarchy
+      VsmPhoenix.VarietyEngineering.Supervisor,
+      
       # Additional VSM components
       {VsmPhoenix.VsmSupervisor, []}
     ]

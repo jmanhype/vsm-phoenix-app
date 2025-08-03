@@ -36,6 +36,7 @@ defmodule VsmPhoenix.System1.Supervisor do
       :worker -> VsmPhoenix.System1.Agents.WorkerAgent
       :api -> VsmPhoenix.System1.Agents.ApiAgent
       :llm_worker -> VsmPhoenix.System1.Agents.LLMWorkerAgent
+      :telegram -> VsmPhoenix.System1.Agents.TelegramAgent
       _ -> raise ArgumentError, "Unknown agent type: #{agent_type}"
     end
     
