@@ -289,12 +289,14 @@ defmodule VsmPhoenixWeb.AgentController do
   
   Body: {"agent_id": "s1_worker_123", "query": "status|metrics|health"}
   """
-  def audit_bypass(conn, %{"agent_id" => agent_id} = params) do
-    query = Map.get(params, "query", "status")
+  def audit_bypass(conn, params) do
+    # Handle both "agent_id" and "target" fields for compatibility
+    agent_id = params["agent_id"] || params["target"]
+    query = Map.get(params, "query", Map.get(params, "audit_type", "status"))
     
     Logger.info("🔍 S3 Audit Bypass: Direct inspection of #{agent_id} (#{query})")
     
-    case AuditChannel.inspect_agent(agent_id, query) do
+    case AuditChannel.send_audit_command(agent_id, %{operation: String.to_atom(query)}) do
       {:ok, audit_data} ->
         Logger.info("✅ S3 Audit Success: Retrieved #{query} for #{agent_id}")
         

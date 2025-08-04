@@ -207,7 +207,7 @@ defmodule VsmPhoenix.System1.Agents.WorkerAgent do
   end
 
   defp get_capabilities(config) do
-    default_caps = [:process_data, :transform, :analyze]
+    default_caps = [:process_data, :transform, :analyze, :audit_command]
     
     # Add LLM capabilities if enabled
     llm_caps = if config[:llm_enabled] do
@@ -219,7 +219,7 @@ defmodule VsmPhoenix.System1.Agents.WorkerAgent do
     Map.get(config, :capabilities, default_caps) ++ llm_caps
   end
 
-  defp process_command(command, _meta, state) do
+  defp process_command(command, meta, state) do
     start_time = System.monotonic_time(:millisecond)
     
     # Update status
@@ -231,8 +231,13 @@ defmodule VsmPhoenix.System1.Agents.WorkerAgent do
     # Calculate processing time
     processing_time = System.monotonic_time(:millisecond) - start_time
     
-    # Publish result
-    publish_result(command, result, processing_time, state)
+    # Special handling for audit commands - reply directly to audit channel
+    if command["type"] == "audit_command" && command["reply_to"] do
+      publish_audit_response(command, result, meta, state)
+    else
+      # Normal result publishing
+      publish_result(command, result, processing_time, state)
+    end
     
     # Update metrics
     new_metrics = update_work_metrics(state.metrics, result, processing_time)
@@ -245,22 +250,30 @@ defmodule VsmPhoenix.System1.Agents.WorkerAgent do
   end
 
   defp execute_work(command, state) do
-    command_type = command["type"] || "unknown"
+    # Handle both "command" and "type" fields for compatibility
+    command_type = command["command"] || command["type"] || "unknown"
     
-    # Check if worker has capability
-    capability_strings = Enum.map(state.capabilities, &to_string/1)
+    # Check if worker has capability - convert command_type to atom for comparison
+    command_atom = String.to_atom(command_type)
     
-    if command_type in capability_strings do
+    if command_atom in state.capabilities do
       try do
         case command_type do
           "process_data" ->
             process_data(command["data"], state.config)
             
           "transform" ->
-            transform_data(command["data"], command["transformation"], state.config)
+            # Handle params structure from API
+            input = command["params"]["input"] || command["data"]
+            transform_type = command["params"]["type"] || command["transformation"] || "uppercase"
+            transform_data(input, transform_type, state.config)
             
           "analyze" ->
             analyze_data(command["data"], command["analysis_type"], state.config)
+            
+          "audit_command" ->
+            # Handle S3 audit bypass commands
+            handle_audit_command(command, state)
             
           # NEW: LLM Capabilities
           "llm_reasoning" ->
@@ -346,6 +359,95 @@ defmodule VsmPhoenix.System1.Agents.WorkerAgent do
     end
     
     {:ok, analysis}
+  end
+
+  defp handle_audit_command(command, state) do
+    # Extract audit type from command
+    audit_type = command["audit_type"] || "state_dump"
+    
+    Logger.info("🔍 Worker #{state.agent_id} responding to audit: #{audit_type}")
+    
+    # Prepare audit response based on type
+    audit_response = case audit_type do
+      "state_dump" ->
+        %{
+          agent_id: state.agent_id,
+          status: state.status,
+          current_work: state.current_work,
+          metrics: state.metrics,
+          capabilities: state.capabilities,
+          config: state.config,
+          timestamp: DateTime.utc_now()
+        }
+        
+      "status" ->
+        %{
+          agent_id: state.agent_id,
+          status: state.status,
+          alive: true,
+          current_work: state.current_work != nil,
+          timestamp: DateTime.utc_now()
+        }
+        
+      "metrics" ->
+        Map.merge(state.metrics, %{
+          agent_id: state.agent_id,
+          timestamp: DateTime.utc_now()
+        })
+        
+      "health" ->
+        %{
+          agent_id: state.agent_id,
+          healthy: true,
+          status: state.status,
+          queue_depth: state.metrics.work_queue_length || 0,
+          error_rate: calculate_error_rate(state.metrics),
+          timestamp: DateTime.utc_now()
+        }
+        
+      _ ->
+        %{
+          agent_id: state.agent_id,
+          audit_type: audit_type,
+          status: "unknown_audit_type",
+          timestamp: DateTime.utc_now()
+        }
+    end
+    
+    {:ok, audit_response}
+  end
+  
+  defp calculate_error_rate(metrics) do
+    total = (metrics.commands_processed || 0) + (metrics.commands_failed || 0)
+    if total > 0 do
+      (metrics.commands_failed || 0) / total
+    else
+      0.0
+    end
+  end
+
+  defp publish_audit_response(command, result, _meta, state) do
+    # Prepare audit response message
+    response_message = %{
+      agent_id: state.agent_id,
+      correlation_id: command["correlation_id"],
+      status: if(elem(result, 0) == :ok, do: "success", else: "error"),
+      audit_data: elem(result, 1),
+      timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+    
+    message = Jason.encode!(response_message)
+    reply_to = command["reply_to"]
+    
+    # Publish directly to the reply queue using default exchange
+    case AMQP.Basic.publish(state.channel, "", reply_to, message,
+          correlation_id: command["correlation_id"],
+          content_type: "application/json") do
+      :ok ->
+        Logger.info("✅ Worker #{state.agent_id} sent audit response to #{reply_to}")
+      error ->
+        Logger.error("❌ Failed to send audit response: #{inspect(error)}")
+    end
   end
 
   defp publish_result(command, result, processing_time, state) do
