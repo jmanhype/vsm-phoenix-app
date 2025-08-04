@@ -480,15 +480,16 @@ defmodule VsmPhoenix.EmergentIntelligence.SwarmMind do
     # Adjust weights based on consciousness level
     base_weights = [0.25, 0.25, 0.25, 0.25]
     
-    if consciousness_level > 0.8 do
-      # High consciousness: favor synchronization
-      [0.2, 0.2, 0.2, 0.4]
-    elsif consciousness_level > 0.5 do
-      # Medium consciousness: balanced
-      base_weights
-    else
-      # Low consciousness: favor exploration
-      [0.3, 0.3, 0.3, 0.1]
+    cond do
+      consciousness_level > 0.8 ->
+        # High consciousness: favor synchronization
+        [0.2, 0.2, 0.2, 0.4]
+      consciousness_level > 0.5 ->
+        # Medium consciousness: balanced
+        base_weights
+      true ->
+        # Low consciousness: favor exploration
+        [0.3, 0.3, 0.3, 0.1]
     end
   end
 

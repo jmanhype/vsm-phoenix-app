@@ -359,28 +359,27 @@ defmodule VsmPhoenix.MetaVsm.Spawner.RecursiveSpawner do
     levels = :math.log2(size) |> Float.ceil() |> round()
     
     # Spawn children level by level
-    current_parents = [root_id]
-    all_nodes = [root_id]
-    
-    for level <- 1..levels do
-      children = for parent <- current_parents, _ <- 1..2 do
-        case spawn_child_vsm(%{
-          parent_id: parent,
-          depth: level,
-          network_role: :node
-        }) do
-          {:ok, child_id} -> child_id
-          _ -> nil
+    {all_nodes, _} = Enum.reduce_while(1..levels, {[root_id], [root_id]}, fn level, {all_nodes, current_parents} ->
+      if length(all_nodes) >= size do
+        {:halt, {all_nodes, current_parents}}
+      else
+        children = for parent <- current_parents, _ <- 1..2 do
+          case spawn_child_vsm(%{
+            parent_id: parent,
+            depth: level,
+            network_role: :node
+          }) do
+            {:ok, child_id} -> child_id
+            _ -> nil
+          end
         end
+        |> Enum.filter(&(&1 != nil))
+        |> Enum.take(size - length(all_nodes))
+        
+        new_all_nodes = all_nodes ++ children
+        {:cont, {new_all_nodes, children}}
       end
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.take(size - length(all_nodes))
-      
-      all_nodes = all_nodes ++ children
-      current_parents = children
-      
-      if length(all_nodes) >= size, do: break
-    end
+    end)
     
     {:ok, %{
       topology: :hierarchical,

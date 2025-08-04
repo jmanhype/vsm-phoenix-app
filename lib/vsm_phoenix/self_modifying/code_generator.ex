@@ -18,7 +18,7 @@ defmodule VsmPhoenix.SelfModifying.CodeGenerator do
   - opts: Generation options (validation, safety checks)
   
   ## Examples
-      iex> template = "def hello(name), do: \"Hello, #{name}!\""
+      iex> template = "def hello(name), do: \"Hello, \#{name}!\""
       iex> CodeGenerator.generate_code(template, %{}, validate: true)
       {:ok, generated_code}
   """
@@ -305,8 +305,8 @@ defmodule VsmPhoenix.SelfModifying.CodeGenerator do
   defp perform_injection(original_code, injection_point, new_code) do
     # Simple injection at specified point
     case String.split(original_code, injection_point, parts: 2) do
-      [before, after] -> 
-        {:ok, before <> new_code <> injection_point <> after}
+      [before_part, after_part] -> 
+        {:ok, before_part <> new_code <> injection_point <> after_part}
       _ -> 
         {:error, "Injection point not found"}
     end

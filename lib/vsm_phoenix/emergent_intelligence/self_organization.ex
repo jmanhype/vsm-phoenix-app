@@ -71,12 +71,13 @@ defmodule VsmPhoenix.EmergentIntelligence.SelfOrganization do
     criticality = calculate_criticality(state)
     
     # Adjust parameters to maintain edge of chaos
-    adjusted_params = if criticality < 0.6 do
-      increase_disorder(state)
-    elsif criticality > 0.8 do
-      increase_order(state)
-    else
-      state  # Already at edge of chaos
+    adjusted_params = cond do
+      criticality < 0.6 ->
+        increase_disorder(state)
+      criticality > 0.8 ->
+        increase_order(state)
+      true ->
+        state  # Already at edge of chaos
     end
     
     adjusted_params
@@ -674,7 +675,7 @@ defmodule VsmPhoenix.EmergentIntelligence.SelfOrganization do
 
   defp assess_reorganization_risks(_current, _optimal, state) do
     %{
-      disruption_risk: if map_size(state.agents) > 20, do: :high, else: :medium,
+      disruption_risk: (if map_size(state.agents) > 20, do: :high, else: :medium),
       failure_risk: :low,
       performance_impact: :temporary_decrease,
       recovery_time: :moderate

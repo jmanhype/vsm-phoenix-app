@@ -107,7 +107,7 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
     declare_exchange_safe(channel, "vsm.policy", :fanout) # S5 policy broadcasts
     declare_exchange_safe(channel, "vsm.audit", :fanout) # S3 audit bypass channel
     declare_exchange_safe(channel, "vsm.meta", :topic)
-    declare_exchange_safe(channel, "vsm.commands", :topic) # For RPC commands (changed from direct to match existing)
+    declare_exchange_safe(channel, "vsm.commands", :direct) # For RPC commands (using direct for existing exchange)
     
     # Declare main VSM queues for events (fan-out)
     AMQP.Queue.declare(channel, "vsm.system5.policy", durable: true)

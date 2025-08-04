@@ -823,6 +823,5 @@ defmodule VsmPhoenix.QuantumVariety.WaveFunction do
     Process.send_after(self(), :update_decoherence, 100)  # Every 100ms
   end
 
-  defp abs(x) when x < 0, do: -x
-  defp abs(x), do: x
+  # Using Kernel.abs/1 instead of local implementation
 end

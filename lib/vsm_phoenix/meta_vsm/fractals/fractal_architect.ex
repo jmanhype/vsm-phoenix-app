@@ -162,6 +162,12 @@ defmodule VsmPhoenix.MetaVsm.Fractals.FractalArchitect do
     end
   end
   
+  defp calculate_mandelbrot_complexity(depth) do
+    # Calculate complexity based on Mandelbrot set properties
+    # Complexity increases exponentially with depth
+    :math.pow(2, depth) * 1.5
+  end
+  
   defp calculate_mandelbrot_connections(level) do
     # Complex plane mapping for connections
     base = level + 1
@@ -624,5 +630,18 @@ defmodule VsmPhoenix.MetaVsm.Fractals.FractalArchitect do
       error_correction: :hamming_code,
       redundancy_factor: @golden_ratio
     }
+  end
+  
+  # Missing complexity calculation functions
+  
+  defp calculate_mandelbrot_complexity(depth) do
+    # Mandelbrot set has fractal dimension ~2
+    # Complexity grows exponentially with depth
+    :math.pow(2, depth) * @golden_ratio
+  end
+  
+  defp calculate_cantor_segments(depth) do
+    # Cantor set has 2^n segments at depth n
+    :math.pow(2, depth) |> round()
   end
 end

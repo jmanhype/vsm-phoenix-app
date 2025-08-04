@@ -368,29 +368,33 @@ defmodule VsmPhoenix.ChaosEngineering.ChaosOrchestrator do
     }
     
     # Safety checks
-    if state.configuration.safety_checks do
-      case perform_safety_checks(experiment) do
-        :ok -> :ok
-        {:error, reason} -> 
-          return {:error, {:safety_check_failed, reason}}
+    with :ok <- maybe_perform_safety_checks(experiment, state) do
+      # Start experiment execution
+      if state.configuration.dry_run do
+        dry_run_experiment(experiment, state)
+      else
+        # Execute first step
+        Process.send_after(self(), {:execute_step, experiment_id, 0}, 100)
+        
+        new_state = %{state |
+          active_experiments: Map.put(state.active_experiments, experiment_id, experiment),
+          experiment_counter: state.experiment_counter + 1
+        }
+        
+        Logger.info("[Chaos] Starting experiment: #{experiment.name}")
+        
+        {:ok, experiment, new_state}
       end
-    end
-    
-    # Start experiment execution
-    if state.configuration.dry_run do
-      dry_run_experiment(experiment, state)
     else
-      # Execute first step
-      Process.send_after(self(), {:execute_step, experiment_id, 0}, 100)
-      
-      new_state = %{state |
-        active_experiments: Map.put(state.active_experiments, experiment_id, experiment),
-        experiment_counter: state.experiment_counter + 1
-      }
-      
-      Logger.info("[Chaos] Starting experiment: #{experiment.name}")
-      
-      {:ok, experiment, new_state}
+      {:error, reason} -> {:error, {:safety_check_failed, reason}}
+    end
+  end
+  
+  defp maybe_perform_safety_checks(experiment, state) do
+    if state.configuration.safety_checks do
+      perform_safety_checks(experiment)
+    else
+      :ok
     end
   end
 

@@ -347,7 +347,11 @@ defmodule VsmPhoenix.SelfModifying.GeneticProgramming do
     len2 = String.length(parent2)
     
     if len1 == 0 or len2 == 0 do
-      if len1 > len2, do: parent1, else: parent2
+      if len1 > len2 do
+        parent1
+      else
+        parent2
+      end
     else
       cut_point1 = :rand.uniform(len1) - 1
       cut_point2 = :rand.uniform(len2) - 1
@@ -492,9 +496,8 @@ defmodule VsmPhoenix.SelfModifying.GeneticProgramming do
     select_roulette(rest, target, acc + fitness)
   end
   defp select_roulette([], _target, _acc) do
-    # Fallback
-    {code, _} = Enum.random(evaluated_population)
-    code
+    # Fallback - return empty string as we don't have access to the population here
+    ""
   end
   
   defp single_point_crossover(parent1, parent2) do

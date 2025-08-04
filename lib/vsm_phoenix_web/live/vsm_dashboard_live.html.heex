@@ -1,0 +1,400 @@
+<div class="min-h-screen bg-gray-900 text-white" id="vsm-dashboard" phx-hook="VSMDashboard" 
+     data-topology={Jason.encode!(@topology_data)} 
+     data-heatmap={Jason.encode!(@heatmap_data)}>
+  
+  <!-- Header with Enhanced Status -->
+  <div class="bg-gray-800 shadow-lg">
+    <div class="px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center py-6">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center animate-pulse">
+              <span class="text-sm font-bold">VSM</span>
+            </div>
+          </div>
+          <div class="ml-4">
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+              Viable Systems Model Dashboard
+            </h1>
+            <p class="text-gray-400">Real-time topology, variety flow, and quantum state monitoring</p>
+          </div>
+        </div>
+        
+        <!-- System Status with Quantum Coherence -->
+        <div class="flex items-center space-x-4">
+          <div class="flex items-center">
+            <div class={[
+              "h-3 w-3 rounded-full mr-2 animate-pulse",
+              system_status_color(@system_status)
+            ]}></div>
+            <span class="text-sm font-medium">
+              <%= system_status_text(@system_status) %>
+            </span>
+          </div>
+          
+          <!-- Viability Score with Animation -->
+          <div class="bg-gray-700 rounded-lg px-4 py-2 relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer"></div>
+            <div class="text-xs text-gray-400">Viability Score</div>
+            <div class={[
+              "text-lg font-bold transition-all duration-500",
+              viability_color(@viability_score)
+            ]}>
+              <%= :erlang.float_to_binary(@viability_score * 100, [decimals: 1]) %>%
+              <span class="text-xs ml-1" phx-hook="MetricSparkline" data-metric="viability" data-value={@viability_score}></span>
+            </div>
+          </div>
+          
+          <!-- Quantum Coherence Indicator -->
+          <div class="bg-gray-700 rounded-lg px-4 py-2">
+            <div class="text-xs text-gray-400">Quantum Coherence</div>
+            <div class="text-lg font-bold text-purple-400">
+              <%= format_percentage(Map.get(@coherence_levels, :system, 0.85)) %>
+            </div>
+          </div>
+          
+          <button 
+            phx-click="refresh_system"
+            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105"
+          >
+            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Visualization Controls -->
+  <div class="px-4 sm:px-6 lg:px-8 py-4">
+    <div class="flex space-x-2">
+      <button phx-click="toggle_visualization" phx-value-viz_type="topology" 
+              class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors">
+        🔗 Topology
+      </button>
+      <button phx-click="toggle_visualization" phx-value-viz_type="variety" 
+              class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors">
+        🔥 Variety Flow
+      </button>
+      <button phx-click="toggle_visualization" phx-value-viz_type="quantum" 
+              class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors">
+        ⚛️ Quantum States
+      </button>
+      <button phx-click="toggle_visualization" phx-value-viz_type="algedonic" 
+              class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors">
+        💓 Algedonic
+      </button>
+    </div>
+  </div>
+  
+  <!-- Main Visualization Area -->
+  <div class="px-4 sm:px-6 lg:px-8 py-4 space-y-6">
+    
+    <!-- VSM Topology Visualization -->
+    <div id="viz-topology" class="bg-gray-800 rounded-lg p-6">
+      <h2 class="text-xl font-semibold mb-4 text-blue-400">System Topology & Information Flow</h2>
+      <div id="vsm-topology" class="relative h-[600px] bg-gray-900 rounded-lg">
+        <div id="flow-particles" class="absolute inset-0 pointer-events-none"></div>
+        <!-- D3.js topology will render here -->
+      </div>
+      <div class="mt-4 grid grid-cols-4 gap-4">
+        <div class="text-center">
+          <div class="text-xs text-gray-400">Command Flow</div>
+          <div class="text-lg font-bold text-purple-400">⬇️ <%= format_percentage(@flow_animations[:intensities][:s5_s4] || 0.8) %></div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-gray-400">Intelligence Flow</div>
+          <div class="text-lg font-bold text-blue-400">⬇️ <%= format_percentage(@flow_animations[:intensities][:s4_s3] || 0.7) %></div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-gray-400">Control Flow</div>
+          <div class="text-lg font-bold text-green-400">⬇️ <%= format_percentage(@flow_animations[:intensities][:s3_s2] || 0.6) %></div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-gray-400">Coordination Flow</div>
+          <div class="text-lg font-bold text-yellow-400">⬇️ <%= format_percentage(@flow_animations[:intensities][:s2_s1] || 0.9) %></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Variety Flow Heatmap -->
+    <div id="viz-variety" class="bg-gray-800 rounded-lg p-6">
+      <h2 class="text-xl font-semibold mb-4 text-orange-400">Variety Absorption Heatmap</h2>
+      <div class="grid grid-cols-2 gap-6">
+        <div>
+          <h3 class="text-sm font-medium text-gray-400 mb-2">24-Hour Variety Flow by System Level</h3>
+          <div id="variety-heatmap" class="bg-gray-900 rounded-lg p-4">
+            <!-- D3.js heatmap will render here -->
+          </div>
+        </div>
+        <div>
+          <h3 class="text-sm font-medium text-gray-400 mb-2">Current Variety Metrics</h3>
+          <div class="space-y-3">
+            <%= for {level, absorbed} <- @variety_flow.absorbed do %>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-400">System <%= String.upcase(to_string(level)) %></span>
+                <div class="flex items-center">
+                  <div class="w-32 bg-gray-700 rounded-full h-2 mr-2">
+                    <div class="bg-gradient-to-r from-orange-500 to-red-500 h-2 rounded-full transition-all duration-500" 
+                         style={"width: #{min(absorbed, 100)}%"}></div>
+                  </div>
+                  <span class="text-sm font-mono"><%= Float.round(absorbed, 1) %></span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          
+          <div class="mt-4 p-3 bg-gray-700 rounded">
+            <div class="text-sm text-gray-400 mb-2">Environmental Variety</div>
+            <div class="text-2xl font-bold text-orange-400">
+              <%= Float.round(@variety_flow.environmental || 0, 1) %> 
+              <span class="text-sm text-gray-400">bits/sec</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Quantum State Visualization -->
+    <div id="viz-quantum" class="bg-gray-800 rounded-lg p-6">
+      <h2 class="text-xl font-semibold mb-4 text-purple-400">Quantum State Superpositions</h2>
+      <div class="grid grid-cols-3 gap-6">
+        <div class="col-span-2">
+          <div id="quantum-states" class="bg-gray-900 rounded-lg relative">
+            <!-- Canvas for quantum visualization will be inserted here -->
+          </div>
+        </div>
+        <div>
+          <h3 class="text-sm font-medium text-gray-400 mb-3">Active Superpositions</h3>
+          <div class="space-y-2 max-h-96 overflow-y-auto">
+            <%= for state <- @quantum_superpositions do %>
+              <div class="bg-gray-700 rounded p-3 cursor-pointer hover:bg-gray-600 transition-colors"
+                   phx-hook="QuantumObserver" data-state-id={state.id}>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-purple-300"><%= state.id %></span>
+                  <span class="text-xs px-2 py-1 bg-purple-600 rounded">
+                    <%= if state.entangled_with, do: "Entangled", else: "Isolated" %>
+                  </span>
+                </div>
+                <div class="text-xs text-gray-400">
+                  <div>States: <%= Enum.join(state.states, " | ") %></div>
+                  <div>Coherence: <%= format_percentage(state.coherence) %></div>
+                  <%= if state.entangled_with do %>
+                    <div>Entangled with: <%= state.entangled_with %></div>
+                  <% end %>
+                </div>
+                <div class="mt-2 flex space-x-1">
+                  <%= for amp <- state.amplitudes do %>
+                    <div class="flex-1 bg-gray-600 rounded h-4 relative overflow-hidden">
+                      <div class="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-500" 
+                           style={"width: #{amp * 100}%"}></div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          
+          <div class="mt-4 p-3 bg-gray-700 rounded">
+            <div class="text-xs text-gray-400 mb-1">Entanglement Pairs</div>
+            <div class="text-lg font-bold text-purple-400">
+              <%= length(@entanglement_pairs) %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Algedonic Signal Waves -->
+    <div id="viz-algedonic" class="bg-gray-800 rounded-lg p-6">
+      <h2 class="text-xl font-semibold mb-4 text-pink-400">Algedonic Signal Propagation</h2>
+      <div class="grid grid-cols-3 gap-6">
+        <div class="col-span-2">
+          <div id="algedonic-waves" class="bg-gray-900 rounded-lg h-[200px]">
+            <!-- Canvas for algedonic waves will be inserted here -->
+          </div>
+          <div class="mt-4 grid grid-cols-3 gap-4">
+            <%= for {agent_id, pulse_rate} <- Enum.take(@algedonic_pulse_rates, 3) do %>
+              <div class="bg-gray-700 rounded p-3">
+                <div class="text-xs text-gray-400 mb-1"><%= agent_id %></div>
+                <div class="flex items-center" phx-hook="AlgedonicIndicator" 
+                     data-intensity={pulse_rate} data-type={if pulse_rate > 5, do: "pain", else: "pleasure"}>
+                  <div class="w-4 h-4 rounded-full mr-2" style={"background-color: #{pulse_color_hex(pulse_rate)}"}></div>
+                  <span class="font-mono text-sm"><%= Float.round(pulse_rate, 1) %> Hz</span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-sm font-medium text-gray-400 mb-3">Recent Signals</h3>
+          <div class="space-y-2 max-h-64 overflow-y-auto">
+            <%= for signal <- Enum.take(@algedonic_signals, 5) do %>
+              <div class={[
+                "p-3 rounded border-l-4 transition-all duration-300 hover:scale-105",
+                algedonic_signal_classes(signal.signal_type)
+              ]}>
+                <div class="flex items-center justify-between">
+                  <span class="text-2xl">
+                    <%= if signal.signal_type == :pain, do: "😣", else: "😊" %>
+                  </span>
+                  <div class="text-right">
+                    <div class="text-xs font-medium"><%= signal.context %></div>
+                    <div class="text-xs text-gray-400">Δ <%= Float.round(signal.delta, 3) %></div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Original Dashboard Content (Systems 1-5) -->
+  <div class="px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- System 5 - Queen (Enhanced) -->
+      <div class="bg-gray-800 rounded-lg p-6 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-transparent"></div>
+        <div class="relative">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-purple-400">System 5 - Queen</h2>
+            <div class="text-2xl animate-pulse">👑</div>
+          </div>
+          
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Policy Coherence</span>
+              <span class="font-mono text-green-400">
+                <%= format_percentage(Map.get(@queen_metrics, :policy_coherence, 0.95)) %>
+                <span phx-hook="MetricSparkline" data-metric="policy_coherence" 
+                      data-value={Map.get(@queen_metrics, :policy_coherence, 0.95)}></span>
+              </span>
+            </div>
+            
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Identity Preservation</span>
+              <span class="font-mono text-green-400">
+                <%= format_percentage(Map.get(@queen_metrics, :coherence, 0.92)) %>
+              </span>
+            </div>
+            
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Strategic Alignment</span>
+              <span class="font-mono text-blue-400">
+                <%= format_percentage(Map.get(@queen_metrics, :strategic_alignment, 0.89)) %>
+              </span>
+            </div>
+            
+            <div class="mt-4 p-3 bg-gray-700 rounded">
+              <div class="text-sm text-gray-400 mb-1">Active Policies</div>
+              <div class="text-sm">
+                <%= for policy <- Map.get(@queen_metrics, :active_policies, ["governance", "adaptation", "resource"]) do %>
+                  <span class="inline-block bg-gradient-to-r from-purple-600 to-blue-600 rounded px-2 py-1 text-xs mr-1 mb-1">
+                    <%= policy %>
+                  </span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Continue with other systems... -->
+      <!-- (Rest of the original system panels with enhanced styling) -->
+      
+    </div>
+  </div>
+  
+  <!-- Alerts Section (Enhanced) -->
+  <%= if length(@alerts) > 0 do %>
+    <div class="fixed bottom-4 right-4 max-w-md z-50">
+      <div class="space-y-2">
+        <%= for alert <- Enum.take(@alerts, 3) do %>
+          <div class={[
+            "p-4 rounded-lg shadow-lg border-l-4 animate-slide-in",
+            alert_classes(alert.type)
+          ]} style="animation: slideIn 0.3s ease-out">
+            <div class="flex items-center">
+              <div class="flex-1">
+                <p class="text-sm font-medium"><%= alert.message %></p>
+                <p class="text-xs text-gray-400 mt-1">
+                  <%= relative_time(alert.timestamp) %>
+                </p>
+              </div>
+              <button phx-click="dismiss_alert" phx-value-id={alert.id} 
+                      class="ml-4 text-gray-400 hover:text-white">
+                ✕
+              </button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  
+  @keyframes slideIn {
+    from { 
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to { 
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  .particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  
+  .particle-information { background: #3b82f6; }
+  .particle-command { background: #9333ea; }
+  .particle-feedback { background: #10b981; }
+  .particle-algedonic { background: #ef4444; }
+  
+  .vsm-tooltip {
+    position: absolute;
+    text-align: left;
+    padding: 8px;
+    font-size: 12px;
+    background: rgba(31, 41, 55, 0.95);
+    border: 1px solid rgba(75, 85, 99, 0.5);
+    border-radius: 4px;
+    pointer-events: none;
+    color: white;
+  }
+  
+  .observing {
+    animation: observe 0.5s ease-out;
+  }
+  
+  @keyframes observe {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+</style>

@@ -628,9 +628,4 @@ defmodule VsmPhoenix.QuantumVariety.QuantumTunnel do
     Process.send_after(self(), :energy_recovery, 1000)  # Every second
   end
 
-  defp max(a, b) when a > b, do: a
-  defp max(_, b), do: b
-
-  defp min(a, b) when a < b, do: a
-  defp min(_, b), do: b
 end

@@ -249,7 +249,7 @@ defmodule VsmPhoenix.SelfModifying.SafeSandbox do
     
     task_pid = spawn_link(fn ->
       # Set process limits
-      Process.flag(:max_heap_size, limits.memory_mb * 1024 * 1024 div 8) # Convert MB to words
+      Process.flag(:max_heap_size, div(limits.memory_mb * 1024 * 1024, 8)) # Convert MB to words
       
       try do
         result = fun.()

@@ -39,6 +39,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       :timer.send_interval(100, self(), :update_realtime_flows)  # Very fast for animations
       :timer.send_interval(2000, self(), :update_quantum_states)
       :timer.send_interval(500, self(), :update_variety_flow)
+    end
     
     socket = 
       socket

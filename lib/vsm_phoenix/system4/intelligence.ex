@@ -439,18 +439,39 @@ defmodule VsmPhoenix.System4.Intelligence do
           if meta_evaluation && meta_evaluation.should_spawn do
             Logger.warning("🌀⚛️ ENHANCED META-SYSTEM SPAWN TRIGGERED!")
             RecursiveMetaTrigger.spawn_meta_system(meta_evaluation.spawn_config)
-          elseif variety_expansion.meta_system_seeds != %{} do
-            Logger.info("🌀 RECURSIVE META-SYSTEM OPPORTUNITY DETECTED!")
-            spawn(fn -> LLMVarietySource.pipe_to_system1_meta_generation(variety_expansion) end)
+          else
+            if variety_expansion.meta_system_seeds != %{} do
+              Logger.info("🌀 RECURSIVE META-SYSTEM OPPORTUNITY DETECTED!")
+              spawn(fn -> LLMVarietySource.pipe_to_system1_meta_generation(variety_expansion) end)
+            end
           end
           
           enhanced_scan = Map.merge(base_scan, %{llm_variety: variety_expansion})
           
           # Add enhanced analysis if available
-          enhanced_scan = if quantum_analysis, do: Map.put(enhanced_scan, :quantum_analysis, quantum_analysis), else: enhanced_scan
-          enhanced_scan = if pattern_result, do: Map.put(enhanced_scan, :pattern_analysis, pattern_result), else: enhanced_scan
-          enhanced_scan = if explosion_risk, do: Map.put(enhanced_scan, :explosion_risk, explosion_risk), else: enhanced_scan
-          enhanced_scan = if meta_evaluation, do: Map.put(enhanced_scan, :meta_evaluation, meta_evaluation), else: enhanced_scan
+          enhanced_scan = if quantum_analysis do
+            Map.put(enhanced_scan, :quantum_analysis, quantum_analysis)
+          else
+            enhanced_scan
+          end
+          
+          enhanced_scan = if pattern_result do
+            Map.put(enhanced_scan, :pattern_analysis, pattern_result)
+          else
+            enhanced_scan
+          end
+          
+          enhanced_scan = if explosion_risk do
+            Map.put(enhanced_scan, :explosion_risk, explosion_risk)
+          else
+            enhanced_scan
+          end
+          
+          enhanced_scan = if meta_evaluation do
+            Map.put(enhanced_scan, :meta_evaluation, meta_evaluation)
+          else
+            enhanced_scan
+          end
           
           enhanced_scan
           

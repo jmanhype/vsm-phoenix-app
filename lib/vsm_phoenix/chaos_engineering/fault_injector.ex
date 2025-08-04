@@ -45,8 +45,8 @@ defmodule VsmPhoenix.ChaosEngineering.FaultInjector do
       :targets,
       :schedule,
       :conditions,
-      :max_concurrent: 3,
-      :cooldown_ms: 5000,
+      max_concurrent: 3,
+      cooldown_ms: 5000,
       enabled: true
     ]
   end
@@ -314,8 +314,9 @@ defmodule VsmPhoenix.ChaosEngineering.FaultInjector do
     latency_ms = calculate_latency(fault.severity)
     
     # Simulate network latency by intercepting messages
-    :ets.new(:chaos_latency_#{fault.id}, [:named_table, :public])
-    :ets.insert(:chaos_latency_#{fault.id}, {:latency, latency_ms})
+    table_name = String.to_atom("chaos_latency_#{fault.id}")
+    :ets.new(table_name, [:named_table, :public])
+    :ets.insert(table_name, {:latency, latency_ms})
     
     {:ok, %{fault | impact_metrics: %{latency_ms: latency_ms}}}
   end
@@ -377,16 +378,18 @@ defmodule VsmPhoenix.ChaosEngineering.FaultInjector do
 
   defp inject_disk_failure(fault) do
     # Simulate disk failure by making filesystem operations fail
-    :ets.new(:chaos_disk_#{fault.id}, [:named_table, :public])
-    :ets.insert(:chaos_disk_#{fault.id}, {:fail_rate, severity_to_fail_rate(fault.severity)})
+    table_name = String.to_atom("chaos_disk_#{fault.id}")
+    :ets.new(table_name, [:named_table, :public])
+    :ets.insert(table_name, {:fail_rate, severity_to_fail_rate(fault.severity)})
     
     {:ok, %{fault | impact_metrics: %{disk_fail_rate: severity_to_fail_rate(fault.severity)}}}
   end
 
   defp inject_byzantine_fault(fault) do
     # Simulate Byzantine behavior with random incorrect responses
-    :ets.new(:chaos_byzantine_#{fault.id}, [:named_table, :public])
-    :ets.insert(:chaos_byzantine_#{fault.id}, {:corruption_rate, severity_to_corruption_rate(fault.severity)})
+    table_name = String.to_atom("chaos_byzantine_#{fault.id}")
+    :ets.new(table_name, [:named_table, :public])
+    :ets.insert(table_name, {:corruption_rate, severity_to_corruption_rate(fault.severity)})
     
     {:ok, %{fault | impact_metrics: %{byzantine_rate: severity_to_corruption_rate(fault.severity)}}}
   end
@@ -396,8 +399,9 @@ defmodule VsmPhoenix.ChaosEngineering.FaultInjector do
     
     # Note: Real clock skew would require system-level changes
     # This simulates it at application level
-    :ets.new(:chaos_clock_#{fault.id}, [:named_table, :public])
-    :ets.insert(:chaos_clock_#{fault.id}, {:skew_ms, skew_ms})
+    table_name = String.to_atom("chaos_clock_#{fault.id}")
+    :ets.new(table_name, [:named_table, :public])
+    :ets.insert(table_name, {:skew_ms, skew_ms})
     
     {:ok, %{fault | impact_metrics: %{clock_skew_ms: skew_ms}}}
   end
@@ -424,8 +428,9 @@ defmodule VsmPhoenix.ChaosEngineering.FaultInjector do
   defp inject_data_corruption(fault) do
     corruption_rate = severity_to_corruption_rate(fault.severity)
     
-    :ets.new(:chaos_corruption_#{fault.id}, [:named_table, :public])
-    :ets.insert(:chaos_corruption_#{fault.id}, {:rate, corruption_rate})
+    table_name = String.to_atom("chaos_corruption_#{fault.id}")
+    :ets.new(table_name, [:named_table, :public])
+    :ets.insert(table_name, {:rate, corruption_rate})
     
     {:ok, %{fault | impact_metrics: %{corruption_rate: corruption_rate}}}
   end
@@ -434,7 +439,7 @@ defmodule VsmPhoenix.ChaosEngineering.FaultInjector do
     # Clean up fault-specific resources
     case fault.type do
       :network_latency ->
-        :ets.delete(:chaos_latency_#{fault.id})
+        :ets.delete(String.to_atom("chaos_latency_#{fault.id}"))
       
       :network_partition ->
         # Reconnect partitioned nodes
@@ -443,16 +448,16 @@ defmodule VsmPhoenix.ChaosEngineering.FaultInjector do
         end)
       
       :disk_failure ->
-        :ets.delete(:chaos_disk_#{fault.id})
+        :ets.delete(String.to_atom("chaos_disk_#{fault.id}"))
       
       :byzantine_fault ->
-        :ets.delete(:chaos_byzantine_#{fault.id})
+        :ets.delete(String.to_atom("chaos_byzantine_#{fault.id}"))
       
       :clock_skew ->
-        :ets.delete(:chaos_clock_#{fault.id})
+        :ets.delete(String.to_atom("chaos_clock_#{fault.id}"))
       
       :data_corruption ->
-        :ets.delete(:chaos_corruption_#{fault.id})
+        :ets.delete(String.to_atom("chaos_corruption_#{fault.id}"))
       
       _ ->
         :ok
