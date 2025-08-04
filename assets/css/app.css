@@ -2,6 +2,9 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* Import VSM visualization styles */
+@import "./vsm_visualizations.css";
+
 /* This file is for your main application CSS */
 .phx-no-feedback.invalid-feedback,
 .phx-no-feedback .invalid-feedback {

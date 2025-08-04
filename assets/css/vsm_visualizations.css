@@ -1,0 +1,282 @@
+/* VSM Advanced Visualizations Styles */
+
+/* Topology Visualization */
+.vsm-topology-svg {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 0.5rem;
+}
+
+.topology-node {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.topology-node:hover {
+  transform: scale(1.1);
+}
+
+.topology-link {
+  stroke-opacity: 0.6;
+  transition: stroke-opacity 0.3s ease;
+}
+
+.topology-link:hover {
+  stroke-opacity: 1;
+}
+
+.pulse-ring {
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* Variety Flow Heatmap */
+.heatmap-cell {
+  transition: opacity 0.5s ease;
+  cursor: pointer;
+}
+
+.heatmap-cell:hover {
+  stroke: white;
+  stroke-width: 2;
+}
+
+/* Quantum Visualization */
+#quantum-canvas {
+  border-radius: 0.5rem;
+  background: radial-gradient(ellipse at center, #1e293b 0%, #0f172a 100%);
+}
+
+.quantum-state {
+  position: relative;
+  animation: quantum-float 4s ease-in-out infinite;
+}
+
+@keyframes quantum-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.entanglement-line {
+  stroke-dasharray: 5, 5;
+  animation: entangle-dash 1s linear infinite;
+}
+
+@keyframes entangle-dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+/* Algedonic Waves */
+#algedonic-canvas {
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+}
+
+.algedonic-pulse {
+  animation: algedonic-propagate 3s ease-out forwards;
+}
+
+@keyframes algedonic-propagate {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3);
+  }
+}
+
+/* Flow Particles */
+.particle {
+  animation: particle-flow 3s linear infinite;
+  box-shadow: 0 0 10px currentColor;
+}
+
+@keyframes particle-flow {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.particle-information {
+  background: #3b82f6;
+  box-shadow: 0 0 15px #3b82f6;
+}
+
+.particle-command {
+  background: #9333ea;
+  box-shadow: 0 0 15px #9333ea;
+}
+
+.particle-feedback {
+  background: #10b981;
+  box-shadow: 0 0 15px #10b981;
+}
+
+.particle-algedonic {
+  background: #ef4444;
+  box-shadow: 0 0 15px #ef4444;
+  animation: algedonic-particle 1s ease-in-out infinite;
+}
+
+@keyframes algedonic-particle {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+}
+
+/* Metric Sparklines */
+.metric-sparkline svg {
+  vertical-align: middle;
+}
+
+.sparkline {
+  stroke: #3b82f6;
+  fill: none;
+  stroke-width: 1.5;
+}
+
+/* D3 Tooltips */
+.vsm-tooltip {
+  position: absolute;
+  text-align: left;
+  padding: 12px;
+  font-size: 12px;
+  background: rgba(31, 41, 55, 0.95);
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  border-radius: 6px;
+  pointer-events: none;
+  color: white;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.vsm-tooltip div {
+  margin: 4px 0;
+}
+
+.vsm-tooltip div:first-child {
+  font-weight: bold;
+  color: #60a5fa;
+}
+
+/* Visualization Controls */
+.viz-control {
+  transition: all 0.3s ease;
+}
+
+.viz-control:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* System Status Indicators */
+.system-health-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.system-health-ring svg {
+  transform: rotate(-90deg);
+}
+
+.health-ring-bg {
+  fill: none;
+  stroke: #374151;
+  stroke-width: 8;
+}
+
+.health-ring-progress {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+/* Quantum Coherence Indicator */
+.coherence-indicator {
+  position: relative;
+  overflow: hidden;
+}
+
+.coherence-wave {
+  position: absolute;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(147, 51, 234, 0.3), transparent);
+  animation: coherence-wave 3s linear infinite;
+}
+
+@keyframes coherence-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Alert Animations */
+.alert-slide-in {
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .vsm-topology-svg {
+    height: 400px;
+  }
+  
+  #quantum-canvas,
+  #algedonic-canvas {
+    height: 150px;
+  }
+  
+  .vsm-tooltip {
+    font-size: 10px;
+    padding: 8px;
+  }
+}
