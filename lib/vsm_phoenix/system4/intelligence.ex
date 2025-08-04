@@ -149,9 +149,10 @@ defmodule VsmPhoenix.System4.Intelligence do
       }
       
       publish_environmental_alert(alert, new_state)
+      {:reply, insights, new_state}
+    else
+      {:reply, insights, new_state}
     end
-    
-    {:reply, insights, new_state}
   end
   
   @impl true
@@ -259,7 +260,8 @@ defmodule VsmPhoenix.System4.Intelligence do
     challenges = identify_challenges_from_metrics(viability_metrics)
     
     Enum.each(challenges, fn challenge ->
-      proposal = generate_adaptation_proposal(challenge)
+      # Generate proposal inline to avoid self-call
+      proposal = do_generate_adaptation_proposal(challenge, state)
       Queen.approve_adaptation(proposal)
     end)
     
@@ -288,11 +290,16 @@ defmodule VsmPhoenix.System4.Intelligence do
   @impl true
   def handle_info(:scheduled_scan, state) do
     # Direct scan instead of self-call
-    {_reply, _state} = handle_call({:scan_environment, :scheduled}, nil, state)
-    # Just log for now, the scan happens in handle_call
-    Logger.debug("Scheduled scan completed")
-    schedule_environmental_scan()
-    {:noreply, state}
+    case handle_call({:scan_environment, :scheduled}, nil, state) do
+      {:reply, _result, new_state} ->
+        Logger.debug("Scheduled scan completed")
+        schedule_environmental_scan()
+        {:noreply, new_state}
+      _ ->
+        Logger.warning("Scheduled scan failed")
+        schedule_environmental_scan()
+        {:noreply, state}
+    end
   end
   
   @impl true
@@ -596,6 +603,24 @@ defmodule VsmPhoenix.System4.Intelligence do
     end
   end
   
+  defp do_generate_adaptation_proposal(challenge, state) do
+    Logger.info("Intelligence: Generating adaptation proposal for challenge")
+    
+    # Select appropriate adaptation model
+    model = select_adaptation_model(challenge, state.adaptation_models)
+    
+    %{
+      id: generate_proposal_id(),
+      challenge: challenge,
+      model_type: model.type,
+      actions: model[:generate_actions].(challenge),
+      impact: model[:estimate_impact].(challenge),
+      resources_required: model[:estimate_resources].(challenge),
+      timeline: model[:estimate_timeline].(challenge),
+      risks: model[:identify_risks].(challenge)
+    }
+  end
+  
   defp schedule_environmental_scan do
     Process.send_after(self(), :scheduled_scan, 60_000)  # Scan every minute
   end
@@ -770,17 +795,22 @@ defmodule VsmPhoenix.System4.Intelligence do
   
   defp publish_environmental_alert(alert, state) do
     if state[:amqp_channel] do
-      payload = Jason.encode!(alert)
-      
-      :ok = AMQP.Basic.publish(
-        state.amqp_channel,
-        "vsm.intelligence",
-        "",
-        payload,
-        content_type: "application/json"
-      )
-      
-      Logger.info("🔍 Published environmental alert: #{alert["type"]}")
+      try do
+        payload = Jason.encode!(alert)
+        
+        :ok = AMQP.Basic.publish(
+          state.amqp_channel,
+          "vsm.intelligence",
+          "",
+          payload,
+          content_type: "application/json"
+        )
+        
+        Logger.info("🔍 Published environmental alert: #{alert["type"]}")
+      rescue
+        e ->
+          Logger.warning("Failed to publish alert via AMQP: #{inspect(e)}")
+      end
     end
   end
   

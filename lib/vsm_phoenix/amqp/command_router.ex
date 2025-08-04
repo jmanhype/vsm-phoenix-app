@@ -239,8 +239,8 @@ defmodule VsmPhoenix.AMQP.CommandRouter do
   # Private functions
   
   defp setup_topology(channel) do
-    # Declare command exchange (direct routing)
-    AMQP.Exchange.declare(channel, @command_exchange, :direct, durable: true)
+    # Declare command exchange (topic routing to match existing)
+    AMQP.Exchange.declare(channel, @command_exchange, :topic, durable: true)
     
     # Event exchanges are already declared in ConnectionManager
     Logger.info("📋 Command routing topology ready")

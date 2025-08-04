@@ -430,3 +430,134 @@ The implementation demonstrates how cybernetic principles can be applied to crea
 ---
 
 For detailed technical documentation, see the `/docs` directory. For examples and demonstrations, check the `/examples` and `/scripts` directories.
+
+## Detailed Implementation Roadmap
+
+### Phase 1: Complete VSM Foundation (1-2 weeks)
+**Goal**: Build a proper cybernetic foundation with multiple autonomous operational units
+
+- [x] **Multiple System 1 Units with Plugin Architecture**
+  - Dynamic agent registry for spawning operational units
+  - Example agents: SensorAgent, WorkerAgent, APIAgent, LLMWorkerAgent
+  - Each agent with own AMQP channel and local state
+  - Plugin system for easy extension
+
+- [x] **Bidirectional AMQP Communication**
+  - Command flows from higher to lower systems (S5→S4→S3→S2→S1)
+  - Not just data flowing upward
+  - Proper control loops with feedback
+  - RPC support for synchronous commands
+
+- [x] **System 3* (Three Star) Audit Function**
+  - Direct inspection channel to S1 units
+  - Bypasses S2 coordination layer
+  - Sporadic audit capability per Beer's VSM
+
+- [ ] **Basic Telegram Interface (S1 Unit)**
+  - TelegramAgent as operational unit for user interaction
+  - Receives messages and converts to VSM commands
+  - Sends system responses back to users
+  - Basic command parsing and routing
+
+- [ ] **Variety Engineering**
+  - Implement variety attenuation between levels
+  - Each level filters/amplifies information appropriately
+  - Proper handling of Ashby's Law of Requisite Variety
+
+### Phase 2: Intelligence & Event Processing (2-3 weeks)
+**Goal**: Add pattern recognition, event processing, and basic AI capabilities
+
+- [ ] **GoldRush Event Pattern Matching**
+  - Declarative event conditions (e.g., "when cpu > 80% AND memory > 90%")
+  - Real-time pattern matching on event streams
+  - Event aggregation and fusion
+  - Hierarchical event managers
+
+- [ ] **LLM Integration for System 4**
+  - Environmental scanning and interpretation
+  - Anomaly explanation in natural language
+  - Future scenario planning and modeling
+  - Integration with OpenAI/Anthropic APIs
+
+- [ ] **Intelligent Telegram Conversations**
+  - Natural language understanding via LLM
+  - Context-aware multi-turn conversations
+  - Intent recognition and command extraction
+  - Personalized responses based on user history
+
+- [ ] **aMCP Protocol Extensions**
+  - Semantic context preservation across messages
+  - Event causality chain tracking
+  - Priority-based message routing
+  - Persistent context using CRDTs
+
+- [ ] **Security Layer**
+  - Cryptographic nonce validation
+  - Replay attack protection
+  - Message-level signing
+  - Bloom filters for efficient validation
+
+### Phase 3: Meta-Cognitive Evolution (3-4 weeks)
+**Goal**: Create self-aware, self-modifying system with emergent behaviors
+
+- [ ] **Meta-Cognitive Observation Layer**
+  - System observes its own decision-making processes
+  - Tracks conflicts between subsystems
+  - Counts patterns and generates metrics about itself
+  - Real-time introspection capabilities
+
+- [ ] **Dynamic Policy Generation**
+  - LLM analyzes event patterns to suggest new policies
+  - Policies compiled to active AMQP handlers
+  - System can modify its own behavioral rules
+  - Meta-policies (policies about making policies)
+
+- [ ] **Self-Improving Telegram Bot**
+  - Learns user preferences and communication styles
+  - Generates new command handlers based on usage
+  - Self-modifies response patterns for better UX
+  - Creates personalized workflows per user
+
+- [ ] **Emergent Subsystem Creation**
+  - Automatic spawning of new S1 agents based on patterns
+  - Agents can create sub-agents (recursive structure)
+  - Self-organizing system topology
+  - Dynamic resource allocation
+
+- [ ] **Self-Documentation & SOPs**
+  - Auto-generation of Standard Operating Procedures
+  - System documents its own discoveries
+  - Human-readable explanations of decisions
+  - Continuous improvement loops
+
+### Phase 4: Advanced Features (Future)
+**Goal**: Production-ready distributed cognitive system
+
+- [ ] **WASM Plugin Compilation**
+  - Secure sandboxed execution
+  - Browser-deployable agents
+  - Cross-platform compatibility
+
+- [ ] **Visual Canvas Interface**
+  - Drag-and-drop agent composition
+  - Visual workflow design
+  - Real-time system visualization
+  - Telegram bot flow designer
+
+- [ ] **Distributed Features**
+  - Zone-aware routing
+  - Zombie node detection
+  - Self-healing capabilities
+  - Multi-region deployment
+
+- [ ] **Agent Marketplace**
+  - Registry for sharing agents
+  - Trust scoring system
+  - One-click deployment
+  - Community contributions
+  - Pre-built Telegram bot templates
+
+### Technical Approach
+The implementation follows the Cybernetic.ai whitepaper's vision while maintaining compatibility with Beer's original VSM principles. We're building on Erlang/Elixir's fault-tolerant distributed systems capabilities, AMQP for reliable messaging, modern AI/LLM integration for intelligence layers, and Telegram for accessible human-system interaction.
+
+Each phase delivers working functionality while building toward a truly autonomous, self-improving system - a meta-cognitive orchestrator that can observe, analyze, and modify its own thinking patterns.

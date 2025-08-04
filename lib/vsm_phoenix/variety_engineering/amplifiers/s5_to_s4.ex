@@ -95,12 +95,16 @@ defmodule VsmPhoenix.VarietyEngineering.Amplifiers.S5ToS4 do
   end
   
   # Handle other S5 message formats
-  def handle_info({topic, message}, state) when is_binary(topic) and String.contains?(topic, "policy") do
-    case extract_policy_info(message) do
-      {policy_type, policy_data} ->
-        handle_info({:policy_update, policy_type, policy_data}, state)
-      _ ->
-        {:noreply, state}
+  def handle_info({topic, message}, state) when is_binary(topic) do
+    if String.contains?(topic, "policy") do
+      case extract_policy_info(message) do
+        {policy_type, policy_data} ->
+          handle_info({:policy_update, policy_type, policy_data}, state)
+        _ ->
+          {:noreply, state}
+      end
+    else
+      {:noreply, state}
     end
   end
   

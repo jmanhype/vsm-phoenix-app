@@ -1,14 +1,15 @@
 import Config
 
 # Helper function to parse comma-separated chat IDs
-defp parse_chat_list(nil), do: []
-defp parse_chat_list(""), do: []
-defp parse_chat_list(chat_list) do
-  chat_list
-  |> String.split(",")
-  |> Enum.map(&String.trim/1)
-  |> Enum.map(&String.to_integer/1)
-  |> Enum.filter(& &1)
+parse_chat_list = fn
+  nil -> []
+  "" -> []
+  chat_list ->
+    chat_list
+    |> String.split(",")
+    |> Enum.map(&String.trim/1)
+    |> Enum.map(&String.to_integer/1)
+    |> Enum.filter(& &1)
 end
 
 # config/runtime.exs is executed for all environments, including
@@ -170,8 +171,8 @@ if config_env() == :prod do
       bot_token: System.get_env("TELEGRAM_BOT_TOKEN"),
       webhook_mode: System.get_env("TELEGRAM_WEBHOOK_MODE") == "true",
       webhook_url: System.get_env("TELEGRAM_WEBHOOK_URL"),
-      authorized_chats: parse_chat_list(System.get_env("TELEGRAM_AUTHORIZED_CHATS")),
-      admin_chats: parse_chat_list(System.get_env("TELEGRAM_ADMIN_CHATS")),
+      authorized_chats: parse_chat_list.(System.get_env("TELEGRAM_AUTHORIZED_CHATS")),
+      admin_chats: parse_chat_list.(System.get_env("TELEGRAM_ADMIN_CHATS")),
       rate_limit: String.to_integer(System.get_env("TELEGRAM_RATE_LIMIT") || "30"),
       command_timeout: String.to_integer(System.get_env("TELEGRAM_COMMAND_TIMEOUT") || "5000")
     ]

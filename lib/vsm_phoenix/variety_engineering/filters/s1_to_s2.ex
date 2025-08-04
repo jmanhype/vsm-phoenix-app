@@ -116,8 +116,12 @@ defmodule VsmPhoenix.VarietyEngineering.Filters.S1ToS2 do
   end
   
   # Handle other S1 message formats
-  def handle_info({topic, message}, state) when is_binary(topic) and String.contains?(topic, "system1") do
-    handle_info({:system1_event, normalize_message(message)}, state)
+  def handle_info({topic, message}, state) when is_binary(topic) do
+    if String.contains?(topic, "system1") do
+      handle_info({:system1_event, normalize_message(message)}, state)
+    else
+      {:noreply, state}
+    end
   end
   
   def handle_info(_, state), do: {:noreply, state}

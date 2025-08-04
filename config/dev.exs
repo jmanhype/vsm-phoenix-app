@@ -61,10 +61,18 @@ config :vsm_phoenix, VsmPhoenixWeb.Endpoint,
 # Watch static and templates for browser reloading.
 config :vsm_phoenix, VsmPhoenixWeb.Endpoint,
   live_reload: [
+    notify: [
+      live_view: [
+        ~r"lib/vsm_phoenix_web/core_components.ex$",
+        ~r"lib/vsm_phoenix_web/(live|components)/.*\.(ex|heex)$"
+      ]
+    ],
     patterns: [
-      ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
-      ~r"priv/gettext/.*(po)$",
-      ~r"lib/vsm_phoenix_web/(controllers|live|components)/.*(ex|heex)$"
+      ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$",
+      ~r"lib/vsm_phoenix_web/controllers/.*\.(ex|heex)$",
+      ~r"lib/vsm_phoenix_web/core_components.ex$",
+      ~r"lib/vsm_phoenix_web/(live|components)/.*\.(ex|heex)$",
+      ~r"priv/gettext/.*(po)$"
     ]
   ]
 
@@ -128,6 +136,16 @@ config :vsm_phoenix, :vsm,
     health_check_interval: 15_000,  # 15 seconds
     max_processing_time: 2_000,  # 2 seconds for debug
     customer_response_target: 1_000  # 1 second for debug
+  ],
+  
+  # Telegram bot configuration
+  telegram: [
+    bot_token: System.get_env("TELEGRAM_BOT_TOKEN"),
+    webhook_mode: false,
+    authorized_chats: [],
+    admin_chats: [],
+    rate_limit: 30,
+    command_timeout: 5000
   ]
 
 # Disable Quantum in development to avoid interference

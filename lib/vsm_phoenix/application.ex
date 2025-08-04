@@ -107,6 +107,9 @@ defmodule VsmPhoenix.Application do
       # System 1 - Operational Contexts (depends on System 2)
       VsmPhoenix.System1.Operations,
       
+      # Auto-spawn Telegram bot if configured
+      {VsmPhoenix.System1.TelegramInit, []},
+      
       # Variety Engineering - Implements Ashby's Law across VSM hierarchy
       VsmPhoenix.VarietyEngineering.Supervisor,
       
