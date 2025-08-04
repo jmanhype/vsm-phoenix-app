@@ -27,6 +27,9 @@ defmodule VsmPhoenix.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: VsmPhoenix.PubSub},
       
+      # Start Event Processing System
+      VsmPhoenix.Events.Supervisor,
+      
       # Start the Endpoint (http/https)
       VsmPhoenixWeb.Endpoint,
       
@@ -35,6 +38,9 @@ defmodule VsmPhoenix.Application do
       
       # Start Goldrush Manager with plugins
       VsmPhoenix.Goldrush.Manager,
+      
+      # Start LLM Client for AI integrations
+      VsmPhoenix.LLM.Client,
       
       # Start AMQP/RabbitMQ Supervisor
       VsmPhoenix.AMQP.Supervisor,
@@ -109,6 +115,9 @@ defmodule VsmPhoenix.Application do
       
       # Auto-spawn Telegram bot if configured
       {VsmPhoenix.System1.TelegramInit, []},
+      
+      # Machine Learning Engine - Advanced ML capabilities for VSM
+      VsmPhoenix.ML.Supervisor,
       
       # Variety Engineering - Implements Ashby's Law across VSM hierarchy
       VsmPhoenix.VarietyEngineering.Supervisor,

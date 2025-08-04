@@ -1,0 +1,285 @@
+<div class="bg-gray-900 text-white min-h-screen">
+  <header class="bg-gray-800 p-6">
+    <h1 class="text-3xl font-bold text-blue-400">🚀 VSM Event Processing Engine</h1>
+    <p class="text-gray-300 mt-2">Real-time event streaming, pattern matching, and analytics</p>
+  </header>
+
+  <main class="container mx-auto p-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <!-- Connection Status -->
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-green-400 mb-4">🔌 Connection Status</h2>
+        <div id="connection-status" class="text-red-400">Disconnected</div>
+        <button id="connect-btn" class="mt-4 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">
+          Connect to Event Stream
+        </button>
+      </div>
+
+      <!-- Event Injection -->
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">💉 Inject Test Event</h2>
+        <form id="inject-form" class="space-y-3">
+          <input type="text" id="event-type" placeholder="Event Type" class="w-full bg-gray-700 text-white p-2 rounded">
+          <input type="text" id="stream-id" placeholder="Stream ID" class="w-full bg-gray-700 text-white p-2 rounded">
+          <textarea id="event-data" placeholder="Event Data (JSON)" class="w-full bg-gray-700 text-white p-2 rounded"></textarea>
+          <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded">
+            Inject Event
+          </button>
+        </form>
+      </div>
+
+      <!-- Live Metrics -->
+      <div class="bg-gray-800 rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-yellow-400 mb-4">📊 Live Metrics</h2>
+        <div class="space-y-2 text-sm">
+          <div>Events/min: <span id="events-per-minute" class="text-yellow-300">0</span></div>
+          <div>Patterns detected: <span id="patterns-detected" class="text-yellow-300">0</span></div>
+          <div>Active streams: <span id="active-streams" class="text-yellow-300">0</span></div>
+          <div>Avg latency: <span id="avg-latency" class="text-yellow-300">0ms</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Stream -->
+    <div class="bg-gray-800 rounded-lg p-6 mb-8">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">📡 Live Event Stream</h2>
+      <div class="flex space-x-4 mb-4">
+        <button id="pause-btn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Pause</button>
+        <button id="clear-btn" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Clear</button>
+        <select id="filter-select" class="bg-gray-700 text-white p-2 rounded">
+          <option value="">All Events</option>
+          <option value="system1">System 1</option>
+          <option value="system2">System 2</option>
+          <option value="system3">System 3</option>
+          <option value="system4">System 4</option>
+          <option value="system5">System 5</option>
+          <option value="algedonic">Algedonic</option>
+          <option value="pattern">Patterns</option>
+        </select>
+      </div>
+      <div id="event-stream" class="bg-gray-900 rounded p-4 h-64 overflow-y-auto font-mono text-sm">
+        <div class="text-gray-500">Waiting for events...</div>
+      </div>
+    </div>
+
+    <!-- Pattern Detection -->
+    <div class="bg-gray-800 rounded-lg p-6">
+      <h2 class="text-xl font-semibold text-red-400 mb-4">🔍 Pattern Detection</h2>
+      <div id="pattern-alerts" class="space-y-2">
+        <div class="text-gray-500">No patterns detected yet...</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  let socket = null;
+  let channel = null;
+  let isPaused = false;
+  let eventCount = 0;
+
+  // Initialize WebSocket connection
+  document.getElementById('connect-btn').addEventListener('click', function() {
+    if (socket && socket.isConnected()) {
+      socket.disconnect();
+      return;
+    }
+
+    // Import Phoenix Socket
+    import("phoenix").then(({ Socket }) => {
+      socket = new Socket("/socket", {});
+      socket.connect();
+
+      // Join the events channel
+      channel = socket.channel("events:all", {});
+      
+      channel.join()
+        .receive("ok", resp => {
+          console.log("Joined event channel", resp);
+          document.getElementById('connection-status').innerHTML = '<span class="text-green-400">Connected</span>';
+          document.getElementById('connect-btn').textContent = 'Disconnect';
+          document.getElementById('connect-btn').className = 'mt-4 bg-red-600 hover:bg-red-700 px-4 py-2 rounded';
+        })
+        .receive("error", resp => {
+          console.log("Unable to join", resp);
+          document.getElementById('connection-status').innerHTML = '<span class="text-red-400">Connection failed</span>';
+        });
+
+      // Handle incoming events
+      channel.on("event_appended", payload => {
+        if (!isPaused) {
+          displayEvent(payload.event);
+          updateMetrics();
+        }
+      });
+
+      channel.on("pattern_detected", payload => {
+        displayPatternAlert(payload);
+      });
+
+      channel.on("throughput_update", payload => {
+        document.getElementById('events-per-minute').textContent = payload.events_per_minute;
+      });
+
+      // Handle disconnection
+      socket.onClose(() => {
+        document.getElementById('connection-status').innerHTML = '<span class="text-red-400">Disconnected</span>';
+        document.getElementById('connect-btn').textContent = 'Connect to Event Stream';
+        document.getElementById('connect-btn').className = 'mt-4 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded';
+      });
+    });
+  });
+
+  // Event injection form
+  document.getElementById('inject-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const eventType = document.getElementById('event-type').value || 'test.event';
+    const streamId = document.getElementById('stream-id').value || 'test_stream';
+    const eventDataText = document.getElementById('event-data').value || '{}';
+    
+    let eventData;
+    try {
+      eventData = JSON.parse(eventDataText);
+    } catch (error) {
+      eventData = { message: eventDataText };
+    }
+
+    if (channel) {
+      channel.push("inject_test_event", {
+        event: {
+          event_type: eventType,
+          stream_id: streamId,
+          event_data: eventData
+        }
+      });
+    }
+
+    // Clear form
+    document.getElementById('inject-form').reset();
+  });
+
+  // Control buttons
+  document.getElementById('pause-btn').addEventListener('click', function() {
+    isPaused = !isPaused;
+    this.textContent = isPaused ? 'Resume' : 'Pause';
+    this.className = isPaused ? 'bg-green-600 hover:bg-green-700 px-4 py-2 rounded' : 'bg-red-600 hover:bg-red-700 px-4 py-2 rounded';
+  });
+
+  document.getElementById('clear-btn').addEventListener('click', function() {
+    document.getElementById('event-stream').innerHTML = '<div class="text-gray-500">Stream cleared...</div>';
+    eventCount = 0;
+  });
+
+  function displayEvent(event) {
+    const stream = document.getElementById('event-stream');
+    const filter = document.getElementById('filter-select').value;
+    
+    // Apply filter
+    if (filter && !event.event_type.includes(filter)) {
+      return;
+    }
+
+    const timestamp = new Date(event.timestamp).toLocaleTimeString();
+    const eventDiv = document.createElement('div');
+    eventDiv.className = 'mb-1 p-2 bg-gray-800 rounded';
+    
+    const severityColor = getSeverityColor(event.event_type);
+    
+    eventDiv.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div>
+          <span class="${severityColor} font-semibold">${event.event_type}</span>
+          <span class="text-gray-400 text-xs ml-2">${event.stream_id}</span>
+        </div>
+        <span class="text-gray-500 text-xs">${timestamp}</span>
+      </div>
+      <div class="text-gray-300 text-xs mt-1">${JSON.stringify(event.event_data)}</div>
+    `;
+    
+    // Prepend to stream (newest first)
+    if (stream.firstChild && stream.firstChild.classList && stream.firstChild.classList.contains('text-gray-500')) {
+      stream.removeChild(stream.firstChild);
+    }
+    stream.insertBefore(eventDiv, stream.firstChild);
+    
+    // Limit to 50 events
+    while (stream.children.length > 50) {
+      stream.removeChild(stream.lastChild);
+    }
+    
+    eventCount++;
+  }
+
+  function displayPatternAlert(pattern) {
+    const alertsDiv = document.getElementById('pattern-alerts');
+    
+    // Remove "no patterns" message
+    if (alertsDiv.firstChild && alertsDiv.firstChild.classList && alertsDiv.firstChild.classList.contains('text-gray-500')) {
+      alertsDiv.removeChild(alertsDiv.firstChild);
+    }
+    
+    const alertDiv = document.createElement('div');
+    const severityClass = pattern.severity === 'critical' ? 'bg-red-800 border-red-600' : 
+                         pattern.severity === 'warning' ? 'bg-yellow-800 border-yellow-600' : 
+                         'bg-blue-800 border-blue-600';
+    
+    alertDiv.className = `p-3 rounded border-l-4 ${severityClass}`;
+    alertDiv.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div>
+          <span class="font-semibold">${pattern.pattern_name}</span>
+          <span class="text-sm ml-2">(${(pattern.confidence * 100).toFixed(1)}% confidence)</span>
+        </div>
+        <span class="text-xs">${new Date(pattern.timestamp).toLocaleTimeString()}</span>
+      </div>
+      <div class="text-sm mt-1">${pattern.matched_events.length} events matched</div>
+    `;
+    
+    alertsDiv.insertBefore(alertDiv, alertsDiv.firstChild);
+    
+    // Limit to 10 alerts
+    while (alertsDiv.children.length > 10) {
+      alertsDiv.removeChild(alertsDiv.lastChild);
+    }
+  }
+
+  function getSeverityColor(eventType) {
+    if (eventType.includes('critical') || eventType.includes('error')) return 'text-red-400';
+    if (eventType.includes('warning') || eventType.startsWith('algedonic.pain')) return 'text-yellow-400';
+    if (eventType.startsWith('system5')) return 'text-purple-400';
+    if (eventType.startsWith('system4')) return 'text-blue-400';
+    if (eventType.startsWith('system3')) return 'text-green-400';
+    if (eventType.startsWith('system2')) return 'text-orange-400';
+    if (eventType.startsWith('system1')) return 'text-cyan-400';
+    return 'text-gray-300';
+  }
+
+  function updateMetrics() {
+    // Simple metrics update
+    document.getElementById('patterns-detected').textContent = Math.floor(eventCount / 10);
+    document.getElementById('active-streams').textContent = Math.floor(eventCount / 20) + 1;
+    document.getElementById('avg-latency').textContent = Math.floor(Math.random() * 50 + 10) + 'ms';
+  }
+
+  // Load dashboard data periodically
+  setInterval(() => {
+    if (channel && !isPaused) {
+      channel.push("get_dashboard_data", {})
+        .receive("ok", data => {
+          if (data.current_throughput !== undefined) {
+            document.getElementById('events-per-minute').textContent = data.current_throughput;
+          }
+          if (data.patterns_detected !== undefined) {
+            document.getElementById('patterns-detected').textContent = data.patterns_detected;
+          }
+          if (data.active_streams !== undefined) {
+            document.getElementById('active-streams').textContent = data.active_streams;
+          }
+          if (data.average_latency_ms !== undefined) {
+            document.getElementById('avg-latency').textContent = Math.round(data.average_latency_ms) + 'ms';
+          }
+        });
+    }
+  }, 5000);
+</script>

@@ -207,24 +207,149 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
     Logger.info("🤖 LLM analyzing prompt: #{prompt}")
     Logger.info("📊 Context: #{inspect(context)}")
     
-    # Use LLM to analyze and execute
-    case LLMBridge.analyze_task(prompt, context, state.mcp_client) do
-      {:ok, %{action: :execute_tool, tool_calls: tool_calls}} ->
-        execute_tools(tool_calls, state)
+    # Use real LLM client for analysis
+    case VsmPhoenix.LLM.Client.complete(prompt, provider: :auto, max_tokens: 1024) do
+      {:ok, %{content: llm_response}} ->
+        Logger.info("🧠 LLM response received: #{String.slice(llm_response, 0, 100)}...")
         
-      {:ok, %{action: :spawn_agents, spawn_config: config}} ->
-        spawn_agents(config, state)
+        # Parse LLM response to determine actions
+        case parse_llm_response(llm_response, context) do
+          {:ok, %{action: :execute_tool, tool_calls: tool_calls}} ->
+            execute_tools(tool_calls, state)
+            
+          {:ok, %{action: :spawn_agents, spawn_config: config}} ->
+            spawn_agents(config, state)
+            
+          {:ok, %{action: :both, tool_calls: tool_calls, spawn_config: spawn_config}} ->
+            tool_results = execute_tools(tool_calls, state)
+            spawn_results = spawn_agents(spawn_config, state)
+            {:ok, %{tools: tool_results, agents: spawn_results}}
+            
+          {:ok, %{action: :direct_response, response: response}} ->
+            {:ok, %{type: "llm_response", content: response, source: "real_llm"}}
+            
+          {:error, reason} ->
+            Logger.error("❌ Failed to parse LLM response: #{inspect(reason)}")
+            {:ok, %{type: "llm_response", content: llm_response, source: "real_llm", raw: true}}
+        end
         
-      {:ok, %{action: :both, tool_calls: tool_calls, spawn_config: spawn_config}} ->
-        tool_results = execute_tools(tool_calls, state)
-        spawn_results = spawn_agents(spawn_config, state)
-        {:ok, %{tools: tool_results, agents: spawn_results}}
+      {:error, reason} ->
+        Logger.error("❌ LLM request failed: #{inspect(reason)}")
         
-      error ->
-        error
+        # Fallback to MCP bridge if LLM fails
+        case LLMBridge.analyze_task(prompt, context, state.mcp_client) do
+          {:ok, result} -> 
+            Logger.info("📡 Fallback to MCP bridge successful")
+            result
+          error -> 
+            Logger.error("❌ Both LLM and MCP bridge failed")
+            error
+        end
     end
   end
   
+  defp parse_llm_response(llm_response, context) do
+    # Try to parse structured JSON response first
+    case Jason.decode(llm_response) do
+      {:ok, %{"action" => action_type} = parsed} ->
+        case action_type do
+          "execute_tool" ->
+            tool_calls = Map.get(parsed, "tool_calls", [])
+            {:ok, %{action: :execute_tool, tool_calls: tool_calls}}
+            
+          "spawn_agents" ->
+            spawn_config = Map.get(parsed, "spawn_config", %{})
+            {:ok, %{action: :spawn_agents, spawn_config: spawn_config}}
+            
+          "both" ->
+            tool_calls = Map.get(parsed, "tool_calls", [])
+            spawn_config = Map.get(parsed, "spawn_config", %{})
+            {:ok, %{action: :both, tool_calls: tool_calls, spawn_config: spawn_config}}
+            
+          _ ->
+            {:ok, %{action: :direct_response, response: llm_response}}
+        end
+        
+      {:ok, _other_json} ->
+        # Valid JSON but not in expected format
+        {:ok, %{action: :direct_response, response: llm_response}}
+        
+      {:error, _} ->
+        # Not JSON, analyze text for patterns
+        response_lower = String.downcase(llm_response)
+        
+        cond do
+          String.contains?(response_lower, ["execute", "run", "call"]) and 
+          String.contains?(response_lower, ["tool", "function"]) ->
+            # Extract potential tool calls from natural language
+            tool_calls = extract_tool_calls_from_text(llm_response)
+            {:ok, %{action: :execute_tool, tool_calls: tool_calls}}
+            
+          String.contains?(response_lower, ["spawn", "create", "start"]) and
+          String.contains?(response_lower, ["agent", "worker"]) ->
+            # Extract agent spawn configuration
+            spawn_config = extract_spawn_config_from_text(llm_response, context)
+            {:ok, %{action: :spawn_agents, spawn_config: spawn_config}}
+            
+          true ->
+            {:ok, %{action: :direct_response, response: llm_response}}
+        end
+    end
+  end
+
+  defp extract_tool_calls_from_text(text) do
+    # Simple pattern matching to extract tool calls from natural language
+    # This is a basic implementation - could be enhanced with more sophisticated NLP
+    
+    potential_tools = [
+      {"file", ["read", "write", "create", "delete", "list"]},
+      {"search", ["find", "search", "query", "lookup"]},
+      {"web", ["fetch", "download", "scrape", "get"]},
+      {"system", ["execute", "run", "command", "shell"]},
+      {"data", ["analyze", "process", "transform", "parse"]}
+    ]
+    
+    text_lower = String.downcase(text)
+    
+    Enum.flat_map(potential_tools, fn {tool_type, keywords} ->
+      if Enum.any?(keywords, &String.contains?(text_lower, &1)) do
+        [%{
+          "name" => tool_type,
+          "arguments" => %{
+            "task" => String.slice(text, 0, 200),
+            "extracted_from" => "natural_language"
+          }
+        }]
+      else
+        []
+      end
+    end)
+  end
+
+  defp extract_spawn_config_from_text(text, context) do
+    # Extract agent spawning configuration from natural language
+    text_lower = String.downcase(text)
+    
+    agent_count = cond do
+      String.contains?(text_lower, ["many", "multiple", "several"]) -> 3
+      String.contains?(text_lower, ["few", "couple"]) -> 2
+      true -> 1
+    end
+    
+    agent_types = cond do
+      String.contains?(text_lower, ["specialist", "expert"]) -> ["specialist"]
+      String.contains?(text_lower, ["worker", "generic"]) -> ["worker"]
+      true -> ["worker"]
+    end
+    
+    %{
+      "agent_count" => agent_count,
+      "agent_types" => agent_types,
+      "purpose" => String.slice(text, 0, 100),
+      "context" => context
+    }
+  end
+
   defp execute_tools(tool_calls, state) do
     Logger.info("🔧 Executing #{length(tool_calls)} tool calls")
     

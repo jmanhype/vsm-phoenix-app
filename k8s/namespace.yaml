@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vsm-phoenix
+  labels:
+    name: vsm-phoenix
+    environment: production
+    app: vsm-phoenix

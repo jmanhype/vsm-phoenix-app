@@ -57,10 +57,56 @@ defmodule VsmPhoenix.MixProject do
       {:meck, "~> 0.9", only: :test},
       {:httpoison, "~> 2.0"},
       
+      # Security dependencies
+      {:guardian, "~> 2.3"},
+      {:guardian_phoenix, "~> 2.0"},
+      {:bcrypt_elixir, "~> 3.0"},
+      {:cors_plug, "~> 3.0"},
+      {:hammer, "~> 6.0"},
+      {:comeonin, "~> 5.3"},
+      {:argon2_elixir, "~> 3.0"},
+      {:ex_json_schema, "~> 0.9"},
+      {:html_sanitize_ex, "~> 1.4"},
+      {:secure_random, "~> 0.5"},
+      {:plug_attack, "~> 0.4"},
+      {:recaptcha, "~> 3.0"},
+      {:guardian_db, "~> 2.1"},
+      
+      # LLM API integrations - Production Ready
+      {:openai, "~> 0.6.0"},
+      {:anthropic, "~> 0.2.0"},
+      {:req, "~> 0.5.10"},
+      {:tesla, "~> 1.8"},
+      {:retry, "~> 0.18.0"},
+      
+      # Event Processing Dependencies
+      {:broadway, "~> 1.0"},
+      {:gen_stage, "~> 1.2"},
+      {:flow, "~> 1.2"},
+      {:eventstore, "~> 1.4"},
+      {:timex, "~> 3.7"},
+      {:kafka_ex, "~> 0.13"},
+      {:redix, "~> 1.2"},
+      
       # Benchmarking dependencies
       {:benchee, "~> 1.3", only: [:dev, :test]},
       {:benchee_html, "~> 1.0", only: [:dev, :test]},
-      {:benchee_json, "~> 1.0", only: [:dev, :test]}
+      {:benchee_json, "~> 1.0", only: [:dev, :test]},
+      
+      # Machine Learning dependencies
+      {:nx, "~> 0.9"},
+      {:axon, "~> 0.7"},
+      {:exla, "~> 0.9"},
+      {:scidata, "~> 0.1"},
+      {:scholar, "~> 0.3"},
+      {:polaris, "~> 0.1"},
+      {:table_rex, "~> 3.1.1"},
+      {:kino, "~> 0.14", only: [:dev, :test]},
+      {:kino_vega_lite, "~> 0.1", only: [:dev, :test]},
+      {:vega_lite, "~> 0.1"},
+      {:nx_signal, "~> 0.2"},
+      {:bumblebee, "~> 0.5"},
+      {:torchx, "~> 0.7", optional: true}
     ]
   end
 

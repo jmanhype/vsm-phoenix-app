@@ -117,6 +117,19 @@ config :vsm_phoenix, :vsm,
     command_timeout: 5_000  # 5 seconds
   ]
 
+# LLM Integration Configuration
+config :vsm_phoenix, :openai,
+  api_key: System.get_env("OPENAI_API_KEY"),
+  model: "gpt-4-turbo-preview",
+  base_url: "https://api.openai.com/v1",
+  timeout: 30_000
+
+config :vsm_phoenix, :anthropic,
+  api_key: System.get_env("ANTHROPIC_API_KEY"),
+  model: "claude-3-opus-20240229",
+  base_url: "https://api.anthropic.com/v1",
+  timeout: 30_000
+
 # Tidewave Integration Configuration (if available)
 config :tidewave,
   endpoint: "http://localhost:4000",

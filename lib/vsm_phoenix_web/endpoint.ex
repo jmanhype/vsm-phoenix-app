@@ -15,6 +15,11 @@ defmodule VsmPhoenixWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
 
+  # Event Processing WebSocket
+  socket "/socket", VsmPhoenixWeb.UserSocket,
+    websocket: true,
+    longpoll: false
+
   # Serve at "/" the static files from "priv/static" directory.
   plug Plug.Static,
     at: "/",

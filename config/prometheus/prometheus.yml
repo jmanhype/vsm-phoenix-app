@@ -1,0 +1,119 @@
+# Prometheus configuration for VSM Phoenix monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'vsm-phoenix'
+    environment: 'production'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "rules/*.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape
+scrape_configs:
+  # VSM Phoenix Application Metrics
+  - job_name: 'vsm-phoenix-app'
+    static_configs:
+      - targets: ['vsm-phoenix:9090']
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+    scheme: 'http'
+    scrape_timeout: 5s
+    honor_labels: true
+    params:
+      format: ['prometheus']
+
+  # Phoenix LiveView and Telemetry Metrics
+  - job_name: 'phoenix-telemetry'
+    static_configs:
+      - targets: ['vsm-phoenix:4000']
+    scrape_interval: 15s
+    metrics_path: '/telemetry/metrics'
+    scheme: 'http'
+
+  # PostgreSQL Database Metrics (requires postgres_exporter)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+
+  # RabbitMQ Metrics
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+
+  # Redis Metrics (requires redis_exporter)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  # Nginx Metrics (requires nginx-prometheus-exporter)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:9113']
+    scrape_interval: 15s
+
+  # System/Node Metrics (requires node_exporter)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # Self-monitoring - Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+
+  # VSM-Specific Metrics
+  - job_name: 'vsm-systems'
+    static_configs:
+      - targets: ['vsm-phoenix:4000']
+    scrape_interval: 10s
+    metrics_path: '/api/vsm/metrics'
+    scheme: 'http'
+    params:
+      format: ['prometheus']
+
+  # ML Model Performance Metrics
+  - job_name: 'ml-models'
+    static_configs:
+      - targets: ['vsm-phoenix:4000']
+    scrape_interval: 30s
+    metrics_path: '/api/ml/metrics'
+    scheme: 'http'
+
+  # Chaos Engineering Metrics
+  - job_name: 'chaos-engineering'
+    static_configs:
+      - targets: ['vsm-phoenix:4000']
+    scrape_interval: 15s
+    metrics_path: '/api/chaos/metrics'
+    scheme: 'http'
+
+  # Quantum Variety Metrics
+  - job_name: 'quantum-metrics'
+    static_configs:
+      - targets: ['vsm-phoenix:4000']
+    scrape_interval: 15s
+    metrics_path: '/api/quantum/metrics'
+    scheme: 'http'
+
+  # Security Audit Metrics
+  - job_name: 'security-audit'
+    static_configs:
+      - targets: ['vsm-phoenix:4000']
+    scrape_interval: 60s
+    metrics_path: '/api/security/metrics'
+    scheme: 'http'

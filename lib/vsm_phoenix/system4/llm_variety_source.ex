@@ -33,23 +33,29 @@ defmodule VsmPhoenix.System4.LLMVarietySource do
           {:ok, variety_expansion}
           
         {:error, _mcp_error} ->
-          # Fallback to direct Claude API
-          Logger.info("📡 Falling back to direct LLM API")
+          # Fallback to direct LLM API with advanced analysis
+          Logger.info("📡 Falling back to direct LLM API with advanced variety analysis")
           
-          prompt = build_variety_prompt(context)
-          
-          case call_claude(prompt) do
-            {:ok, insights} ->
-              # This is where the magic happens - LLM creates NEW variety
-              variety_expansion = %{
-                novel_patterns: extract_patterns(insights),
-                emergent_properties: identify_emergence(insights),
-                recursive_potential: find_recursive_opportunities(insights),
-                meta_system_seeds: generate_meta_seeds(insights)
-              }
-              
-              Logger.info("LLM discovered #{map_size(variety_expansion.novel_patterns)} new patterns!")
-              {:ok, variety_expansion}
+          case VsmPhoenix.LLM.Client.analyze_variety(context, provider: :claude, temperature: 0.9) do
+            {:ok, %{content: insights}} ->
+              # Parse LLM insights into structured variety expansion
+              case parse_variety_insights(insights) do
+                {:ok, variety_expansion} ->
+                  Logger.info("🔥 LLM discovered variety: #{inspect(Map.keys(variety_expansion))}")
+                  {:ok, variety_expansion}
+                {:error, _parse_error} ->
+                  # Fallback to basic pattern extraction
+                  variety_expansion = %{
+                    novel_patterns: extract_patterns(insights),
+                    emergent_properties: identify_emergence(insights),
+                    recursive_potential: find_recursive_opportunities(insights),
+                    meta_system_seeds: generate_meta_seeds(insights),
+                    raw_insights: insights
+                  }
+                  
+                  Logger.info("LLM discovered #{map_size(variety_expansion.novel_patterns)} new patterns!")
+                  {:ok, variety_expansion}
+              end
               
             {:error, reason} ->
               Logger.error("LLM variety generation failed: #{inspect(reason)}")
@@ -152,32 +158,38 @@ defmodule VsmPhoenix.System4.LLMVarietySource do
     """
   end
   
-  defp call_claude(prompt) do
-    # Real Claude API call for variety generation
-    url = "https://api.anthropic.com/v1/messages"
-    
-    headers = [
-      {"x-api-key", @anthropic_api_key},
-      {"anthropic-version", "2023-06-01"},
-      {"content-type", "application/json"}
-    ]
-    
-    body = Jason.encode!(%{
-      model: "claude-3-opus-20240229",
-      max_tokens: 1024,
-      messages: [
-        %{role: "user", content: prompt}
-      ]
-    })
-    
-    case :hackney.post(url, headers, body, []) do
-      {:ok, 200, _headers, response_ref} ->
-        {:ok, body} = :hackney.body(response_ref)
-        {:ok, parsed} = Jason.decode(body)
-        {:ok, parsed["content"]["text"]}
+  defp parse_variety_insights(insights) do
+    # Try to parse JSON response from LLM
+    case Jason.decode(insights) do
+      {:ok, %{"novel_patterns" => patterns} = parsed} ->
+        variety_expansion = %{
+          novel_patterns: patterns,
+          emergent_properties: Map.get(parsed, "emergent_properties", %{}),
+          recursive_potential: Map.get(parsed, "recursive_potential", []),
+          variety_amplification: Map.get(parsed, "variety_amplification", %{}),
+          environmental_coupling: Map.get(parsed, "environmental_coupling", %{}),
+          meta_system_seeds: Map.get(parsed, "meta_system_seeds", %{})
+        }
+        {:ok, variety_expansion}
         
-      error ->
-        {:error, error}
+      {:ok, _other_structure} ->
+        # Valid JSON but not in expected format, extract patterns manually
+        {:error, :unexpected_json_structure}
+        
+      {:error, _json_error} ->
+        # Not JSON, treat as natural language and extract patterns
+        {:error, :not_json}
+    end
+  end
+
+  defp call_claude(prompt) do
+    # Use the unified LLM client for real API calls
+    case VsmPhoenix.LLM.Client.complete(prompt, provider: :claude, max_tokens: 2048, temperature: 0.8) do
+      {:ok, %{content: content}} ->
+        {:ok, content}
+      {:error, reason} ->
+        Logger.error("Claude API call failed: #{inspect(reason)}")
+        {:error, reason}
     end
   end
   

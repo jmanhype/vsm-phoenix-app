@@ -1,0 +1,189 @@
+<div class="min-h-screen bg-gray-900 text-white">
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="text-4xl font-bold text-center mb-2">VSM Events Dashboard</h1>
+      <p class="text-gray-400 text-center">Real-time Event Processing & Analytics Engine</p>
+    </div>
+
+    <!-- System Health Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div class="bg-gray-800 rounded-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-400 text-sm">System Health</p>
+            <p class="text-2xl font-bold text-green-400"><%= @dashboard.system_health %></p>
+          </div>
+          <div class="text-green-400">
+            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-400 text-sm">Events/sec</p>
+            <p class="text-2xl font-bold text-blue-400"><%= @dashboard.throughput.events_per_second %></p>
+          </div>
+          <div class="text-blue-400">
+            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-400 text-sm">Avg Latency</p>
+            <p class="text-2xl font-bold text-yellow-400"><%= @dashboard.latency.average_ms %>ms</p>
+          </div>
+          <div class="text-yellow-400">
+            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-400 text-sm">Patterns Detected</p>
+            <p class="text-2xl font-bold text-purple-400"><%= @dashboard.patterns.total_count %></p>
+          </div>
+          <div class="text-purple-400">
+            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Algedonic Balance Monitor -->
+    <%= if @dashboard.algedonic_balance do %>
+      <div class="bg-gray-800 rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4">Algedonic Balance Monitor</h2>
+        <div class="space-y-3">
+          <div class="flex justify-between">
+            <span class="text-gray-300">Balance Score</span>
+            <span class={"text-lg font-bold #{if @dashboard.algedonic_balance.balance_score >= 0, do: "text-green-400", else: "text-red-400"}"}>
+              <%= @dashboard.algedonic_balance.balance_score %>
+            </span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-300">Pain Signals</span>
+            <span class="text-red-400"><%= @dashboard.algedonic_balance.pain_count %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-300">Pleasure Signals</span>
+            <span class="text-green-400"><%= @dashboard.algedonic_balance.pleasure_count %></span>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Real-time Events Stream -->
+    <div class="bg-gray-800 rounded-lg p-6 mb-8">
+      <h2 class="text-xl font-bold mb-4">Live Event Stream</h2>
+      <div class="space-y-2" id="live-events" phx-hook="LiveEvents">
+        <%= for event <- @dashboard.live_events do %>
+          <div class="flex items-center justify-between py-2 px-3 bg-gray-700 rounded">
+            <div class="flex items-center space-x-3">
+              <span class={"w-2 h-2 rounded-full #{event_color(event.type)}"}>
+              </span>
+              <span class="text-sm font-medium"><%= event.type %></span>
+              <span class="text-xs text-gray-400"><%= event.source %></span>
+            </div>
+            <div class="text-xs text-gray-500">
+              <%= Calendar.strftime(event.timestamp, "%H:%M:%S") %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Performance Trends -->
+    <div class="bg-gray-800 rounded-lg p-6">
+      <h2 class="text-xl font-bold mb-4">Performance Trends</h2>
+      <div class="space-y-4">
+        <%= for trend <- @dashboard.performance_trends do %>
+          <div class="flex items-center justify-between py-3 px-4 bg-gray-700 rounded">
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="text-sm font-medium"><%= trend.metric %></span>
+                <span class="text-xs text-gray-500">
+                  <%= Calendar.strftime(trend.timestamp, "%H:%M:%S") %>
+                </span>
+              </div>
+              <div class="flex items-center mt-1">
+                <span class={"text-sm #{trend_color(trend.direction)}"}>
+                  <%= trend.value %>
+                </span>
+                <span class={"ml-2 text-xs #{trend_color(trend.direction)}"}>
+                  <%= trend.change %>
+                </span>
+              </div>
+            </div>
+            <div class={"text-2xl #{trend_color(trend.direction)}"}>
+              <%= trend_icon(trend.direction) %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // WebSocket connection for real-time updates
+  window.addEventListener("DOMContentLoaded", function() {
+    const socket = new WebSocket("ws://localhost:4000/socket/websocket");
+    
+    socket.onopen = function(event) {
+      console.log("Connected to VSM Events WebSocket");
+      socket.send(JSON.stringify({
+        topic: "events:all",
+        event: "phx_join",
+        payload: {},
+        ref: "1"
+      }));
+    };
+    
+    socket.onmessage = function(event) {
+      const data = JSON.parse(event.data);
+      if (data.event === "live_event") {
+        updateLiveEvents(data.payload);
+      }
+    };
+    
+    function updateLiveEvents(eventData) {
+      const container = document.getElementById("live-events");
+      if (container) {
+        const eventDiv = document.createElement("div");
+        eventDiv.className = "flex items-center justify-between py-2 px-3 bg-gray-700 rounded";
+        eventDiv.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+            <span class="text-sm font-medium">${eventData.type}</span>
+            <span class="text-xs text-gray-400">${eventData.source}</span>
+          </div>
+          <div class="text-xs text-gray-500">
+            ${new Date().toLocaleTimeString()}
+          </div>
+        `;
+        
+        container.insertBefore(eventDiv, container.firstChild);
+        
+        // Keep only the latest 10 events
+        while (container.children.length > 10) {
+          container.removeChild(container.lastChild);
+        }
+      }
+    }
+  });
+</script>

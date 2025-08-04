@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vsm-phoenix-config
+  namespace: vsm-phoenix
+data:
+  MIX_ENV: "prod"
+  PORT: "4000"
+  PHX_HOST: "vsm-phoenix.example.com"
+  LOG_LEVEL: "info"
+  STRUCTURED_LOGGING: "true"
+  ENABLE_LLM_VARIETY: "true"
+  DISABLE_MCP_SERVERS: "false"
+  DISABLE_MAGG: "false"
+  CHAOS_ENGINEERING_ENABLED: "false"
+  QUANTUM_LOGIC_ENABLED: "true"
+  EMERGENT_INTELLIGENCE_ENABLED: "true"
+  META_VSM_ENABLED: "true"
+  ALGEDONIC_SYSTEM_ENABLED: "true"
+  ADVANCED_MONITORING_ENABLED: "true"
+  AUTO_SCALING_ENABLED: "true"
+  PROMETHEUS_ENABLED: "true"
+  TELEMETRY_ENABLED: "true"
+  TRACING_ENABLED: "true"
+  METRICS_ENABLED: "true"
