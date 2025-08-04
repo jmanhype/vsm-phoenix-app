@@ -15,7 +15,7 @@ defmodule VsmPhoenix.System5.Queen do
   alias VsmPhoenix.System4.Intelligence
   alias VsmPhoenix.System3.Control
   alias VsmPhoenix.System2.Coordinator
-  alias VsmPhoenix.System5.PolicySynthesizer
+  alias VsmPhoenix.System5.{PolicySynthesizer, EmergentPolicy}
   alias AMQP
   
   @name __MODULE__
@@ -67,6 +67,18 @@ defmodule VsmPhoenix.System5.Queen do
     GenServer.call(@name, {:synthesize_adaptive_policy, anomaly_data, constraints})
   end
   
+  def trigger_emergent_policy(context, constraints \\ %{}) do
+    GenServer.call(@name, {:trigger_emergent_policy, context, constraints})
+  end
+  
+  def evolve_policies do
+    GenServer.call(@name, :evolve_policies)
+  end
+  
+  def enable_collective_intelligence do
+    GenServer.cast(@name, :enable_collective_intelligence)
+  end
+  
   # Server Callbacks
   
   @impl true
@@ -92,7 +104,10 @@ defmodule VsmPhoenix.System5.Queen do
         identity_coherence: 1.0
       },
       decisions: [],
-      algedonic_signals: []
+      algedonic_signals: [],
+      emergent_policy_enabled: true,
+      collective_intelligence_active: false,
+      policy_evolution_generation: 1
     }
     
     # Schedule periodic viability checks
@@ -215,8 +230,17 @@ defmodule VsmPhoenix.System5.Queen do
   def handle_call({:synthesize_adaptive_policy, anomaly_data, constraints}, _from, state) do
     Logger.info("Queen: Synthesizing adaptive policy for anomaly")
     
-    # Use PolicySynthesizer for the actual synthesis
-    case PolicySynthesizer.synthesize_policy_from_anomaly(anomaly_data) do
+    # Check if emergent policy is enabled
+    synthesis_result = if state.emergent_policy_enabled do
+      # Use emergent policy synthesis with collective intelligence
+      Logger.info("🧬 Using emergent policy synthesis")
+      EmergentPolicy.generate_emergent_policy(anomaly_data, constraints)
+    else
+      # Fall back to traditional synthesis
+      PolicySynthesizer.synthesize_policy_from_anomaly(anomaly_data)
+    end
+    
+    case synthesis_result do
       {:ok, policy} ->
         # Apply constraints if any
         constrained_policy = apply_policy_constraints(policy, constraints)
@@ -226,6 +250,67 @@ defmodule VsmPhoenix.System5.Queen do
         new_state = %{state | policies: new_policies}
         
         {:reply, {:ok, constrained_policy}, new_state}
+        
+      error ->
+        {:reply, error, state}
+    end
+  end
+  
+  @impl true
+  def handle_call({:trigger_emergent_policy, context, constraints}, _from, state) do
+    Logger.info("Queen: Triggering emergent policy generation")
+    
+    case EmergentPolicy.generate_emergent_policy(context, constraints) do
+      {:ok, emergent_policy} ->
+        # Store the emergent policy
+        new_policies = Map.put(state.policies, emergent_policy.id, emergent_policy)
+        
+        # If collective intelligence is active, use it for validation
+        validated_policy = if state.collective_intelligence_active do
+          case EmergentPolicy.trigger_collective_intelligence(%{
+            type: :policy_validation,
+            policy: emergent_policy,
+            context: context
+          }) do
+            {:ok, decision} ->
+              if decision.consensus_level > 0.7 do
+                Map.put(emergent_policy, :validated, true)
+              else
+                Map.put(emergent_policy, :requires_review, true)
+              end
+            _ ->
+              emergent_policy
+          end
+        else
+          emergent_policy
+        end
+        
+        new_state = %{state | policies: new_policies}
+        {:reply, {:ok, validated_policy}, new_state}
+        
+      error ->
+        {:reply, error, state}
+    end
+  end
+  
+  @impl true
+  def handle_call(:evolve_policies, _from, state) do
+    Logger.info("Queen: Evolving policy population")
+    
+    case EmergentPolicy.evolve_policy_population() do
+      {:ok, evolution_result} ->
+        new_state = %{state | 
+          policy_evolution_generation: evolution_result.generation
+        }
+        
+        # Notify systems of evolution
+        Phoenix.PubSub.broadcast(
+          VsmPhoenix.PubSub,
+          "vsm:policy",
+          {:policy_evolution, evolution_result}
+        )
+        
+        {:reply, {:ok, evolution_result}, new_state}
         
       error ->
         {:reply, error, state}
@@ -340,7 +425,14 @@ defmodule VsmPhoenix.System5.Queen do
     
     # Trigger policy synthesis for anomaly
     spawn(fn ->
-      case PolicySynthesizer.synthesize_policy_from_anomaly(anomaly) do
+      # Use emergent policy if enabled
+      synthesis_result = if state.emergent_policy_enabled do
+        EmergentPolicy.generate_emergent_policy(anomaly, %{})
+      else
+        PolicySynthesizer.synthesize_policy_from_anomaly(anomaly)
+      end
+      
+      case synthesis_result do
         {:ok, policy} ->
           GenServer.cast(@name, {:apply_synthesized_policy, policy})
         {:error, _reason} ->
@@ -349,6 +441,19 @@ defmodule VsmPhoenix.System5.Queen do
     end)
     
     {:noreply, state}
+  end
+  
+  @impl true
+  def handle_cast(:enable_collective_intelligence, state) do
+    Logger.info("🧠 Queen: Enabling collective intelligence")
+    
+    # Trigger collective intelligence mode in emergent policy
+    EmergentPolicy.trigger_collective_intelligence(%{
+      type: :system_initialization,
+      queen_state: summarize_system_state(state)
+    })
+    
+    {:noreply, %{state | collective_intelligence_active: true}}
   end
   
   @impl true

@@ -85,8 +85,8 @@ defmodule VsmPhoenix.Application do
       
       # VSM System Hierarchy (start from top down for proper dependencies)
       
-      # System 5 - Queen Policy Governance (highest authority, starts first)
-      VsmPhoenix.System5.Queen,
+      # System 5 - Supervisor manages Queen and EmergentPolicy
+      VsmPhoenix.System5.Supervisor,
       
       # System 4 - Intelligence and Adaptation
       VsmPhoenix.System4.Intelligence,

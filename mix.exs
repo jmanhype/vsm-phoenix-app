@@ -55,7 +55,12 @@ defmodule VsmPhoenix.MixProject do
       {:hermes_mcp, github: "cloudwalk/hermes-mcp", branch: "main"},
       {:goldrush, github: "DeadZen/goldrush", branch: "develop-elixir", override: true},
       {:meck, "~> 0.9", only: :test},
-      {:httpoison, "~> 2.0"}
+      {:httpoison, "~> 2.0"},
+      
+      # Benchmarking dependencies
+      {:benchee, "~> 1.3", only: [:dev, :test]},
+      {:benchee_html, "~> 1.0", only: [:dev, :test]},
+      {:benchee_json, "~> 1.0", only: [:dev, :test]}
     ]
   end
 
@@ -68,7 +73,14 @@ defmodule VsmPhoenix.MixProject do
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind default", "esbuild default"],
-      "assets.deploy": ["tailwind default --minify", "esbuild default --minify", "phx.digest"]
+      "assets.deploy": ["tailwind default --minify", "esbuild default --minify", "phx.digest"],
+      
+      # Benchmarking aliases
+      benchmark: ["run benchmarks/run_benchmarks.exs"],
+      "benchmark.quick": ["run benchmarks/run_benchmarks.exs --profile quick"],
+      "benchmark.stress": ["run benchmarks/run_benchmarks.exs --profile stress"],
+      "benchmark.quantum": ["run benchmarks/run_benchmarks.exs --suite quantum"],
+      "benchmark.variety": ["run benchmarks/run_benchmarks.exs --suite variety"]
     ]
   end
 end

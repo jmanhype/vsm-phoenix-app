@@ -26,6 +26,7 @@ defmodule VsmPhoenixWeb.Router do
 
     live "/", VSMDashboardLive, :index
     live "/dashboard", VSMDashboardLive, :index
+    live "/audit", AuditLive, :index
   end
 
   # VSM API routes

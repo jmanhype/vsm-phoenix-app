@@ -30,11 +30,15 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:algedonic")
       Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm.registry.events")
       Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:amqp")
+      Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:variety")
+      Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:quantum")
       
-      # Schedule periodic updates
+      # Schedule periodic updates with different intervals
       :timer.send_interval(5000, self(), :update_dashboard)
       :timer.send_interval(1000, self(), :update_latency_metrics)
-    end
+      :timer.send_interval(100, self(), :update_realtime_flows)  # Very fast for animations
+      :timer.send_interval(2000, self(), :update_quantum_states)
+      :timer.send_interval(500, self(), :update_variety_flow)
     
     socket = 
       socket
@@ -53,6 +57,15 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
       |> assign(:audit_results, %{})
       |> assign(:algedonic_pulse_rates, %{})
       |> assign(:latency_metrics, %{avg: 0, p95: 0, p99: 0})
+      |> assign(:variety_flow, generate_initial_variety_flow())
+      |> assign(:quantum_states, %{})
+      |> assign(:flow_animations, %{})
+      |> assign(:topology_data, generate_topology_data())
+      |> assign(:heatmap_data, generate_initial_heatmap())
+      |> assign(:quantum_superpositions, [])
+      |> assign(:entanglement_pairs, [])
+      |> assign(:coherence_levels, %{})
+      |> assign(:wave_functions, %{})
       |> load_initial_data()
     
     # Send immediate update
@@ -77,6 +90,38 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
   @impl true
   def handle_info(:update_latency_metrics, socket) do
     socket = update_latency_metrics(socket)
+    {:noreply, socket}
+  end
+  
+  @impl true
+  def handle_info(:update_realtime_flows, socket) do
+    socket = update_realtime_flow_animations(socket)
+    {:noreply, push_event(socket, "update_flow_viz", %{flows: socket.assigns.flow_animations})}
+  end
+  
+  @impl true
+  def handle_info(:update_quantum_states, socket) do
+    socket = update_quantum_visualization(socket)
+    {:noreply, push_event(socket, "update_quantum_viz", %{states: socket.assigns.quantum_states})}
+  end
+  
+  @impl true
+  def handle_info(:update_variety_flow, socket) do
+    socket = update_variety_flow_data(socket)
+    {:noreply, push_event(socket, "update_variety_heatmap", %{data: socket.assigns.heatmap_data})}
+  end
+  
+  @impl true
+  def handle_info({:variety_absorption, level, amount}, socket) do
+    Logger.debug("Variety absorption at level #{level}: #{amount}")
+    socket = update_variety_metrics(socket, level, amount)
+    {:noreply, socket}
+  end
+  
+  @impl true
+  def handle_info({:quantum_collapse, state_id, result}, socket) do
+    Logger.info("Quantum state collapsed: #{state_id} -> #{result}")
+    socket = handle_quantum_collapse(socket, state_id, result)
     {:noreply, socket}
   end
   
@@ -211,6 +256,20 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
   @impl true
   def handle_event("clear_alerts", _params, socket) do
     socket = assign(socket, :alerts, [])
+    {:noreply, socket}
+  end
+  
+  @impl true
+  def handle_event("toggle_visualization", %{"viz_type" => viz_type}, socket) do
+    Logger.info("Toggling visualization: #{viz_type}")
+    {:noreply, push_event(socket, "toggle_viz", %{type: viz_type})}
+  end
+  
+  @impl true
+  def handle_event("observe_quantum_state", %{"state_id" => state_id}, socket) do
+    # Quantum observation causes wavefunction collapse
+    collapsed_state = collapse_quantum_state(state_id)
+    socket = update_quantum_after_observation(socket, state_id, collapsed_state)
     {:noreply, socket}
   end
   
@@ -896,6 +955,252 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
     ]
   end
   
+  defp generate_topology_data do
+    %{
+      nodes: [
+        %{id: "s5", label: "System 5 - Queen", level: 5, x: 400, y: 50, color: "#9333ea"},
+        %{id: "s4", label: "System 4 - Intelligence", level: 4, x: 400, y: 150, color: "#3b82f6"},
+        %{id: "s3", label: "System 3 - Control", level: 3, x: 400, y: 250, color: "#10b981"},
+        %{id: "s3*", label: "System 3* - Audit", level: 3, x: 550, y: 250, color: "#14b8a6"},
+        %{id: "s2", label: "System 2 - Coordination", level: 2, x: 400, y: 350, color: "#eab308"},
+        %{id: "s1a", label: "S1 - Operations", level: 1, x: 200, y: 450, color: "#f97316"},
+        %{id: "s1b", label: "S1 - Supply Chain", level: 1, x: 400, y: 450, color: "#f97316"},
+        %{id: "s1c", label: "S1 - Customer Service", level: 1, x: 600, y: 450, color: "#f97316"}
+      ],
+      edges: [
+        %{source: "s5", target: "s4", type: "command", strength: 0.8},
+        %{source: "s4", target: "s5", type: "feedback", strength: 0.6},
+        %{source: "s4", target: "s3", type: "intelligence", strength: 0.7},
+        %{source: "s3", target: "s2", type: "control", strength: 0.9},
+        %{source: "s3", target: "s3*", type: "audit_request", strength: 0.5},
+        %{source: "s3*", target: "s1a", type: "audit", strength: 0.4},
+        %{source: "s3*", target: "s1b", type: "audit", strength: 0.4},
+        %{source: "s2", target: "s1a", type: "coordination", strength: 0.8},
+        %{source: "s2", target: "s1b", type: "coordination", strength: 0.8},
+        %{source: "s2", target: "s1c", type: "coordination", strength: 0.8},
+        %{source: "s1a", target: "s3", type: "algedonic", strength: 0.3},
+        %{source: "s1b", target: "s3", type: "algedonic", strength: 0.3},
+        %{source: "s1c", target: "s3", type: "algedonic", strength: 0.3}
+      ]
+    }
+  end
+  
+  defp generate_initial_variety_flow do
+    %{
+      s5_to_s4: :rand.uniform() * 100,
+      s4_to_s3: :rand.uniform() * 150,
+      s3_to_s2: :rand.uniform() * 200,
+      s2_to_s1: :rand.uniform() * 300,
+      environmental: :rand.uniform() * 500,
+      absorbed: %{
+        s5: :rand.uniform() * 20,
+        s4: :rand.uniform() * 30,
+        s3: :rand.uniform() * 40,
+        s2: :rand.uniform() * 50,
+        s1: :rand.uniform() * 100
+      }
+    }
+  end
+  
+  defp generate_initial_heatmap do
+    # Generate variety absorption heatmap data
+    for level <- 1..5, hour <- 0..23 do
+      %{
+        level: level,
+        hour: hour,
+        variety: :rand.uniform() * 100,
+        absorbed: :rand.uniform() * 80,
+        efficiency: 0.7 + :rand.uniform() * 0.3
+      }
+    end
+  end
+  
+  defp update_realtime_flow_animations(socket) do
+    # Update flow animations for real-time visualization
+    flows = %{
+      timestamp: System.system_time(:millisecond),
+      particles: generate_flow_particles(),
+      intensities: calculate_flow_intensities(socket.assigns),
+      pulses: generate_algedonic_pulses(socket.assigns.algedonic_signals)
+    }
+    
+    assign(socket, :flow_animations, flows)
+  end
+  
+  defp update_quantum_visualization(socket) do
+    # Update quantum state visualizations
+    quantum_states = %{
+      superpositions: generate_quantum_superpositions(),
+      entanglements: detect_entanglements(socket.assigns.s1_agents),
+      coherence: calculate_system_coherence(socket.assigns),
+      wave_functions: generate_wave_functions()
+    }
+    
+    socket
+    |> assign(:quantum_states, quantum_states)
+    |> assign(:quantum_superpositions, quantum_states.superpositions)
+    |> assign(:entanglement_pairs, quantum_states.entanglements)
+    |> assign(:coherence_levels, %{system: quantum_states.coherence})
+  end
+  
+  defp update_variety_flow_data(socket) do
+    # Update variety flow heatmap
+    new_heatmap = update_heatmap_with_current_data(socket.assigns.heatmap_data)
+    assign(socket, :heatmap_data, new_heatmap)
+  end
+  
+  defp update_variety_metrics(socket, level, amount) do
+    variety_flow = socket.assigns.variety_flow
+    absorbed = Map.update!(variety_flow.absorbed, String.to_atom("s#{level}"), &(&1 + amount))
+    
+    assign(socket, :variety_flow, %{variety_flow | absorbed: absorbed})
+  end
+  
+  defp handle_quantum_collapse(socket, state_id, result) do
+    # Update quantum states after collapse
+    quantum_states = socket.assigns.quantum_states
+    superpositions = Enum.reject(quantum_states.superpositions, &(&1.id == state_id))
+    
+    alert = %{
+      id: System.unique_integer([:positive]),
+      type: :info,
+      message: "Quantum state #{state_id} collapsed to: #{result}",
+      severity: :info,
+      timestamp: DateTime.utc_now()
+    }
+    
+    socket
+    |> assign(:quantum_superpositions, superpositions)
+    |> update(:alerts, fn alerts -> [alert | Enum.take(alerts, 9)] end)
+  end
+  
+  defp generate_flow_particles do
+    # Generate particles for flow animation
+    for _ <- 1..20 do
+      %{
+        id: System.unique_integer([:positive]),
+        x: :rand.uniform() * 800,
+        y: :rand.uniform() * 500,
+        vx: (:rand.uniform() - 0.5) * 2,
+        vy: (:rand.uniform() - 0.5) * 2,
+        level: Enum.random(1..5),
+        type: Enum.random([:information, :command, :feedback, :algedonic])
+      }
+    end
+  end
+  
+  defp calculate_flow_intensities(assigns) do
+    %{
+      s5_s4: assigns.queen_metrics[:policy_coherence] || 0.8,
+      s4_s3: assigns.intelligence_status[:scan_coverage] || 0.7,
+      s3_s2: assigns.control_metrics[:efficiency] || 0.6,
+      s2_s1: assigns.coordination_status[:effectiveness] || 0.9
+    }
+  end
+  
+  defp generate_algedonic_pulses(signals) do
+    # Generate pulse animations for recent algedonic signals
+    Enum.take(signals, 3)
+    |> Enum.map(fn signal ->
+      %{
+        origin: signal.context,
+        intensity: abs(signal.delta),
+        type: signal.signal_type,
+        timestamp: signal.timestamp,
+        propagation: :rand.uniform() * 100
+      }
+    end)
+  end
+  
+  defp generate_quantum_superpositions do
+    # Generate quantum superposition states for visualization
+    for i <- 1..5 do
+      %{
+        id: "quantum_#{i}",
+        states: ["state_a", "state_b"],
+        amplitudes: [:rand.uniform(), :rand.uniform()],
+        phase: :rand.uniform() * 2 * :math.pi(),
+        coherence: 0.7 + :rand.uniform() * 0.3,
+        entangled_with: if(:rand.uniform() > 0.5, do: "quantum_#{Enum.random(1..5)}", else: nil)
+      }
+    end
+  end
+  
+  defp detect_entanglements(agents) do
+    # Detect quantum entanglements between S1 agents
+    agents
+    |> Enum.chunk_every(2)
+    |> Enum.map(fn
+      [a1, a2] -> 
+        if :rand.uniform() > 0.6 do
+          %{agent1: a1.agent_id, agent2: a2.agent_id, strength: :rand.uniform()}
+        else
+          nil
+        end
+      _ -> nil
+    end)
+    |> Enum.filter(& &1)
+  end
+  
+  defp calculate_system_coherence(assigns) do
+    # Calculate overall quantum coherence
+    viability = assigns.viability_score
+    coordination = assigns.coordination_status[:effectiveness] || 0.9
+    
+    (viability + coordination) / 2 * (0.8 + :rand.uniform() * 0.2)
+  end
+  
+  defp generate_wave_functions do
+    # Generate wave function visualizations
+    for level <- 1..5 do
+      %{
+        level: level,
+        amplitude: :math.sin(:rand.uniform() * 2 * :math.pi()),
+        frequency: 0.5 + :rand.uniform() * 2,
+        phase: :rand.uniform() * 2 * :math.pi(),
+        decay: 0.95 + :rand.uniform() * 0.05
+      }
+    end
+  end
+  
+  defp update_heatmap_with_current_data(current_heatmap) do
+    # Update heatmap with new variety flow data
+    current_hour = DateTime.utc_now().hour
+    
+    Enum.map(current_heatmap, fn cell ->
+      if cell.hour == current_hour do
+        %{cell | 
+          variety: cell.variety * 0.9 + :rand.uniform() * 10,
+          absorbed: cell.absorbed * 0.9 + :rand.uniform() * 8
+        }
+      else
+        cell
+      end
+    end)
+  end
+  
+  defp collapse_quantum_state(state_id) do
+    # Simulate quantum state collapse
+    Enum.random(["collapsed_a", "collapsed_b", "collapsed_mixed"])
+  end
+  
+  defp update_quantum_after_observation(socket, state_id, collapsed_state) do
+    quantum_states = socket.assigns.quantum_states
+    
+    # Remove from superpositions
+    new_superpositions = Enum.reject(quantum_states.superpositions, &(&1.id == state_id))
+    
+    # Break any entanglements
+    new_entanglements = Enum.reject(quantum_states.entanglements, fn e ->
+      e.agent1 == state_id || e.agent2 == state_id
+    end)
+    
+    socket
+    |> assign(:quantum_superpositions, new_superpositions)
+    |> assign(:entanglement_pairs, new_entanglements)
+    |> put_flash(:info, "Quantum state #{state_id} observed and collapsed to #{collapsed_state}")
+  end
+  
   defp update_s1_agents(socket) do
     agents = VsmPhoenix.System1.Registry.list_agents()
     
@@ -953,6 +1258,10 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
   defp pulse_color(rate) when rate < 3.0, do: "bg-green-500"
   defp pulse_color(rate) when rate < 6.0, do: "bg-yellow-500"
   defp pulse_color(_), do: "bg-red-500"
+  
+  defp pulse_color_hex(rate) when rate < 3.0, do: "#10b981"
+  defp pulse_color_hex(rate) when rate < 6.0, do: "#eab308"
+  defp pulse_color_hex(_), do: "#ef4444"
   
   defp latency_color(latency) when latency <= 90, do: "text-green-400"
   defp latency_color(latency) when latency <= 120, do: "text-yellow-400"

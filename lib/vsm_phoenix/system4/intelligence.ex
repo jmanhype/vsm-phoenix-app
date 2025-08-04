@@ -15,6 +15,10 @@ defmodule VsmPhoenix.System4.Intelligence do
   alias VsmPhoenix.System5.Queen
   alias VsmPhoenix.System3.Control
   alias VsmPhoenix.System4.LLMVarietySource
+  alias VsmPhoenix.System4.QuantumVarietyAnalyzer
+  alias VsmPhoenix.System4.EmergentPatternDetector
+  alias VsmPhoenix.System4.VarietyExplosionDetector
+  alias VsmPhoenix.System4.RecursiveMetaTrigger
   alias AMQP
   
   @name __MODULE__
@@ -89,11 +93,22 @@ defmodule VsmPhoenix.System4.Intelligence do
         innovation_index: 0.7
       },
       learning_data: [],
-      amqp_channel: nil
+      amqp_channel: nil,
+      # Enhanced components
+      quantum_analyzer: nil,
+      pattern_detector: nil,
+      explosion_detector: nil,
+      meta_trigger: nil
     }
     
     # Initialize Tidewave connection
     {:ok, tidewave} = init_tidewave_connection()
+    
+    # Initialize enhanced components
+    {:ok, quantum} = QuantumVarietyAnalyzer.start_link()
+    {:ok, patterns} = EmergentPatternDetector.start_link()
+    {:ok, explosion} = VarietyExplosionDetector.start_link()
+    {:ok, meta} = RecursiveMetaTrigger.start_link()
     
     # Set up AMQP for environmental alerts
     state = setup_amqp_intelligence(state)
@@ -101,14 +116,20 @@ defmodule VsmPhoenix.System4.Intelligence do
     # Schedule periodic environmental scanning
     schedule_environmental_scan()
     
-    {:ok, %{state | tidewave_connection: tidewave}}
+    {:ok, %{state | 
+      tidewave_connection: tidewave,
+      quantum_analyzer: quantum,
+      pattern_detector: patterns,
+      explosion_detector: explosion,
+      meta_trigger: meta
+    }}
   end
   
   @impl true
   def handle_call({:scan_environment, scope}, _from, state) do
     Logger.info("Intelligence: Scanning environment - scope: #{scope}")
     
-    scan_results = perform_environmental_scan(scope, state.tidewave_connection)
+    scan_results = perform_environmental_scan(scope, state)
     
     new_environmental_data = update_environmental_data(state.environmental_data, scan_results)
     new_state = %{state | environmental_data: new_environmental_data}
@@ -354,8 +375,8 @@ defmodule VsmPhoenix.System4.Intelligence do
     {:ok, %{status: :connected, endpoint: "tidewave://localhost:4000"}}
   end
   
-  defp perform_environmental_scan(scope, _tidewave) do
-    # Environmental scanning with LLM variety amplification!
+  defp perform_environmental_scan(scope, state) do
+    # Environmental scanning with LLM variety amplification and quantum analysis!
     base_scan = %{
       market_signals: generate_market_signals(),
       technology_trends: detect_technology_trends(),
@@ -365,7 +386,7 @@ defmodule VsmPhoenix.System4.Intelligence do
     }
     
     # LLM analysis is optional - don't let it crash the system
-    final_scan = if Application.get_env(:vsm_phoenix, :enable_llm_variety, false) do
+    scan_with_llm = if Application.get_env(:vsm_phoenix, :enable_llm_variety, false) do
       # Run LLM analysis in a separate task with timeout
       task = Task.async(fn ->
         try do
@@ -381,13 +402,57 @@ defmodule VsmPhoenix.System4.Intelligence do
         {:ok, {:ok, variety_expansion}} ->
           Logger.info("🔥 LLM VARIETY EXPLOSION: #{inspect(variety_expansion)}")
           
-          # Check if we should spawn a meta-system
-          if variety_expansion.meta_system_seeds != %{} do
+          # Enhanced: Quantum variety analysis (only if components available)
+          quantum_analysis = if state[:quantum_analyzer] do
+            case QuantumVarietyAnalyzer.analyze_quantum_variety(variety_expansion) do
+              {:ok, qa} -> qa
+              _ -> nil
+            end
+          end
+          
+          # Enhanced: Pattern detection
+          pattern_result = if state[:pattern_detector] do
+            case EmergentPatternDetector.detect_patterns(variety_expansion) do
+              {:ok, pr} -> pr
+              _ -> nil
+            end
+          end
+          
+          # Enhanced: Explosion monitoring
+          explosion_risk = if state[:explosion_detector] do
+            case VarietyExplosionDetector.monitor_variety(variety_expansion) do
+              {:ok, er} -> er
+              _ -> nil
+            end
+          end
+          
+          # Enhanced: Meta-trigger evaluation
+          meta_evaluation = if state[:meta_trigger] && explosion_risk do
+            system_state = %{stress_level: explosion_risk.explosion_risk}
+            case RecursiveMetaTrigger.evaluate_meta_trigger(variety_expansion, system_state) do
+              {:ok, me} -> me
+              _ -> nil
+            end
+          end
+          
+          # Check if we should spawn a meta-system with enhanced logic
+          if meta_evaluation && meta_evaluation.should_spawn do
+            Logger.warning("🌀⚛️ ENHANCED META-SYSTEM SPAWN TRIGGERED!")
+            RecursiveMetaTrigger.spawn_meta_system(meta_evaluation.spawn_config)
+          elseif variety_expansion.meta_system_seeds != %{} do
             Logger.info("🌀 RECURSIVE META-SYSTEM OPPORTUNITY DETECTED!")
             spawn(fn -> LLMVarietySource.pipe_to_system1_meta_generation(variety_expansion) end)
           end
           
-          Map.merge(base_scan, %{llm_variety: variety_expansion})
+          enhanced_scan = Map.merge(base_scan, %{llm_variety: variety_expansion})
+          
+          # Add enhanced analysis if available
+          enhanced_scan = if quantum_analysis, do: Map.put(enhanced_scan, :quantum_analysis, quantum_analysis), else: enhanced_scan
+          enhanced_scan = if pattern_result, do: Map.put(enhanced_scan, :pattern_analysis, pattern_result), else: enhanced_scan
+          enhanced_scan = if explosion_risk, do: Map.put(enhanced_scan, :explosion_risk, explosion_risk), else: enhanced_scan
+          enhanced_scan = if meta_evaluation, do: Map.put(enhanced_scan, :meta_evaluation, meta_evaluation), else: enhanced_scan
+          
+          enhanced_scan
           
         _ ->
           Logger.debug("LLM variety analysis skipped or timed out")
@@ -397,7 +462,7 @@ defmodule VsmPhoenix.System4.Intelligence do
       base_scan
     end
     
-    final_scan
+    scan_with_llm
   end
   
   defp generate_market_signals do
