@@ -22,7 +22,7 @@ defmodule VsmPhoenix.Application do
       VsmPhoenixWeb.Telemetry,
       
       # Start the Ecto repository
-      # VsmPhoenix.Repo, # Temporarily disabled due to Postgrex issues
+      VsmPhoenix.Repo,
       
       # Start the PubSub system
       {Phoenix.PubSub, name: VsmPhoenix.PubSub},
@@ -42,8 +42,8 @@ defmodule VsmPhoenix.Application do
       # Start LLM Client for AI integrations
       VsmPhoenix.LLM.Client,
       
-      # Start AMQP/RabbitMQ Supervisor
-      VsmPhoenix.AMQP.Supervisor,
+      # Start AMQP/RabbitMQ Supervisor with retry logic
+      {VsmPhoenix.AMQP.Supervisor, [retry_on_failure: true]},
       
       # Start Hermes Server Registry first
       Hermes.Server.Registry,
