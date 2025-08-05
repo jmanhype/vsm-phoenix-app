@@ -12,6 +12,7 @@ defmodule VsmPhoenix.Goldrush.Manager do
   require Logger
   
   alias VsmPhoenix.Goldrush.Plugins.{VarietyDetector, PolicyLearner}
+  alias VsmPhoenix.Goldrush.{PatternEngine, PatternStore, EventAggregator, ActionHandler}
   
   @name __MODULE__
   
@@ -42,14 +43,44 @@ defmodule VsmPhoenix.Goldrush.Manager do
     GenServer.call(@name, {:complex_query, query_spec})
   end
   
+  @doc """
+  Register a pattern for real-time matching
+  """
+  def register_pattern(pattern) do
+    PatternEngine.register_pattern(pattern)
+  end
+  
+  @doc """
+  Submit an event to the GoldRush system
+  """
+  def submit_event(event) do
+    GenServer.cast(@name, {:submit_event, event})
+  end
+  
   # Server Callbacks
   
   @impl true
   def init(_opts) do
     Logger.info("🎮 Initializing Goldrush Manager for VSM")
     
+    # Start child components
+    children = [
+      PatternEngine,
+      PatternStore,
+      EventAggregator,
+      ActionHandler
+    ]
+    
+    Enum.each(children, fn module ->
+      case module.start_link() do
+        {:ok, _pid} -> Logger.info("✅ Started #{module}")
+        {:error, {:already_started, _pid}} -> Logger.info("✅ #{module} already running")
+        error -> Logger.error("Failed to start #{module}: #{inspect(error)}")
+      end
+    end)
+    
     # Initialize Goldrush event processor
-    GoldrushEx.start()
+    # GoldrushEx.start()  # Commented out as it's not available
     
     # Register default plugins
     plugins = [
@@ -72,6 +103,9 @@ defmodule VsmPhoenix.Goldrush.Manager do
     
     # Setup event router
     setup_event_router()
+    
+    # Load default patterns
+    load_default_patterns()
     
     state = %{
       plugins: initialized_plugins,
@@ -132,10 +166,19 @@ defmodule VsmPhoenix.Goldrush.Manager do
   end
   
   @impl true
-  def handle_info({:goldrush_event, event, measurements, metadata}, state) do
-    # Route event to all plugins
+  def handle_cast({:submit_event, event}, state) do
+    # Add timestamp if not present
+    event_with_timestamp = Map.put_new(event, :timestamp, System.system_time(:second))
+    
+    # Send to pattern engine
+    PatternEngine.process_event(event_with_timestamp)
+    
+    # Send to event aggregator
+    EventAggregator.add_event(event_with_timestamp)
+    
+    # Route to plugins
     new_plugins = Enum.map(state.plugins, fn {module, plugin_state} ->
-      new_plugin_state = module.process_event(event, measurements, metadata, plugin_state)
+      new_plugin_state = module.process_event(event_with_timestamp, %{}, %{}, plugin_state)
       {module, new_plugin_state}
     end)
     |> Map.new()
@@ -144,6 +187,20 @@ defmodule VsmPhoenix.Goldrush.Manager do
       plugins: new_plugins,
       event_count: state.event_count + 1
     }}
+  end
+  
+  @impl true
+  def handle_info({:goldrush_event, event, measurements, metadata}, state) do
+    # Convert to standard event format
+    standard_event = %{
+      type: event,
+      measurements: measurements,
+      metadata: metadata,
+      timestamp: System.system_time(:second)
+    }
+    
+    # Process as normal event
+    handle_cast({:submit_event, standard_event}, state)
   end
   
   @impl true
@@ -171,12 +228,9 @@ defmodule VsmPhoenix.Goldrush.Manager do
   defp execute_complex_query(query_spec) do
     case query_spec do
       {:variety_correlation} ->
-        # Return sample data for variety correlation
-        %{
-          correlations_found: 0,
-          variety_events: [],
-          policy_responses: []
-        }
+        # Get actual data from EventAggregator
+        {:ok, correlations} = EventAggregator.get_correlated_events([:variety_change, :policy_trigger], 300)
+        correlations
         
       {:policy_effectiveness, policy_type} ->
         # Return sample effectiveness data
@@ -188,9 +242,10 @@ defmodule VsmPhoenix.Goldrush.Manager do
         }
         
       {:system_stress_patterns} ->
-        # Return stress pattern analysis
+        # Get pattern statistics
+        pattern_stats = PatternEngine.get_statistics()
         %{
-          patterns_detected: 0,
+          patterns_detected: pattern_stats.total_matches,
           stress_events: [],
           anomalies_triggered: []
         }
@@ -207,5 +262,44 @@ defmodule VsmPhoenix.Goldrush.Manager do
         # Default response
         %{query: query_spec, result: "No data available"}
     end
+  end
+  
+  defp load_default_patterns do
+    # Load some default patterns for system monitoring
+    default_patterns = [
+      %{
+        id: "high_cpu_sustained",
+        name: "Sustained High CPU Usage",
+        conditions: [
+          %{field: "cpu_usage", operator: ">", value: 80}
+        ],
+        time_window: %{duration: 300, unit: :seconds},
+        logic: "AND",
+        actions: ["trigger_algedonic", "scale_resources"]
+      },
+      %{
+        id: "memory_pressure",
+        name: "Memory Pressure Detection",
+        conditions: [
+          %{field: "memory_usage", operator: ">", value: 90},
+          %{field: "swap_usage", operator: ">", value: 50}
+        ],
+        logic: "OR",
+        actions: ["send_alert", "trigger_adaptation"]
+      },
+      %{
+        id: "variety_explosion",
+        name: "Variety Explosion Detection",
+        conditions: [
+          %{field: "variety_index", operator: ">", value: 0.8},
+          %{field: "variety_rate", operator: ">", value: 0.2}
+        ],
+        logic: "AND",
+        actions: ["spawn_meta_vsm", "update_policy"]
+      }
+    ]
+    
+    Enum.each(default_patterns, &PatternEngine.register_pattern/1)
+    Logger.info("📋 Loaded #{length(default_patterns)} default patterns")
   end
 end

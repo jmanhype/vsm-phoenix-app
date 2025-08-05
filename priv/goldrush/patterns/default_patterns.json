@@ -1,0 +1,67 @@
+[
+  {
+    "id": "critical_system_overload",
+    "name": "Critical System Overload",
+    "conditions": [
+      {"field": "cpu_usage", "operator": ">", "value": 95},
+      {"field": "memory_usage", "operator": ">", "value": 95},
+      {"field": "response_time", "operator": ">", "value": 5000}
+    ],
+    "time_window": {"duration": 60, "unit": "seconds"},
+    "logic": "AND",
+    "actions": [
+      "trigger_algedonic",
+      "scale_resources",
+      "notify_system3",
+      "spawn_meta_vsm"
+    ],
+    "critical": true,
+    "priority": "critical"
+  },
+  {
+    "id": "variety_cascade_detection",
+    "name": "Variety Cascade Detection",
+    "conditions": [
+      {"field": "variety_index", "operator": ">", "value": 0.7},
+      {"field": "subsystem_count", "operator": ">", "value": 10}
+    ],
+    "logic": "AND",
+    "actions": [
+      "update_variety",
+      "trigger_adaptation",
+      "update_policy"
+    ],
+    "priority": "high"
+  },
+  {
+    "id": "algedonic_threshold",
+    "name": "Algedonic Signal Threshold",
+    "conditions": [
+      {"field": "pain_signals", "operator": ">", "value": 5},
+      {"field": "signal_intensity", "operator": ">", "value": 0.8}
+    ],
+    "time_window": {"duration": 120, "unit": "seconds"},
+    "logic": "OR",
+    "actions": [
+      "trigger_algedonic",
+      "notify_system3",
+      "log_event"
+    ],
+    "priority": "critical"
+  },
+  {
+    "id": "recursive_meta_vsm",
+    "name": "Recursive Meta-VSM Spawning",
+    "conditions": [
+      {"field": "meta_vsm_count", "operator": ">", "value": 5},
+      {"field": "spawn_rate", "operator": ">", "value": 0.5}
+    ],
+    "logic": "AND",
+    "actions": [
+      "update_policy",
+      "send_alert",
+      "log_event"
+    ],
+    "priority": "medium"
+  }
+]

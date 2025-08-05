@@ -13,6 +13,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   alias VsmPhoenix.AMQP.ConnectionManager
   alias Phoenix.PubSub
   alias AMQP
+  alias VsmPhoenix.Telegram.{NLUService, ConversationManager, IntentMapper}
 
   @telegram_api_base "https://api.telegram.org/bot"
   @poll_timeout 30_000  # 30 seconds long polling
@@ -112,7 +113,9 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
           errors: 0,
           last_message_at: nil,
           command_stats: %{}
-        }
+        },
+        nlu_enabled: config[:nlu_enabled] || true,
+        conversation_tracking: config[:conversation_tracking] || true
       }
       
       # Send startup message
@@ -471,18 +474,41 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     # Check authorization
     if authorized?(chat_id, from["id"], state) do
       Logger.info("✅ User authorized")
-      # Process commands
-      if String.starts_with?(text, "/") do
-        process_command(text, message, state)
-      else
-        # Forward as general message
-        publish_telegram_event("message_received", %{
-          chat_id: chat_id,
-          text: text,
-          from: from
-        }, state)
-        
-        update_metrics(state, :message_received)
+      
+      # Initialize or continue conversation
+      user_info = %{
+        user_id: to_string(from["id"]),
+        username: from["username"],
+        role: if(is_admin?(chat_id, state), do: "admin", else: "user")
+      }
+      
+      if state.conversation_tracking do
+        ConversationManager.start_conversation(chat_id, user_info)
+      end
+      
+      # Process message based on type
+      cond do
+        # Traditional command processing
+        String.starts_with?(text, "/") ->
+          process_command(text, message, state)
+          
+        # Check if there's an active conversation flow
+        state.conversation_tracking && ConversationManager.has_active_flow?(chat_id) ->
+          process_flow_response(text, message, state)
+          
+        # Natural language processing
+        state.nlu_enabled ->
+          process_natural_language(text, message, state)
+          
+        # Fallback to forwarding as general message
+        true ->
+          publish_telegram_event("message_received", %{
+            chat_id: chat_id,
+            text: text,
+            from: from
+          }, state)
+          
+          update_metrics(state, :message_received)
       end
     else
       send_telegram_message(chat_id, "⛔ Unauthorized. This incident has been logged.", state)
@@ -587,6 +613,14 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     /help - Show this help
     /status - System status
     /vsm - VSM operations
+    
+    💬 *Natural Language Support:*
+    You can also interact with me using natural language! Try:
+    • "What's the system status?"
+    • "Create a new VSM with 5 agents"
+    • "Show me all active VSMs"
+    • "Explain how System 2 works"
+    • "Send a warning about high memory usage"
     """
     
     admin_commands = if is_admin?(chat_id, state) do
@@ -871,4 +905,377 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       0.0
     end
   end
+
+  # Natural Language Processing Functions
+
+  defp process_natural_language(text, message, state) do
+    chat_id = message["chat"]["id"]
+    
+    # Get conversation context
+    context = if state.conversation_tracking do
+      case ConversationManager.get_context(chat_id) do
+        {:ok, ctx} -> ctx
+        _ -> %{}
+      end
+    else
+      %{}
+    end
+    
+    # Analyze message with NLU
+    case NLUService.analyze_message(text, context) do
+      {:ok, %{intent: intent, confidence: confidence, entities: entities, suggested_command: suggested_command}} ->
+        Logger.info("NLU Analysis - Intent: #{intent}, Confidence: #{confidence}, Entities: #{inspect(entities)}")
+        
+        # Add to conversation history
+        if state.conversation_tracking do
+          ConversationManager.add_message(chat_id, :user, text, %{
+            intent: intent,
+            entities: entities
+          })
+        end
+        
+        # Process based on confidence
+        cond do
+          confidence >= NLUService.get_confidence_threshold() ->
+            # High confidence - execute the intent
+            execute_intent(intent, entities, message, state)
+            
+          confidence >= 0.5 ->
+            # Medium confidence - ask for confirmation
+            handle_uncertain_intent(intent, entities, suggested_command, message, state)
+            
+          true ->
+            # Low confidence - provide suggestions
+            handle_unknown_intent(text, message, state)
+        end
+        
+      {:error, reason} ->
+        Logger.error("NLU analysis failed: #{inspect(reason)}")
+        handle_unknown_intent(text, message, state)
+    end
+  end
+
+  defp execute_intent(intent, entities, message, state) do
+    chat_id = message["chat"]["id"]
+    
+    case IntentMapper.map_intent_to_command(intent, entities) do
+      {:ok, command_info} ->
+        # Execute the mapped command
+        case command_info.handler do
+          :handle_status_command ->
+            handle_status_command(chat_id, command_info.args, state)
+            
+          :handle_vsm_command ->
+            handle_vsm_command(chat_id, command_info.args, state)
+            
+          :handle_alert_command ->
+            if is_admin?(chat_id, state) do
+              handle_alert_command(chat_id, command_info.args, state)
+            else
+              send_telegram_message(chat_id, "❌ This action requires admin privileges.", state)
+              state
+            end
+            
+          :handle_help_command ->
+            handle_help_command(chat_id, state)
+            
+          :handle_authorize_command ->
+            if is_admin?(chat_id, state) do
+              handle_authorize_command(chat_id, command_info.args, state)
+            else
+              send_telegram_message(chat_id, "❌ This action requires admin privileges.", state)
+              state
+            end
+            
+          :handle_explanation ->
+            handle_explanation_request(entities[:topic], message, state)
+            
+          _ ->
+            # Fallback for unmapped handlers
+            send_telegram_message(chat_id, 
+              "I understood your request but I'm not sure how to handle it yet. " <>
+              "You can try the command directly: #{command_info.command}", state)
+            state
+        end
+        
+      {:error, {:missing_entities, missing}} ->
+        # Ask for missing information
+        handle_missing_entities(intent, missing, entities, message, state)
+        
+      {:error, _reason} ->
+        handle_unknown_intent(message["text"], message, state)
+    end
+  end
+
+  defp handle_uncertain_intent(intent, entities, suggested_command, message, state) do
+    chat_id = message["chat"]["id"]
+    
+    response = if suggested_command do
+      """
+      I think you want to #{IntentMapper.get_intent_help(intent)}.
+      
+      Did you mean: `#{suggested_command}`?
+      
+      Reply with "yes" to execute or clarify your request.
+      """
+    else
+      """
+      I'm not entirely sure, but I think you're asking about #{intent}.
+      
+      Could you clarify or rephrase your request?
+      """
+    end
+    
+    # Store pending confirmation
+    if state.conversation_tracking do
+      ConversationManager.add_pending_confirmation(chat_id, :intent_confirmation, %{
+        intent: intent,
+        entities: entities,
+        suggested_command: suggested_command
+      })
+    end
+    
+    send_telegram_message(chat_id, response, state)
+    state
+  end
+
+  defp handle_unknown_intent(text, message, state) do
+    chat_id = message["chat"]["id"]
+    
+    # Get command suggestions
+    context = if state.conversation_tracking do
+      case ConversationManager.get_context(chat_id) do
+        {:ok, ctx} -> ctx
+        _ -> %{}
+      end
+    else
+      %{}
+    end
+    
+    case IntentMapper.handle_fallback(text, context) do
+      {:suggestions, suggestions} when length(suggestions) > 0 ->
+        response = """
+        I didn't understand that. Here are some similar commands:
+        
+        #{Enum.map_join(suggestions, "\n", fn s ->
+          "• `#{s.command}` - #{s.description}"
+        end)}
+        
+        Or just tell me what you'd like to do in plain language!
+        """
+        send_telegram_message(chat_id, response, state)
+        
+      {:confirmation_response, value} ->
+        # Handle yes/no response to pending confirmation
+        handle_confirmation_response(value, message, state)
+        
+      _ ->
+        response = """
+        I'm not sure what you're asking for. You can:
+        
+        • Use /help to see available commands
+        • Ask me questions like "What's the system status?"
+        • Tell me what you want to do, like "Create a new VSM"
+        
+        What would you like to do?
+        """
+        send_telegram_message(chat_id, response, state)
+    end
+    
+    state
+  end
+
+  defp handle_missing_entities(intent, missing_entities, existing_entities, message, state) do
+    chat_id = message["chat"]["id"]
+    
+    # Start a conversation flow to collect missing information
+    if state.conversation_tracking do
+      flow_type = case intent do
+        :spawn_vsm -> :vsm_configuration
+        :send_alert -> :alert_configuration
+        _ -> nil
+      end
+      
+      if flow_type do
+        ConversationManager.set_active_flow(chat_id, flow_type, existing_entities)
+        
+        # Get the first prompt
+        case ConversationManager.get_context(chat_id) do
+          {:ok, context} ->
+            flow_def = context[:active_flow]
+            first_step = Enum.find(flow_def[:steps], & &1.step == 1)
+            send_telegram_message(chat_id, first_step.prompt, state)
+            
+          _ ->
+            send_telegram_message(chat_id, 
+              "I need more information. What #{Enum.join(missing_entities, ", ")} would you like?", state)
+        end
+      else
+        send_telegram_message(chat_id, 
+          "I need more information. Please provide: #{Enum.join(missing_entities, ", ")}", state)
+      end
+    else
+      send_telegram_message(chat_id, 
+        "I need more information. Please provide: #{Enum.join(missing_entities, ", ")}", state)
+    end
+    
+    state
+  end
+
+  defp process_flow_response(text, message, state) do
+    chat_id = message["chat"]["id"]
+    
+    # Handle multi-step flow responses
+    case ConversationManager.get_context(chat_id) do
+      {:ok, context} ->
+        flow_state = context[:flow_state]
+        current_step = flow_state[:step] || 1
+        
+        # Validate and store the response
+        # This is simplified - in production, add proper validation
+        field = get_field_for_step(context[:active_flow], current_step)
+        
+        if field do
+          updates = Map.put(%{}, field, text)
+          ConversationManager.update_flow_state(chat_id, updates)
+          
+          # Check if there are more steps
+          next_step = current_step + 1
+          if has_step?(context[:active_flow], next_step) do
+            # Continue to next step
+            ConversationManager.update_flow_state(chat_id, %{step: next_step})
+            prompt = get_prompt_for_step(context[:active_flow], next_step)
+            send_telegram_message(chat_id, prompt, state)
+            state
+          else
+            # Flow complete - execute the intent
+            {:ok, flow_result} = ConversationManager.complete_flow(chat_id)
+            execute_flow_result(context[:active_flow], flow_result, message, state)
+          end
+        else
+          send_telegram_message(chat_id, "I'm having trouble with this conversation. Let's start over.", state)
+          ConversationManager.complete_flow(chat_id)
+          state
+        end
+        
+      _ ->
+        # No active flow - treat as natural language
+        process_natural_language(text, message, state)
+    end
+  end
+
+  defp handle_confirmation_response(confirmed, message, state) do
+    chat_id = message["chat"]["id"]
+    
+    if state.conversation_tracking do
+      case ConversationManager.get_pending_confirmation(chat_id, :intent_confirmation) do
+        {:ok, nil} ->
+          send_telegram_message(chat_id, "I don't have any pending confirmations.", state)
+          state
+          
+        {:ok, confirmation_data} ->
+          if confirmed do
+            # Execute the confirmed intent
+            execute_intent(
+              confirmation_data.intent,
+              confirmation_data.entities,
+              message,
+              state
+            )
+          else
+            send_telegram_message(chat_id, "Okay, please tell me what you'd like to do instead.", state)
+            state
+          end
+      end
+    else
+      state
+    end
+  end
+
+  defp handle_explanation_request(topic, message, state) do
+    chat_id = message["chat"]["id"]
+    
+    explanation = case topic do
+      "vsm" ->
+        """
+        The Viable System Model (VSM) is a model of organizational structure based on cybernetics.
+        
+        It consists of 5 interacting subsystems:
+        • System 1: Operations (doing the work)
+        • System 2: Coordination (preventing conflicts)
+        • System 3: Control (resource allocation)
+        • System 4: Intelligence (future planning)
+        • System 5: Policy (identity and purpose)
+        
+        Each system can contain other complete VSMs, creating a recursive structure.
+        """
+        
+      "system1" ->
+        """
+        System 1 (Operations) consists of the primary activities that directly produce the organization's products or services.
+        
+        In our implementation, S1 includes operational agents that perform the actual work, like processing tasks, handling requests, and managing resources.
+        """
+        
+      "cybernetics" ->
+        """
+        Cybernetics is the science of communication and control in complex systems.
+        
+        It focuses on how systems use information, feedback loops, and control mechanisms to maintain stability and achieve goals. The VSM applies cybernetic principles to organizational management.
+        """
+        
+      _ ->
+        """
+        I can explain various aspects of the VSM system. Try asking about:
+        • The overall VSM structure
+        • Specific systems (S1-S5)
+        • Cybernetics principles
+        • Recursion in VSM
+        
+        What would you like to know more about?
+        """
+    end
+    
+    formatted_response = IntentMapper.format_command_response(:explain_vsm, explanation, %{topic: topic})
+    send_telegram_message(chat_id, formatted_response, state)
+    
+    # Track in conversation
+    if state.conversation_tracking do
+      ConversationManager.add_message(chat_id, :assistant, formatted_response, %{
+        intent: :explain_vsm,
+        topic: topic
+      })
+    end
+    
+    state
+  end
+
+  defp execute_flow_result(flow_type, flow_result, message, state) do
+    chat_id = message["chat"]["id"]
+    
+    case flow_type do
+      :vsm_configuration ->
+        # Build VSM spawn command from flow result
+        config_parts = []
+        config_parts = if flow_result[:vsm_type], do: config_parts ++ ["type:#{flow_result.vsm_type}"], else: config_parts
+        config_parts = if flow_result[:agent_count], do: config_parts ++ ["agents:#{flow_result.agent_count}"], else: config_parts
+        
+        args = ["spawn" | [Enum.join(config_parts, " ")]]
+        handle_vsm_command(chat_id, args, state)
+        
+      :alert_configuration ->
+        # Build alert command from flow result
+        args = [flow_result[:alert_level] || "info", flow_result[:alert_message] || "Alert from conversation"]
+        handle_alert_command(chat_id, args, state)
+        
+      _ ->
+        send_telegram_message(chat_id, "Configuration completed successfully!", state)
+        state
+    end
+  end
+
+  # Helper functions for flows
+  defp get_field_for_step(_flow_type, _step), do: nil  # Simplified - implement based on flow definitions
+  defp has_step?(_flow_type, _step), do: false  # Simplified - implement based on flow definitions
+  defp get_prompt_for_step(_flow_type, _step), do: "Next step..."  # Simplified - implement based on flow definitions
 end

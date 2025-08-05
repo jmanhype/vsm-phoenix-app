@@ -53,6 +53,38 @@ defmodule VsmPhoenixWeb.Router do
     get "/telegram/health", TelegramController, :health  # Telegram health check
     post "/telegram/set_webhook", TelegramController, :set_webhook  # Set webhook (for testing)
   end
+  
+  # GoldRush Pattern Matching API routes
+  scope "/api/goldrush", VsmPhoenixWeb do
+    pipe_through :api
+    
+    # Pattern management
+    get "/patterns", GoldrushController, :list_patterns
+    post "/patterns", GoldrushController, :create_pattern
+    delete "/patterns/:id", GoldrushController, :delete_pattern
+    post "/patterns/import", GoldrushController, :import_patterns
+    post "/patterns/export", GoldrushController, :export_patterns
+    
+    # Event processing
+    post "/events", GoldrushController, :submit_event
+    
+    # Analytics and queries
+    get "/statistics", GoldrushController, :get_statistics
+    get "/aggregates", GoldrushController, :get_aggregates
+    post "/query", GoldrushController, :complex_query
+    
+    # Testing
+    post "/test", GoldrushController, :test_pattern
+  end
+  
+  # API Documentation routes
+  scope "/api/docs", VsmPhoenixWeb do
+    pipe_through :browser
+    
+    get "/", ApiDocController, :index                    # Interactive Swagger UI
+    get "/openapi.json", ApiDocController, :openapi      # OpenAPI JSON spec
+    get "/examples/:endpoint", ApiDocController, :examples # Get examples for endpoint
+  end
 
   # MCP routes - Handled by MCPController
   # JSON-RPC requests are processed and forwarded to appropriate VSM systems

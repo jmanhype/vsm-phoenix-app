@@ -15,6 +15,7 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
   require Logger
   
   @exchange "vsm.recursive"
+  @priority_exchange "vsm.priority"
   
   def establish(meta_pid, config) do
     GenServer.start_link(__MODULE__, {meta_pid, config})
@@ -30,16 +31,31 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
     # Declare recursive exchange
     AMQP.Exchange.declare(channel, @exchange, :topic, durable: true)
     
+    # Declare priority exchange for priority-based routing
+    AMQP.Exchange.declare(channel, @priority_exchange, :headers, durable: true)
+    
     # Create queue for this meta-system
     queue_name = "vsm.meta.#{config[:identity] || :erlang.unique_integer()}"
-    {:ok, queue} = AMQP.Queue.declare(channel, queue_name, durable: true)
+    {:ok, queue} = AMQP.Queue.declare(channel, queue_name, durable: true, arguments: [{"x-max-priority", 10}])
     
     # Bind to recursive patterns
     AMQP.Queue.bind(channel, queue_name, @exchange, routing_key: "meta.#{config[:identity]}.*")
     AMQP.Queue.bind(channel, queue_name, @exchange, routing_key: "recursive.*")
     
+    # Bind to priority exchange with headers matching
+    AMQP.Queue.bind(channel, queue_name, @priority_exchange, arguments: [{"x-match", "any"}])
+    
     # Subscribe to messages
     AMQP.Basic.consume(channel, queue_name)
+    
+    # Initialize context manager
+    {:ok, context_manager} = VsmPhoenix.AMQP.ContextManager.start_link()
+    
+    # Initialize message chain tracker
+    {:ok, message_chain} = VsmPhoenix.AMQP.MessageChain.start_link()
+    
+    # Initialize priority router
+    {:ok, priority_router} = VsmPhoenix.AMQP.PriorityRouter.start_link(channel: channel)
     
     state = %{
       meta_pid: meta_pid,
@@ -48,10 +64,20 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
       queue: queue_name,
       connection: connection,
       
-      # MCP-like capabilities
+      # Enhanced MCP-like capabilities
       mcp_server: start_mcp_server(config),
       mcp_clients: %{},
-      recursive_depth: config[:recursive_depth] || 1
+      recursive_depth: config[:recursive_depth] || 1,
+      
+      # New semantic context components
+      context_manager: context_manager,
+      message_chain: message_chain,
+      priority_router: priority_router,
+      
+      # Semantic context tracking
+      semantic_contexts: %{},
+      causality_map: %{},
+      event_chains: []
     }
     
     Logger.info("🔥 VSMCP ACTIVE: Queue #{queue_name} ready for recursive messages")
@@ -63,7 +89,26 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
   def handle_info({:basic_deliver, payload, meta}, state) do
     case Jason.decode(payload) do
       {:ok, message} ->
-        handle_vsmcp_message(message, meta, state)
+        # Extract semantic context from headers
+        context = extract_semantic_context(meta)
+        
+        # Track message in chain for causality
+        {:ok, chain_id} = VsmPhoenix.AMQP.MessageChain.track_message(
+          state.message_chain,
+          message,
+          context
+        )
+        
+        # Update causality map
+        state = update_causality_map(state, message, chain_id)
+        
+        # Handle with semantic context
+        enhanced_message = message
+          |> Map.put("_context", context)
+          |> Map.put("_chain_id", chain_id)
+          |> Map.put("_timestamp", DateTime.utc_now())
+        
+        handle_vsmcp_message(enhanced_message, meta, state)
         
       {:error, _} ->
         Logger.error("VSMCP: Invalid message format")
@@ -176,9 +221,29 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
   
   defp publish_recursive(message, state) do
     routing_key = "recursive.depth.#{state.recursive_depth}"
-    payload = Jason.encode!(message)
     
-    AMQP.Basic.publish(state.channel, @exchange, routing_key, payload)
+    # Add semantic context headers
+    headers = build_semantic_headers(message, state)
+    
+    # Determine priority based on message type and context
+    priority = determine_message_priority(message, state)
+    
+    # Enhance message with causality chain
+    enhanced_message = message
+      |> Map.put("_sender", state.config[:identity])
+      |> Map.put("_depth", state.recursive_depth)
+      |> Map.put("_causality", get_causality_chain(state, message))
+    
+    payload = Jason.encode!(enhanced_message)
+    
+    # Use priority router for intelligent routing
+    VsmPhoenix.AMQP.PriorityRouter.route(
+      state.priority_router,
+      payload,
+      routing_key,
+      headers,
+      priority
+    )
   end
   
   defp start_mcp_server(config) do
@@ -223,5 +288,146 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
   
   def terminate(_reason, state) do
     AMQP.Connection.close(state.connection)
+  end
+
+  # Semantic context helpers
+  defp extract_semantic_context(meta) do
+    headers = Map.get(meta, :headers, [])
+    
+    %{
+      domain: get_header_value(headers, "semantic-domain", "general"),
+      intent: get_header_value(headers, "semantic-intent", "unknown"),
+      priority: get_header_value(headers, "priority", "normal"),
+      correlation_id: get_header_value(headers, "correlation-id", nil),
+      causality_chain: decode_causality_chain(headers),
+      originator: get_header_value(headers, "originator", nil),
+      tags: decode_tags(headers)
+    }
+  end
+  
+  defp build_semantic_headers(message, state) do
+    [
+      {"semantic-domain", :longstr, message["domain"] || "vsm"},
+      {"semantic-intent", :longstr, message["type"] || "unknown"},
+      {"priority", :longstr, to_string(message["priority"] || "normal")},
+      {"correlation-id", :longstr, message["correlation_id"] || generate_correlation_id()},
+      {"originator", :longstr, state.config[:identity]},
+      {"depth", :long, state.recursive_depth},
+      {"timestamp", :longstr, DateTime.to_iso8601(DateTime.utc_now())},
+      {"vsm-identity", :longstr, state.config[:identity]}
+    ]
+  end
+  
+  defp determine_message_priority(message, state) do
+    cond do
+      message["type"] == "emergency" -> 10
+      message["type"] == "algedonic" -> 9
+      message["priority"] == "critical" -> 8
+      message["priority"] == "high" -> 7
+      message["type"] == "meta_learning" -> 6
+      message["priority"] == "medium" -> 5
+      message["type"] == "variety_request" -> 4
+      message["priority"] == "low" -> 2
+      true -> 3  # default normal priority
+    end
+  end
+  
+  defp update_causality_map(state, message, chain_id) do
+    # Track causality relationships
+    causality_entry = %{
+      message_id: message["id"] || generate_message_id(),
+      chain_id: chain_id,
+      timestamp: DateTime.utc_now(),
+      type: message["type"],
+      sender: message["_sender"],
+      causes: message["_causes"] || [],
+      effects: []
+    }
+    
+    put_in(state.causality_map[chain_id], causality_entry)
+  end
+  
+  defp get_causality_chain(state, message) do
+    # Build causality chain for the message
+    chain_id = message["_chain_id"]
+    
+    if chain_id && state.causality_map[chain_id] do
+      build_causality_sequence(state.causality_map, chain_id)
+    else
+      []
+    end
+  end
+  
+  defp build_causality_sequence(causality_map, chain_id, visited \\ MapSet.new()) do
+    if MapSet.member?(visited, chain_id) do
+      []
+    else
+      entry = causality_map[chain_id]
+      if entry do
+        visited = MapSet.put(visited, chain_id)
+        
+        # Recursively build the chain
+        parent_chains = Enum.flat_map(entry.causes, fn cause_id ->
+          build_causality_sequence(causality_map, cause_id, visited)
+        end)
+        
+        parent_chains ++ [%{
+          id: chain_id,
+          type: entry.type,
+          timestamp: entry.timestamp,
+          sender: entry.sender
+        }]
+      else
+        []
+      end
+    end
+  end
+  
+  defp get_header_value(headers, key, default) do
+    case List.keyfind(headers, key, 0) do
+      {^key, _type, value} -> value
+      nil -> default
+    end
+  end
+  
+  defp decode_causality_chain(headers) do
+    case get_header_value(headers, "causality-chain", "[]") do
+      chain when is_binary(chain) ->
+        case Jason.decode(chain) do
+          {:ok, decoded} -> decoded
+          _ -> []
+        end
+      _ -> []
+    end
+  end
+  
+  defp decode_tags(headers) do
+    case get_header_value(headers, "tags", "[]") do
+      tags when is_binary(tags) ->
+        case Jason.decode(tags) do
+          {:ok, decoded} -> decoded
+          _ -> []
+        end
+      _ -> []
+    end
+  end
+  
+  defp generate_correlation_id do
+    "corr_#{:erlang.unique_integer([:positive, :monotonic])}_#{:rand.uniform(1000)}"
+  end
+  
+  defp generate_message_id do
+    "msg_#{:erlang.unique_integer([:positive, :monotonic])}_#{:rand.uniform(1000)}"
+  end
+  
+  # Backward compatibility layer
+  def send_legacy_message(pid, message) do
+    # Convert legacy messages to new format
+    enhanced_message = message
+      |> Map.put_new("priority", "normal")
+      |> Map.put_new("domain", "legacy")
+      |> Map.put_new("correlation_id", generate_correlation_id())
+    
+    GenServer.call(pid, {:send_vsmcp_message, enhanced_message})
   end
 end

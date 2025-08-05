@@ -164,6 +164,119 @@ config :vsm_phoenix, VsmPhoenix.Scheduler,
     {"*/30 * * * *", {VsmPhoenix.System3.Control, :optimize_performance, [:global]}}
   ]
 
+# LLM Integration Configuration
+config :vsm_phoenix, :llm,
+  # API Keys (loaded from environment)
+  openai_api_key: System.get_env("OPENAI_API_KEY"),
+  anthropic_api_key: System.get_env("ANTHROPIC_API_KEY"),
+  
+  # Enable LLM features
+  enable_llm_variety: System.get_env("ENABLE_LLM_VARIETY", "false") == "true",
+  
+  # Rate limiting
+  rate_limit_per_minute: String.to_integer(System.get_env("LLM_RATE_LIMIT", "60")),
+  
+  # Cache configuration
+  cache_ttl_hours: String.to_integer(System.get_env("LLM_CACHE_TTL", "24")),
+  
+  # Default provider and models
+  default_provider: String.to_atom(System.get_env("DEFAULT_LLM_PROVIDER", "openai")),
+  default_models: %{
+    openai: System.get_env("OPENAI_DEFAULT_MODEL", "gpt-4-turbo"),
+    anthropic: System.get_env("ANTHROPIC_DEFAULT_MODEL", "claude-3-sonnet")
+  },
+  
+  # Cost optimization
+  max_tokens_default: 1000,
+  temperature_default: 0.7,
+  
+  # Fallback behavior
+  enable_provider_fallback: true,
+  
+  # Streaming configuration
+  streaming_enabled: true,
+  streaming_chunk_size: 100
+
+# Phase 2 Advanced Features Configuration
+config :vsm_phoenix, :phase2,
+  # GoldRush Pattern Engine
+  goldrush: [
+    enabled: true,
+    max_patterns: 1000,
+    max_pattern_complexity: 10,
+    event_retention_hours: 168,  # 7 days
+    aggregation_windows: ["1m", "5m", "15m", "1h", "1d"],
+    alert_cooldown_seconds: 300,
+    persistence_enabled: true,
+    persistence_path: "priv/goldrush"
+  ],
+  
+  # Telegram NLU Integration
+  telegram_nlu: [
+    enabled: true,
+    provider: :openai,  # or :anthropic
+    model: "gpt-4-turbo",
+    confidence_threshold: 0.75,
+    max_context_messages: 10,
+    intent_categories: [
+      "system_status",
+      "variety_query",
+      "pattern_analysis",
+      "alert_management",
+      "configuration",
+      "help"
+    ],
+    entity_extractors: [
+      "system_identifier",
+      "metric_extractor",
+      "timeframe_parser",
+      "threshold_detector"
+    ]
+  ],
+  
+  # AMQP Security Protocol
+  amqp_security: [
+    enabled: true,
+    encryption_algorithm: "aes-256-gcm",
+    signature_algorithm: "ed25519",
+    key_rotation_hours: 24,
+    require_encryption: true,
+    require_signatures: true,
+    access_control_enabled: true,
+    audit_all_messages: true,
+    rate_limiting: %{
+      per_source: 1000,  # messages per minute
+      per_destination: 2000
+    }
+  ],
+  
+  # LLM Integration Enhancements
+  llm_enhanced: [
+    variety_amplification: true,
+    intelligent_analysis: true,
+    predictive_adaptation: true,
+    multi_model_ensemble: false,  # Premium feature
+    context_window_optimization: true,
+    cost_optimization_mode: "balanced",  # "aggressive", "balanced", "quality"
+    fallback_strategies: [
+      "retry_with_smaller_context",
+      "switch_provider",
+      "use_cached_response",
+      "fallback_to_rules"
+    ]
+  ],
+  
+  # Integration Features
+  integration: [
+    event_correlation_enabled: true,
+    cross_system_patterns: true,
+    distributed_decision_making: true,
+    consensus_protocol: "byzantine_fault_tolerant",
+    system_boundary_enforcement: true,
+    telemetry_aggregation: true,
+    performance_monitoring: true
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

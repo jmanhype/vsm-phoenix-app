@@ -27,6 +27,9 @@ defmodule VsmPhoenix.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: VsmPhoenix.PubSub},
       
+      # Start LLM Supervisor (manages cache and ETS tables)
+      VsmPhoenix.LLM.Supervisor,
+      
       # Start the Endpoint (http/https)
       VsmPhoenixWeb.Endpoint,
       
@@ -36,8 +39,15 @@ defmodule VsmPhoenix.Application do
       # Start Goldrush Manager with plugins
       VsmPhoenix.Goldrush.Manager,
       
+      # Start Security Layer Components
+      VsmPhoenix.Security.Supervisor,
+      
       # Start AMQP/RabbitMQ Supervisor
       VsmPhoenix.AMQP.Supervisor,
+      
+      # Start Telegram NLU Services
+      VsmPhoenix.Telegram.NLUService,
+      VsmPhoenix.Telegram.ConversationManager,
       
       # Start Hermes Server Registry first
       Hermes.Server.Registry,
@@ -112,6 +122,9 @@ defmodule VsmPhoenix.Application do
       
       # Variety Engineering - Implements Ashby's Law across VSM hierarchy
       VsmPhoenix.VarietyEngineering.Supervisor,
+      
+      # Phase 2 Advanced VSM Cybernetics Components
+      VsmPhoenix.Phase2Supervisor,
       
       # Additional VSM components
       {VsmPhoenix.VsmSupervisor, []}
