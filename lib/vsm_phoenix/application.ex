@@ -30,6 +30,21 @@ defmodule VsmPhoenix.Application do
       # Start Task Supervisor for async operations
       {Task.Supervisor, name: VsmPhoenix.TaskSupervisor},
       
+      # Start Dynamic Configuration system
+      VsmPhoenix.Infrastructure.DynamicConfig,
+      
+      # Start Operations Metrics tracking
+      VsmPhoenix.Infrastructure.OperationsMetrics,
+      
+      # Start Coordination Metrics tracking
+      VsmPhoenix.Infrastructure.CoordinationMetrics,
+      
+      # Start Systemic Operations Metrics (agnostic patterns)
+      VsmPhoenix.Infrastructure.SystemicOperationsMetrics,
+      
+      # Start Systemic Coordination Metrics (agnostic patterns)
+      VsmPhoenix.Infrastructure.SystemicCoordinationMetrics,
+      
       # Initialize infrastructure components
       %{
         id: :infrastructure_init,

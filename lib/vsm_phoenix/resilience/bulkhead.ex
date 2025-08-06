@@ -12,6 +12,7 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
 
   use GenServer
   require Logger
+  alias VsmPhoenix.Infrastructure.DynamicConfig
 
   defstruct name: nil,
             max_concurrent: 10,
@@ -90,9 +91,13 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
   @impl true
   def init(opts) do
     name = Keyword.fetch!(opts, :name)
-    max_concurrent = Keyword.get(opts, :max_concurrent, 10)
-    max_waiting = Keyword.get(opts, :max_waiting, 50)
-    checkout_timeout = Keyword.get(opts, :checkout_timeout, 5_000)
+    
+    # Get dynamic configuration
+    config = DynamicConfig.get_component(:bulkhead)
+    
+    max_concurrent = Keyword.get(opts, :max_concurrent, config[:pool_size] || 10)
+    max_waiting = Keyword.get(opts, :max_waiting, config[:queue_size] || 50)
+    checkout_timeout = Keyword.get(opts, :checkout_timeout, config[:timeout] || 5_000)
 
     # Initialize resource pool
     resources = for i <- 1..max_concurrent, do: {name, i}
@@ -113,6 +118,7 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
   @impl true
   def handle_call({:checkout, from_pid, timeout}, from, state) do
     state = update_metrics(state, :total_checkouts, 1)
+    start_time = System.monotonic_time(:millisecond)
 
     cond do
       # Resources available
@@ -127,7 +133,10 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
           |> update_usage_metrics()
           |> update_metrics(:successful_checkouts, 1)
 
-        # Resource checkout logged via telemetry events
+        # Report metrics
+        pool_utilization = map_size(busy) / state.max_concurrent
+        DynamicConfig.report_metric(:bulkhead, :pool_utilization, pool_utilization)
+        DynamicConfig.report_outcome(:bulkhead, state.name, :checkout_success)
 
         {:reply, {:ok, resource}, state}
 
@@ -135,19 +144,25 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
       :queue.len(state.waiting_queue) >= state.max_waiting ->
         state = update_metrics(state, :rejected_checkouts, 1)
         Logger.warning("❌ Bulkhead #{state.name}: Queue full, rejecting request")
+        
+        # Report rejection
+        DynamicConfig.report_outcome(:bulkhead, state.name, :rejected)
+        
         {:reply, {:error, :bulkhead_full}, state}
 
       # Add to waiting queue
       true ->
         timer_ref = Process.send_after(self(), {:checkout_timeout, from}, timeout)
-        queue_item = {from, from_pid, timer_ref}
+        queue_item = {from, from_pid, timer_ref, start_time}
         new_queue = :queue.in(queue_item, state.waiting_queue)
 
         state =
           %{state | waiting_queue: new_queue}
           |> update_queue_metrics()
 
-        # Queue status logged via telemetry events
+        # Report queue metrics
+        queue_size = :queue.len(new_queue)
+        DynamicConfig.report_metric(:bulkhead, :queue_size, queue_size)
 
         {:noreply, state}
     end
@@ -188,6 +203,14 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
             # Give resource to waiting process
             new_ref = Process.monitor(from_pid)
             busy = Map.put(busy, resource, {from_pid, new_ref})
+            
+            # Report queue wait time if start_time is available
+            case timer_ref do
+              {_, _, _, start_time} ->
+                wait_time = System.monotonic_time(:millisecond) - start_time
+                DynamicConfig.report_metric(:bulkhead, :queue_wait_time, wait_time)
+              _ -> :ok
+            end
 
             GenServer.reply(from, {:ok, resource})
 

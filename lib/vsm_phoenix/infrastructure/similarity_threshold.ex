@@ -5,17 +5,17 @@ defmodule VsmPhoenix.Infrastructure.SimilarityThreshold do
   """
 
   require Logger
-
-  @default_threshold 0.95  # 95% similarity
-  @default_ttl 60_000      # 1 minute cache TTL
+  alias VsmPhoenix.Infrastructure.DynamicConfig
 
   @doc """
   Check if data is similar to recently processed data.
   Returns true if similar (should skip), false if different (should process).
   """
   def is_similar?(key, data, opts \\ []) do
-    threshold = Keyword.get(opts, :threshold, @default_threshold)
-    ttl = Keyword.get(opts, :ttl, @default_ttl)
+    # Get dynamic configuration
+    config = DynamicConfig.get_component(:similarity)
+    threshold = Keyword.get(opts, :threshold, config[:threshold] || 0.95)
+    ttl = Keyword.get(opts, :ttl, config[:ttl] || 60_000)
     
     # Generate hash for comparison
     hash = generate_hash(data)
@@ -38,7 +38,9 @@ defmodule VsmPhoenix.Infrastructure.SimilarityThreshold do
   @doc """
   Check similarity between two data structures with configurable threshold.
   """
-  def compare(data1, data2, threshold \\ @default_threshold) do
+  def compare(data1, data2, threshold \\ nil) do
+    # Use dynamic threshold if not provided
+    threshold = threshold || DynamicConfig.get([:similarity, :threshold]) || 0.95
     similarity = calculate_similarity(data1, data2)
     
     %{
@@ -52,7 +54,8 @@ defmodule VsmPhoenix.Infrastructure.SimilarityThreshold do
   Batch deduplication - filters out similar items from a list.
   """
   def deduplicate_batch(items, opts \\ []) do
-    threshold = Keyword.get(opts, :threshold, @default_threshold)
+    config = DynamicConfig.get_component(:similarity)
+    threshold = Keyword.get(opts, :threshold, config[:threshold] || 0.95)
     key_fun = Keyword.get(opts, :key_fun, & &1)
     
     items
@@ -236,6 +239,13 @@ defmodule VsmPhoenix.Infrastructure.SimilarityThreshold do
   end
 
   defp emit_telemetry(event, key) do
+    # Report metrics to dynamic config for adaptive tuning
+    case event do
+      :cache_hit -> DynamicConfig.report_metric(:similarity, :cache_hit, 1)
+      :cache_miss -> DynamicConfig.report_metric(:similarity, :cache_miss, 1)
+      _ -> :ok
+    end
+    
     :telemetry.execute(
       [:vsm_phoenix, :similarity, event],
       %{count: 1},

@@ -5,17 +5,21 @@ defmodule VsmPhoenix.Infrastructure.AsyncRunner do
   """
 
   require Logger
-
-  @default_timeout 30_000  # 30 seconds
+  alias VsmPhoenix.Infrastructure.DynamicConfig
 
   @doc """
   Run a function asynchronously without blocking the caller.
   Returns immediately with :ok.
   """
   def run_async(fun, opts \\ []) when is_function(fun, 0) do
-    timeout = Keyword.get(opts, :timeout, @default_timeout)
+    # Get dynamic configuration
+    config = DynamicConfig.get_component(:async_runner)
+    timeout = Keyword.get(opts, :timeout, config[:timeout] || 30_000)
     on_error = Keyword.get(opts, :on_error, :log)
     metadata = Keyword.get(opts, :metadata, %{})
+    
+    # Track task start time
+    start_time = System.monotonic_time(:millisecond)
     
     Task.Supervisor.start_child(VsmPhoenix.TaskSupervisor, fn ->
       try do
@@ -24,10 +28,15 @@ defmodule VsmPhoenix.Infrastructure.AsyncRunner do
         
         case Task.yield(task, timeout) || Task.shutdown(task) do
           {:ok, result} ->
+            # Report completion time
+            completion_time = System.monotonic_time(:millisecond) - start_time
+            DynamicConfig.report_metric(:async_runner, :completion_time, completion_time)
+            DynamicConfig.report_outcome(:async_runner, :task, :success)
             emit_telemetry(:success, metadata, result)
             result
             
           nil ->
+            DynamicConfig.report_outcome(:async_runner, :task, :timeout)
             handle_error(:timeout, on_error, metadata)
             {:error, :timeout}
             
@@ -60,10 +69,16 @@ defmodule VsmPhoenix.Infrastructure.AsyncRunner do
   Run multiple async tasks with a maximum concurrency limit.
   """
   def run_async_stream(enumerable, fun, opts \\ []) do
-    max_concurrency = Keyword.get(opts, :max_concurrency, System.schedulers_online() * 2)
-    timeout = Keyword.get(opts, :timeout, @default_timeout)
+    # Get dynamic configuration
+    config = DynamicConfig.get_component(:async_runner)
+    max_concurrency = Keyword.get(opts, :max_concurrency, config[:max_concurrency] || System.schedulers_online() * 2)
+    timeout = Keyword.get(opts, :timeout, config[:timeout] || 30_000)
     ordered = Keyword.get(opts, :ordered, false)
     on_timeout = Keyword.get(opts, :on_timeout, :kill_task)
+    
+    # Report queue size
+    queue_size = Enum.count(enumerable)
+    DynamicConfig.report_metric(:async_runner, :queue_size, queue_size)
     
     stream_opts = [
       max_concurrency: max_concurrency,
@@ -113,7 +128,10 @@ defmodule VsmPhoenix.Infrastructure.AsyncRunner do
   Run a potentially slow database query asynchronously.
   """
   def async_query(query_fun, opts \\ []) do
-    timeout = Keyword.get(opts, :timeout, 5_000)
+    # Use dynamic timeout for database queries
+    config = DynamicConfig.get_component(:async_runner)
+    base_timeout = config[:timeout] || 30_000
+    timeout = Keyword.get(opts, :timeout, min(base_timeout, 5_000))
     
     run_async(fn ->
       # Run in a transaction with timeout

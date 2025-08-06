@@ -64,7 +64,18 @@ defmodule VsmPhoenix.Resilience.CircuitBreaker do
 
   @impl true
   def init(opts) do
-    state = struct(__MODULE__, opts)
+    # Get dynamic configuration
+    config = DynamicConfig.get_component(:circuit_breaker)
+    
+    # Merge dynamic config with opts
+    merged_opts = Keyword.merge([
+      failure_threshold: config[:failure_threshold] || 5,
+      success_threshold: config[:half_open_tries] || 3,
+      timeout: config[:reset_timeout] || 30_000,
+      reset_timeout: config[:window_size] || 60_000
+    ], opts)
+    
+    state = struct(__MODULE__, merged_opts)
     Logger.info("⚡ Circuit breaker #{state.name} initialized in :closed state")
     {:ok, state}
   end
@@ -133,8 +144,15 @@ defmodule VsmPhoenix.Resilience.CircuitBreaker do
   # Private Functions
 
   defp handle_closed_call(fun, state) do
+    start_time = System.monotonic_time(:millisecond)
+    
     try do
       result = fun.()
+      
+      # Report success metrics
+      recovery_time = System.monotonic_time(:millisecond) - start_time
+      DynamicConfig.report_metric(:circuit_breaker, :recovery_time, recovery_time)
+      DynamicConfig.report_outcome(:circuit_breaker, state.name, :success)
 
       # Reset failure count on success if we had failures
       new_state =
@@ -147,9 +165,11 @@ defmodule VsmPhoenix.Resilience.CircuitBreaker do
       {:reply, {:ok, result}, new_state}
     rescue
       error ->
+        DynamicConfig.report_outcome(:circuit_breaker, state.name, :failure)
         handle_failure(state, error, :closed)
     catch
       :exit, reason ->
+        DynamicConfig.report_outcome(:circuit_breaker, state.name, :failure)
         handle_failure(state, {:exit, reason}, :closed)
     end
   end
@@ -163,6 +183,8 @@ defmodule VsmPhoenix.Resilience.CircuitBreaker do
       Process.send(self(), :check_timeout, [])
       {:reply, {:error, :circuit_open}, state}
     else
+      # Still in cooldown
+      DynamicConfig.report_outcome(:circuit_breaker, state.name, :rejected_open)
       {:reply, {:error, :circuit_open}, state}
     end
   end

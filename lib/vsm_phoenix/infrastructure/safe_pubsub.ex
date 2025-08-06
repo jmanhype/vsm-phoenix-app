@@ -6,6 +6,7 @@ defmodule VsmPhoenix.Infrastructure.SafePubSub do
 
   require Logger
   alias Phoenix.PubSub
+  alias VsmPhoenix.Infrastructure.DynamicConfig
 
   @default_pubsub VsmPhoenix.PubSub
 
@@ -14,13 +15,20 @@ defmodule VsmPhoenix.Infrastructure.SafePubSub do
   Returns :ok or {:error, reason}.
   """
   def broadcast(topic, message, opts \\ []) do
+    # Get dynamic configuration
+    config = DynamicConfig.get_component(:pubsub)
     pubsub = Keyword.get(opts, :pubsub, @default_pubsub)
-    retry_count = Keyword.get(opts, :retry_count, 0)
+    retry_count = Keyword.get(opts, :retry_count, config[:retry_count] || 3)
     log_errors = Keyword.get(opts, :log_errors, true)
+    
+    start_time = System.monotonic_time(:millisecond)
     
     try do
       case PubSub.broadcast(pubsub, topic, message) do
         :ok -> 
+          publish_time = System.monotonic_time(:millisecond) - start_time
+          DynamicConfig.report_metric(:pubsub, :publish_time, publish_time)
+          DynamicConfig.report_outcome(:pubsub, :broadcast, :success)
           emit_telemetry(:success, topic)
           :ok
           
@@ -31,9 +39,17 @@ defmodule VsmPhoenix.Infrastructure.SafePubSub do
           emit_telemetry(:failure, topic, reason)
           
           if retry_count > 0 do
-            Process.sleep(100)
-            broadcast(topic, message, Keyword.put(opts, :retry_count, retry_count - 1))
+            retry_delay = config[:retry_delay] || 100
+            Process.sleep(retry_delay)
+            result = broadcast(topic, message, Keyword.put(opts, :retry_count, retry_count - 1))
+            # Report retry outcome
+            case result do
+              :ok -> DynamicConfig.report_outcome(:pubsub, :broadcast, :retry_success)
+              _ -> DynamicConfig.report_outcome(:pubsub, :broadcast, :failure)
+            end
+            result
           else
+            DynamicConfig.report_outcome(:pubsub, :broadcast, :failure)
             error
           end
       end

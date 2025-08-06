@@ -87,6 +87,7 @@ defmodule VsmPhoenix.System2.Coordinator do
   
   @impl true
   def handle_call({:coordinate_message, from_context, to_context, message}, _from, state) do
+    start_time = :erlang.system_time(:millisecond)
     Logger.debug("Coordinator: Message from #{from_context} to #{to_context}")
     
     # Check if coordination is needed
@@ -97,6 +98,26 @@ defmodule VsmPhoenix.System2.Coordinator do
         # Forward the message
         forward_message(to_context, processed_message)
         
+        # Calculate coordination latency
+        latency = :erlang.system_time(:millisecond) - start_time
+        
+        # Record successful message flow in metrics
+        VsmPhoenix.Infrastructure.CoordinationMetrics.record_message_flow(
+          from_context,
+          to_context,
+          Map.get(message, :type, :unknown),
+          :success,
+          latency
+        )
+        
+        # Also record in systemic metrics
+        VsmPhoenix.Infrastructure.SystemicCoordinationMetrics.record_message(
+          from_context,
+          to_context,
+          :direct,
+          latency
+        )
+        
         # Update message flows
         update_message_flows(state, from_context, to_context, processed_message)
         
@@ -104,11 +125,38 @@ defmodule VsmPhoenix.System2.Coordinator do
         # Schedule delayed delivery
         schedule_delayed_message(to_context, processed_message, duration)
         
+        # Record delayed message flow
+        VsmPhoenix.Infrastructure.CoordinationMetrics.record_message_flow(
+          from_context,
+          to_context,
+          Map.get(message, :type, :unknown),
+          :delayed,
+          duration
+        )
+        
+        # Also record in systemic metrics as redirected
+        VsmPhoenix.Infrastructure.SystemicCoordinationMetrics.record_message(
+          from_context,
+          to_context,
+          :redirected,
+          duration
+        )
+        
         # Update state with pending message
         add_pending_message(state, from_context, to_context, processed_message)
         
       {:block, reason} ->
         Logger.warning("Coordinator: Blocked message from #{from_context} to #{to_context}: #{reason}")
+        
+        # Record blocked message flow
+        VsmPhoenix.Infrastructure.CoordinationMetrics.record_message_flow(
+          from_context,
+          to_context,
+          Map.get(message, :type, :unknown),
+          :blocked,
+          nil
+        )
+        
         state
     end
     
@@ -141,12 +189,46 @@ defmodule VsmPhoenix.System2.Coordinator do
   
   @impl true
   def handle_call(:get_coordination_status, _from, state) do
+    # Get real coordination effectiveness from BOTH metrics systems
+    real_effectiveness = VsmPhoenix.Infrastructure.CoordinationMetrics.get_coordination_effectiveness()
+    message_flows = VsmPhoenix.Infrastructure.CoordinationMetrics.get_message_flow_metrics()
+    sync_status = VsmPhoenix.Infrastructure.CoordinationMetrics.get_synchronization_status()
+    
+    # Get systemic coordination patterns
+    systemic_metrics = VsmPhoenix.Infrastructure.SystemicCoordinationMetrics.get_metrics()
+    routing_efficiency = VsmPhoenix.Infrastructure.SystemicCoordinationMetrics.get_routing_efficiency()
+    flow_balance = VsmPhoenix.Infrastructure.SystemicCoordinationMetrics.get_flow_balance()
+    
     status = %{
+      # Legacy fields for compatibility
       registered_contexts: map_size(state.registered_contexts),
-      active_flows: count_active_flows(state.message_flows),
+      active_flows: real_effectiveness.active_flows,
+      message_flow_metrics: %{
+        messages_per_minute: real_effectiveness.messages_per_minute,
+        success_rate: real_effectiveness.message_success_rate,
+        average_latency: real_effectiveness.average_latency,
+        bottlenecks: real_effectiveness.coordination_bottlenecks
+      },
       oscillation_risks: detect_oscillation_risks(state),
-      synchronization_level: calculate_sync_level(state),
-      effectiveness: state.performance_metrics.effectiveness
+      synchronization_level: real_effectiveness.synchronization_level,
+      coordination_effectiveness: real_effectiveness.overall_effectiveness,
+      synchronization_metrics: %{
+        contexts_synchronized: sync_status.contexts_synchronized,
+        sync_frequency: sync_status.sync_frequency,
+        sync_health: sync_status.synchronization_health
+      },
+      oscillation_control: real_effectiveness.oscillation_control,
+      
+      # Pure systemic patterns
+      systemic_patterns: %{
+        message_volume: systemic_metrics.message_volume_per_second,
+        routing_efficiency: routing_efficiency.efficiency_score,
+        direct_routing_percentage: routing_efficiency.direct_percentage,
+        synchronization_frequency: systemic_metrics.sync_frequency,
+        conflict_resolution_rate: systemic_metrics.conflict_resolution_rate,
+        flow_balance_ratio: flow_balance.overall_balance,
+        unit_imbalances: flow_balance.unit_imbalances
+      }
     }
     
     {:reply, status, state}
@@ -159,6 +241,29 @@ defmodule VsmPhoenix.System2.Coordinator do
     detector = Map.get(state.oscillation_detectors, context_id, init_oscillation_detector(context_id))
     
     {dampened_signal, updated_detector} = apply_dampening(signal, detector)
+    
+    # Calculate dampening effectiveness
+    dampening_applied = if dampened_signal != signal do
+      original_strength = if is_number(signal), do: abs(signal), else: 1.0
+      dampened_strength = if is_number(dampened_signal), do: abs(dampened_signal), else: 0.7
+      
+      if original_strength > 0 do
+        1.0 - (dampened_strength / original_strength)
+      else
+        0.0
+      end
+    else
+      0.0  # No dampening applied
+    end
+    
+    # Record oscillation dampening in metrics
+    if dampening_applied > 0 do
+      VsmPhoenix.Infrastructure.CoordinationMetrics.record_oscillation_dampening(
+        context_id,
+        if(is_number(signal), do: abs(signal), else: 1.0),
+        dampening_applied
+      )
+    end
     
     new_detectors = Map.put(state.oscillation_detectors, context_id, updated_detector)
     new_state = %{state | oscillation_detectors: new_detectors}
@@ -175,6 +280,7 @@ defmodule VsmPhoenix.System2.Coordinator do
   
   @impl true
   def handle_call({:synchronize_operations, contexts}, _from, state) do
+    start_time = :erlang.system_time(:millisecond)
     Logger.info("Coordinator: Synchronizing operations for contexts: #{inspect(contexts)}")
     
     # Create synchronization plan
@@ -182,6 +288,24 @@ defmodule VsmPhoenix.System2.Coordinator do
     
     # Execute synchronization
     sync_result = execute_synchronization(sync_plan, state)
+    
+    # Calculate synchronization effectiveness
+    sync_time = :erlang.system_time(:millisecond) - start_time
+    effectiveness = calculate_sync_effectiveness(sync_result, sync_time)
+    
+    # Record synchronization in metrics
+    VsmPhoenix.Infrastructure.CoordinationMetrics.record_synchronization(
+      contexts,
+      :operational_sync,
+      effectiveness
+    )
+    
+    # Also record in systemic metrics
+    VsmPhoenix.Infrastructure.SystemicCoordinationMetrics.record_sync_event(
+      contexts,
+      :operational_sync,
+      effectiveness
+    )
     
     # Update synchronization state
     new_sync_state = Map.put(state.synchronization_state, sync_result.id, sync_result)
@@ -324,17 +448,39 @@ defmodule VsmPhoenix.System2.Coordinator do
   defp apply_coordination_rules(from_context, to_context, message, state) do
     rules = state.coordination_rules.message_rules
     
-    # Check message frequency
-    if message_frequency_exceeded?(from_context, to_context, state) do
-      {:delay, calculate_delay(state), message}
-    else
-      # Check if synchronization is required
-      if requires_synchronization?(message, rules) do
-        synchronized_message = ensure_synchronized(message, from_context, to_context, state)
-        {:allow, synchronized_message}
-      else
-        {:allow, message}
-      end
+    # Check for conflicts
+    conflict_check = check_for_conflicts(from_context, to_context, message, state)
+    case conflict_check do
+      {:conflict, conflict_type} ->
+        # Record conflict in systemic metrics
+        resolution_start = :erlang.system_time(:millisecond)
+        
+        # Simple conflict resolution: delay the message
+        resolution_time = 50  # 50ms delay for conflict resolution
+        
+        VsmPhoenix.Infrastructure.SystemicCoordinationMetrics.record_conflict(
+          from_context,
+          to_context,
+          conflict_type,
+          resolution_time,
+          true  # Resolved by delaying
+        )
+        
+        {:delay, resolution_time, message}
+        
+      :no_conflict ->
+        # Check message frequency
+        if message_frequency_exceeded?(from_context, to_context, state) do
+          {:delay, calculate_delay(state), message}
+        else
+          # Check if synchronization is required
+          if requires_synchronization?(message, rules) do
+            synchronized_message = ensure_synchronized(message, from_context, to_context, state)
+            {:allow, synchronized_message}
+          else
+            {:allow, message}
+          end
+        end
     end
   end
   
@@ -625,5 +771,79 @@ defmodule VsmPhoenix.System2.Coordinator do
       
       Logger.debug("🔄 Published coordination message: #{message["type"]}")
     end
+  end
+  
+  defp calculate_sync_effectiveness(sync_result, sync_time) do
+    # Calculate effectiveness based on sync result and timing
+    base_effectiveness = case sync_result.status do
+      :completed -> 0.95
+      :partial -> 0.7
+      :failed -> 0.2
+      _ -> 0.5
+    end
+    
+    # Time penalty for slow syncs
+    time_factor = cond do
+      sync_time < 100 -> 1.0      # Excellent
+      sync_time < 500 -> 0.95     # Good
+      sync_time < 1000 -> 0.9     # Acceptable
+      sync_time < 2000 -> 0.8     # Slow
+      true -> 0.6                 # Very slow
+    end
+    
+    # Success rate of individual actions
+    if sync_result.results && length(sync_result.results) > 0 do
+      successful_actions = Enum.count(sync_result.results, fn result ->
+        result.status == :synchronized
+      end)
+      action_success_rate = successful_actions / length(sync_result.results)
+      
+      # Combined effectiveness
+      base_effectiveness * time_factor * action_success_rate
+    else
+      base_effectiveness * time_factor
+    end
+  end
+  
+  defp check_for_conflicts(from_context, to_context, message, state) do
+    # Check for various types of conflicts
+    cond do
+      # Check for simultaneous messages to same context
+      has_recent_message?(to_context, state, 10) ->
+        {:conflict, :simultaneous_access}
+        
+      # Check for circular message patterns
+      creates_circular_flow?(from_context, to_context, state) ->
+        {:conflict, :circular_dependency}
+        
+      # Check for resource contention
+      message[:type] == :resource_request and resource_locked?(to_context, state) ->
+        {:conflict, :resource_contention}
+        
+      # No conflicts detected
+      true ->
+        :no_conflict
+    end
+  end
+  
+  defp has_recent_message?(context, state, threshold_ms) do
+    # Check if context received a message very recently
+    case Map.get(state.message_flows, {:any, context}) do
+      %{last_message: last_time} ->
+        time_diff = DateTime.diff(DateTime.utc_now(), last_time, :millisecond)
+        time_diff < threshold_ms
+      _ ->
+        false
+    end
+  end
+  
+  defp creates_circular_flow?(from_context, to_context, state) do
+    # Simple check: if to_context recently sent to from_context
+    Map.has_key?(state.message_flows, {to_context, from_context})
+  end
+  
+  defp resource_locked?(context, _state) do
+    # Simplified resource lock check
+    false  # Would check actual resource locks in production
   end
 end
