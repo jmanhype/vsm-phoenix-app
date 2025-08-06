@@ -8734,5 +8734,1357 @@
     "blocked": false,
     "reason": "approved",
     "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:45:05.471553",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:45:13.517876",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:45:25.264230",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:45:32.613219",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:45:46.901675",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:46:04.180555",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:46:26.581438",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:48:41.898215",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:48:50.994706",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:48:57.885432",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:49:05.763313",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:49:14.351368",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:49:43.958673",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:49:52.906176",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:50:02.324947",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:50:12.195459",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:50:20.756712",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:50:32.371625",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:50:40.696780",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:50:51.651910",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:51:04.518046",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:51:11.886649",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:53:01.433259",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:55:01.566827",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:55:09.242141",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:55:19.554169",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:56:14.858834",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:56:24.345351",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:56:57.446743",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:57:18.598667",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:57:43.814532",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:57:55.281911",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:58:09.798757",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:58:22.400461",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:58:33.826150",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:59:02.508191",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:59:10.365897",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T09:59:52.092061",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:00:03.937753",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:02:38.621331",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:02:47.049872",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:02:54.402700",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:02:54.815779",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:02:55.498935",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:02:58.231716",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:03.362989",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:06.510628",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:08.475218",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:11.525027",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:14.950399",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:18.509515",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:19.419786",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:24.424412",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:26.990927",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:31.099631",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:33.880455",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:36.329336",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:41.678600",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:42.341197",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:46.308057",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:49.701548",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:55.549400",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:03:58.064962",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:07.468455",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:08.344264",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:09.799239",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:19.769725",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:24.048234",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:28.839103",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:36.596447",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:37.075740",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:44.772881",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:44.954562",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:04:52.718975",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:01.499613",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:02.058443",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:09.643404",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:13.328588",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:17.406154",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:25.825846",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:35.021416",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:40.445523",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:43.196095",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:50.693050",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:05:52.294317",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:01.860963",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:09.148123",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:09.966106",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:18.101908",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:24.008618",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:26.243056",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:35.034307",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:35.246596",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:42.872764",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:53.017070",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:06:56.277994",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:01.463783",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:10.038012",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:11.515704",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:14.408831",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:18.478858",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:22.105855",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:26.417099",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:31.267989",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:37.401817",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:39.123073",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:43.006388",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:47.399308",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:07:54.739533",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:08:02.747402",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:08:04.596217",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:08:12.282981",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:08:20.008423",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:08:26.834230",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:08:41.115508",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:08:45.514155",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:08:55.509430",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:09:01.675198",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:09:03.723639",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:09:14.876401",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:09:23.131883",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:09:31.636274",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:09:39.367671",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:09:47.665918",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:09:47.862713",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:09:56.192970",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:09:58.287770",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:10:05.560832",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:10:12.372839",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:10:16.799544",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:10:25.227035",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:10:30.909169",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:10:32.998525",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:10:41.426362",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:10:43.176712",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:10:53.502419",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:10:58.752629",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:01.690174",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:08.579103",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:09.656668",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:15.796317",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:20.102602",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:23.838031",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:29.243566",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:37.679674",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:38.614842",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:49.215059",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:54.330136",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:11:58.144652",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:12:12.479030",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:12:21.320356",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:12:31.163030",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:12:42.494003",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:13:02.482158",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:13:11.299432",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:13:18.464436",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:13:28.520847",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:13:35.859811",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:13:49.796792",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:13:58.008800",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:14:11.274044",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:14:21.964855",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:14:31.894458",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:14:41.869900",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:14:50.536914",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:14:59.371277",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:15:18.721326",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:20:08.049462",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-06T10:20:15.017510",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
   }
 ]

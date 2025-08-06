@@ -109,7 +109,7 @@ defmodule VsmPhoenix.Hive.Discovery do
         {:ok, final_state}
         
       {:error, reason} ->
-        Logger.warn("⚠️  Failed to setup multicast discovery: #{inspect(reason)}")
+        Logger.warning("⚠️  Failed to setup multicast discovery: #{inspect(reason)}")
         {:ok, state}
     end
   end
@@ -240,7 +240,7 @@ defmodule VsmPhoenix.Hive.Discovery do
         {:noreply, new_state}
         
       {:error, reason} ->
-        Logger.warn("⚠️  Failed to decode discovery message: #{inspect(reason)}")
+        Logger.warning("⚠️  Failed to decode discovery message: #{inspect(reason)}")
         {:noreply, state}
     end
   end
@@ -371,7 +371,7 @@ defmodule VsmPhoenix.Hive.Discovery do
         end
         
       {:error, reason} ->
-        Logger.warn("⚠️  Failed to encode announcement: #{inspect(reason)}")
+        Logger.warning("⚠️  Failed to encode announcement: #{inspect(reason)}")
     end
   end
   
@@ -417,7 +417,7 @@ defmodule VsmPhoenix.Hive.Discovery do
         process_vsm_response(message, ip, port, state)
         
       _ ->
-        Logger.warn("⚠️  Unknown discovery message type: #{message.type}")
+        Logger.warning("⚠️  Unknown discovery message type: #{message.type}")
         state
     end
   end
@@ -465,7 +465,7 @@ defmodule VsmPhoenix.Hive.Discovery do
         end
         
       {:error, reason} ->
-        Logger.warn("⚠️  Failed to send query response: #{inspect(reason)}")
+        Logger.warning("⚠️  Failed to send query response: #{inspect(reason)}")
     end
     
     state
@@ -508,7 +508,7 @@ defmodule VsmPhoenix.Hive.Discovery do
         end
         
       {:error, reason} ->
-        Logger.warn("⚠️  Failed to send discovery query: #{inspect(reason)}")
+        Logger.warning("⚠️  Failed to send discovery query: #{inspect(reason)}")
     end
   end
   
@@ -530,7 +530,7 @@ defmodule VsmPhoenix.Hive.Discovery do
         end
         
       {:error, reason} ->
-        Logger.warn("⚠️  Failed to send targeted discovery: #{inspect(reason)}")
+        Logger.warning("⚠️  Failed to send targeted discovery: #{inspect(reason)}")
     end
   end
   

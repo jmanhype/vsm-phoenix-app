@@ -13,6 +13,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   alias VsmPhoenix.AMQP.ConnectionManager
   alias Phoenix.PubSub
   alias AMQP
+  alias VsmPhoenix.Infrastructure.{AsyncRunner, SafePubSub, DataValidator, AMQPClient, ExchangeConfig}
 
   @telegram_api_base "https://api.telegram.org/bot"
   @poll_timeout 30_000  # 30 seconds long polling
@@ -295,21 +296,33 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
 
   defp get_bot_info(state) do
     url = "#{@telegram_api_base}#{state.bot_token}/getMe"
+    parent = self()
     
-    case HTTPoison.get(url) do
-      {:ok, %{status_code: 200, body: body}} ->
-        case Jason.decode(body) do
-          {:ok, %{"ok" => true, "result" => bot_info}} ->
-            {:ok, bot_info}
-          {:ok, %{"ok" => false, "description" => desc}} ->
-            {:error, desc}
-          _ ->
-            {:error, "Invalid response"}
+    AsyncRunner.async_http_request(:get, url, "", [], 
+      callback: fn result ->
+        response = case result do
+          {:ok, %{status_code: 200, body: body}} ->
+            case Jason.decode(body) do
+              {:ok, %{"ok" => true, "result" => bot_info}} ->
+                {:ok, bot_info}
+              {:ok, %{"ok" => false, "description" => desc}} ->
+                {:error, desc}
+              _ ->
+                {:error, "Invalid response"}
+            end
+          {:ok, %{status_code: status}} ->
+            {:error, "HTTP #{status}"}
+          {:error, error} ->
+            {:error, error}
         end
-      {:ok, %{status_code: status}} ->
-        {:error, "HTTP #{status}"}
-      {:error, error} ->
-        {:error, error}
+        send(parent, {:bot_info_result, response})
+      end
+    )
+    
+    receive do
+      {:bot_info_result, result} -> result
+    after
+      5_000 -> {:error, :timeout}
     end
   end
 
@@ -324,24 +337,39 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     |> maybe_add_reply_markup(opts[:reply_markup])
     |> maybe_add_reply_to(opts[:reply_to_message_id])
     
-    case HTTPoison.post(url, Jason.encode!(params), [{"Content-Type", "application/json"}]) do
-      {:ok, %{status_code: 200, body: body}} ->
-        case Jason.decode(body) do
-          {:ok, %{"ok" => true, "result" => message}} ->
-            publish_telegram_event("message_sent", %{
-              chat_id: chat_id,
-              message_id: message["message_id"]
-            }, state)
-            {:ok, message}
-          {:ok, %{"ok" => false, "description" => desc}} ->
-            {:error, desc}
-          _ ->
-            {:error, "Invalid response"}
+    body = Jason.encode!(params)
+    headers = [{"Content-Type", "application/json"}]
+    parent = self()
+    
+    AsyncRunner.async_http_request(:post, url, body, headers,
+      callback: fn result ->
+        response = case result do
+          {:ok, %{status_code: 200, body: body}} ->
+            case Jason.decode(body) do
+              {:ok, %{"ok" => true, "result" => message}} ->
+                publish_telegram_event("message_sent", %{
+                  chat_id: chat_id,
+                  message_id: DataValidator.safe_get(message, "message_id")
+                }, state)
+                {:ok, message}
+              {:ok, %{"ok" => false, "description" => desc}} ->
+                {:error, desc}
+              _ ->
+                {:error, "Invalid response"}
+            end
+          {:ok, %{status_code: status}} ->
+            {:error, "HTTP #{status}"}
+          {:error, error} ->
+            {:error, error}
         end
-      {:ok, %{status_code: status}} ->
-        {:error, "HTTP #{status}"}
-      {:error, error} ->
-        {:error, error}
+        send(parent, {:send_message_result, response})
+      end
+    )
+    
+    receive do
+      {:send_message_result, result} -> result
+    after
+      5_000 -> {:error, :timeout}
     end
   end
 
@@ -721,8 +749,11 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   defp answer_callback_query(callback_id, state) do
     url = "#{@telegram_api_base}#{state.bot_token}/answerCallbackQuery"
     params = %{"callback_query_id" => callback_id}
+    body = Jason.encode!(params)
+    headers = [{"Content-Type", "application/json"}]
     
-    HTTPoison.post(url, Jason.encode!(params), [{"Content-Type", "application/json"}])
+    # Fire and forget
+    AsyncRunner.async_http_request(:post, url, body, headers)
   end
 
   defp publish_telegram_event(event_type, data, state) do
@@ -733,12 +764,9 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
     }
     
-    message = Jason.encode!(event)
     routing_key = "telegram.event.#{event_type}"
     
-    AMQP.Basic.publish(state.channel, state.events_exchange, routing_key, message,
-      content_type: "application/json"
-    )
+    AMQPClient.publish(:telegram_events, routing_key, event)
   end
 
   defp publish_amqp_command(command, params, state) do
@@ -749,13 +777,11 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
     }
     
-    message = Jason.encode!(cmd)
     routing_key = "vsm.command.#{command}"
     
     # Publish to VSM command bus
-    AMQP.Basic.publish(state.channel, "vsm.commands", routing_key, message,
-      content_type: "application/json",
-      reply_to: state.commands_exchange
+    AMQPClient.publish(:vsm_commands, routing_key, cmd,
+      reply_to: ExchangeConfig.get_exchange_name(:telegram_commands)
     )
   end
 

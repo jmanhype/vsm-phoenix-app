@@ -27,6 +27,16 @@ defmodule VsmPhoenix.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: VsmPhoenix.PubSub},
       
+      # Start Task Supervisor for async operations
+      {Task.Supervisor, name: VsmPhoenix.TaskSupervisor},
+      
+      # Initialize infrastructure components
+      %{
+        id: :infrastructure_init,
+        start: {__MODULE__, :init_infrastructure, []},
+        type: :worker
+      },
+      
       # Start the Endpoint (http/https)
       VsmPhoenixWeb.Endpoint,
       
@@ -136,5 +146,14 @@ defmodule VsmPhoenix.Application do
   def config_change(changed, _new, removed) do
     VsmPhoenixWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+  
+  @doc false
+  def init_infrastructure do
+    # Initialize similarity threshold ETS tables
+    VsmPhoenix.Infrastructure.SimilarityThreshold.init()
+    
+    # Return a dummy GenServer-like response
+    :ignore
   end
 end

@@ -18,6 +18,7 @@ defmodule VsmPhoenix.System1.Context do
       alias VsmPhoenix.System2.Coordinator
       alias VsmPhoenix.System3.Control
       alias AMQP
+      alias VsmPhoenix.Infrastructure.SafePubSub
       
       @context_name unquote(opts[:name]) || __MODULE__
       @context_type unquote(opts[:type]) || :generic
@@ -218,7 +219,7 @@ defmodule VsmPhoenix.System1.Context do
         end
         
         # Report to System 3
-        PubSub.broadcast(@pubsub, "vsm:health", {
+        SafePubSub.broadcast!("vsm:health", {
           :health_report,
           @context_name,
           health
@@ -334,7 +335,7 @@ defmodule VsmPhoenix.System1.Context do
       end
       
       defp report_operation_success(operation) do
-        PubSub.broadcast(@pubsub, "vsm:metrics", {
+        SafePubSub.broadcast!("vsm:metrics", {
           :operation_complete,
           @context_name,
           operation,
@@ -343,7 +344,7 @@ defmodule VsmPhoenix.System1.Context do
       end
       
       defp report_operation_failure(operation, reason) do
-        PubSub.broadcast(@pubsub, "vsm:metrics", {
+        SafePubSub.broadcast!("vsm:metrics", {
           :operation_complete,
           @context_name,
           operation,
@@ -364,7 +365,7 @@ defmodule VsmPhoenix.System1.Context do
       defp request_intervention(state, health) do
         Logger.warning("#{@context_name}: Requesting intervention, health: #{health}")
         
-        PubSub.broadcast(@pubsub, "vsm:intervention", {
+        SafePubSub.broadcast!("vsm:intervention", {
           :intervention_request,
           @context_name,
           health,

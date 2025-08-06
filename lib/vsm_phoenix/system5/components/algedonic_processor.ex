@@ -286,44 +286,75 @@ defmodule VsmPhoenix.System5.Components.AlgedonicProcessor do
   defp handle_critical_pain(intensity, context, state) do
     Logger.error("🚨 CRITICAL PAIN SIGNAL - Immediate intervention required!")
 
-    # Request immediate adaptation
-    Intelligence.generate_adaptation_proposal(%{
-      type: :algedonic_response,
-      urgency: :critical,
-      pain_level: intensity,
-      context: context
-    })
+    # Request immediate adaptation with error handling
+    try do
+      Intelligence.generate_adaptation_proposal(%{
+        type: :algedonic_response,
+        urgency: :critical,
+        pain_level: intensity,
+        context: context
+      })
+    rescue
+      e ->
+        Logger.error("Failed to generate adaptation proposal for critical pain: #{inspect(e)}")
+    end
 
-    # Trigger LLM-based policy synthesis
-    spawn(fn ->
-      Logger.info("🧠 TRIGGERING LLM POLICY SYNTHESIS FROM CRITICAL PAIN")
+    # Trigger LLM-based policy synthesis with supervision
+    Task.Supervisor.start_child(VsmPhoenix.TaskSupervisor, fn ->
+      try do
+        Logger.info("🧠 TRIGGERING LLM POLICY SYNTHESIS FROM CRITICAL PAIN")
+        
+        # Add timeout protection for policy synthesis
+        task = Task.async(fn ->
+          anomaly_data = %{
+            type: :pain_signal,
+            intensity: intensity,
+            context: context,
+            severity: intensity,
+            timestamp: DateTime.utc_now(),
+            system_state: summarize_system_state(state)
+          }
 
-      anomaly_data = %{
-        type: :pain_signal,
-        intensity: intensity,
-        context: context,
-        severity: intensity,
-        timestamp: DateTime.utc_now(),
-        system_state: summarize_system_state(state)
-      }
+          PolicySynthesizer.synthesize_policy_from_anomaly(anomaly_data)
+        end)
+        
+        case Task.yield(task, 30_000) || Task.shutdown(task, :brutal_kill) do
+          {:ok, {:ok, policy}} ->
+            Logger.info("✅ EMERGENCY POLICY SYNTHESIZED: #{policy.id}")
+            # Apply the new policy immediately with error handling
+            try do
+              PolicyManager.synthesize_policy(policy)
+            rescue
+              e ->
+                Logger.error("Failed to apply emergency policy: #{inspect(e)}")
+            end
 
-      case PolicySynthesizer.synthesize_policy_from_anomaly(anomaly_data) do
-        {:ok, policy} ->
-          Logger.info("✅ EMERGENCY POLICY SYNTHESIZED: #{policy.id}")
-          # Apply the new policy immediately
-          PolicyManager.synthesize_policy(policy)
-
-        {:error, reason} ->
-          Logger.error("Emergency policy synthesis failed: #{inspect(reason)}")
+          {:ok, {:error, reason}} ->
+            Logger.error("Emergency policy synthesis failed: #{inspect(reason)}")
+            
+          nil ->
+            Logger.error("Emergency policy synthesis timed out after 30 seconds")
+            
+          {:exit, reason} ->
+            Logger.error("Emergency policy synthesis crashed: #{inspect(reason)}")
+        end
+      rescue
+        e ->
+          Logger.error("Critical error in policy synthesis task: #{inspect(e)}")
       end
     end)
 
-    # Broadcast emergency
-    Phoenix.PubSub.broadcast(
-      VsmPhoenix.PubSub,
-      "vsm:emergency",
-      {:critical_pain, intensity, context}
-    )
+    # Broadcast emergency with error handling
+    try do
+      Phoenix.PubSub.broadcast(
+        VsmPhoenix.PubSub,
+        "vsm:emergency",
+        {:critical_pain, intensity, context}
+      )
+    rescue
+      e ->
+        Logger.error("Failed to broadcast emergency: #{inspect(e)}")
+    end
   end
 
   defp handle_warning_pain(intensity, context) do
@@ -374,7 +405,13 @@ defmodule VsmPhoenix.System5.Components.AlgedonicProcessor do
       signals
       |> Enum.take(10)
       |> Enum.filter(fn {type, _, _, _} -> type == :pain end)
-      |> Enum.map(fn {_, intensity, _, _} -> intensity end)
+      |> Enum.map(fn {_, intensity, _, _} -> 
+        # Validate intensity is numeric and in valid range
+        case intensity do
+          n when is_number(n) -> min(max(n, 0.0), 1.0)
+          _ -> 0.0
+        end
+      end)
 
     if Enum.empty?(recent_pain), do: 0.0, else: Enum.sum(recent_pain) / length(recent_pain)
   end
@@ -384,7 +421,13 @@ defmodule VsmPhoenix.System5.Components.AlgedonicProcessor do
       signals
       |> Enum.take(10)
       |> Enum.filter(fn {type, _, _, _} -> type == :pleasure end)
-      |> Enum.map(fn {_, intensity, _, _} -> intensity end)
+      |> Enum.map(fn {_, intensity, _, _} -> 
+        # Validate intensity is numeric and in valid range
+        case intensity do
+          n when is_number(n) -> min(max(n, 0.0), 1.0)
+          _ -> 0.0
+        end
+      end)
 
     if Enum.empty?(recent_pleasure),
       do: 0.0,
@@ -427,7 +470,13 @@ defmodule VsmPhoenix.System5.Components.AlgedonicProcessor do
   end
 
   defp calculate_average_intensity(signals) do
-    intensities = Enum.map(signals, fn {_, intensity, _, _} -> intensity end)
+    intensities = Enum.map(signals, fn {_, intensity, _, _} -> 
+      # Validate intensity
+      case intensity do
+        n when is_number(n) -> min(max(n, 0.0), 1.0)
+        _ -> 0.0
+      end
+    end)
     if Enum.empty?(intensities), do: 0.0, else: Enum.sum(intensities) / length(intensities)
   end
 

@@ -69,7 +69,7 @@ defmodule AmqpOtp27Test do
         assert result.status == :working
         
       {:error, {:connection_error, :econnrefused}} ->
-        Logger.warn("⚠️ RabbitMQ not running - but AMQP library loaded successfully!")
+        Logger.warning("⚠️ RabbitMQ not running - but AMQP library loaded successfully!")
         Logger.info("💡 To fully test, run: docker run -d -p 5672:5672 rabbitmq:3-management")
         # This still proves AMQP works with OTP 27 - just no server to connect to
         assert true

@@ -319,21 +319,41 @@ defmodule VsmPhoenix.System4.Intelligence.AdaptationEngine do
   end
 
   defp monitor_adaptation_progress(adaptation) do
-    # Simulate progress monitoring
-    elapsed = DateTime.diff(DateTime.utc_now(), adaptation.started_at, :second)
-    expected_duration = estimate_duration_seconds(adaptation.timeline)
+    # Simulate progress monitoring with error handling
+    try do
+      started_at = adaptation[:started_at] || DateTime.utc_now()
+      elapsed = DateTime.diff(DateTime.utc_now(), started_at, :second)
+      expected_duration = estimate_duration_seconds(adaptation[:timeline])
 
-    progress_percent = min(elapsed / expected_duration, 1.0)
+      # Protect against division by zero
+      progress_percent = 
+        if expected_duration > 0 do
+          min(elapsed / expected_duration, 1.0)
+        else
+          # If no valid duration, use elapsed time heuristic
+          min(elapsed / (30 * 24 * 60 * 60), 1.0)  # Default to 1 month
+        end
 
-    %{
-      completed: progress_percent >= 0.9 && :rand.uniform() > 0.3,
-      progress: progress_percent,
-      success: true,
-      metrics_impact: %{
-        efficiency: 0.1 * progress_percent,
-        effectiveness: 0.15 * progress_percent
+      %{
+        completed: progress_percent >= 0.9 && :rand.uniform() > 0.3,
+        progress: progress_percent,
+        success: true,
+        metrics_impact: %{
+          efficiency: 0.1 * progress_percent,
+          effectiveness: 0.15 * progress_percent
+        }
       }
-    }
+    rescue
+      e ->
+        Logger.error("Error monitoring adaptation progress: #{inspect(e)}")
+        # Return safe default
+        %{
+          completed: false,
+          progress: 0.0,
+          success: false,
+          metrics_impact: %{efficiency: 0.0, effectiveness: 0.0}
+        }
+    end
   end
 
   defp estimate_duration_seconds(timeline) do
@@ -343,7 +363,10 @@ defmodule VsmPhoenix.System4.Intelligence.AdaptationEngine do
       "3_months" -> 90 * 24 * 60 * 60
       "6_months" -> 180 * 24 * 60 * 60
       "2_weeks" -> 14 * 24 * 60 * 60
-      # Default to 1 month
+      "1_week" -> 7 * 24 * 60 * 60
+      # Handle numeric values (assumed to be in seconds)
+      n when is_number(n) and n > 0 -> n
+      # Default to 1 month for any invalid input
       _ -> 30 * 24 * 60 * 60
     end
   end

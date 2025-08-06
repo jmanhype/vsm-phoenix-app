@@ -13,6 +13,7 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
   @doc """
   Get a channel for a specific purpose
   """
+  def get_channel(purpose \\ :default)
   def get_channel(purpose) do
     GenServer.call(__MODULE__, {:get_channel, purpose})
   end
@@ -77,9 +78,6 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
     GenServer.call(__MODULE__, :get_connection)
   end
   
-  def get_channel(purpose \\ :default) do
-    GenServer.call(__MODULE__, {:get_channel, purpose})
-  end
   
   # Private functions
   defp establish_connection do

@@ -241,16 +241,35 @@ defmodule VsmPhoenix.System4.Intelligence do
   def handle_cast({:implement_adaptation, proposal}, state) do
     Logger.info("Intelligence: Implementing adaptation #{proposal.id}")
     
-    # Add to current adaptations
-    new_adaptations = [proposal | state.current_adaptations]
-    
-    # Coordinate with System 3 for resource allocation
-    Control.allocate_for_adaptation(proposal)
-    
-    # Monitor adaptation progress
-    schedule_adaptation_monitoring(proposal.id)
-    
-    {:noreply, %{state | current_adaptations: new_adaptations}}
+    try do
+      # Validate proposal structure
+      if not is_map(proposal) or not Map.has_key?(proposal, :id) do
+        raise ArgumentError, "Invalid proposal structure"
+      end
+      
+      # Add to current adaptations
+      new_adaptations = [proposal | state.current_adaptations]
+      
+      # Coordinate with System 3 for resource allocation
+      case Control.allocate_for_adaptation(proposal) do
+        :ok ->
+          # Monitor adaptation progress
+          schedule_adaptation_monitoring(proposal.id)
+          {:noreply, %{state | current_adaptations: new_adaptations}}
+          
+        {:error, reason} ->
+          Logger.error("Failed to allocate resources for adaptation #{proposal.id}: #{inspect(reason)}")
+          # Still add to adaptations but mark as resource-constrained
+          marked_proposal = Map.put(proposal, :resource_constrained, true)
+          new_adaptations = [marked_proposal | state.current_adaptations]
+          schedule_adaptation_monitoring(proposal.id)
+          {:noreply, %{state | current_adaptations: new_adaptations}}
+      end
+    rescue
+      e ->
+        Logger.error("Error implementing adaptation #{inspect(proposal[:id])}: #{inspect(e)}")
+        {:noreply, state}
+    end
   end
   
   @impl true
@@ -749,15 +768,29 @@ defmodule VsmPhoenix.System4.Intelligence do
   end
   
   defp calculate_variety_score(variety_data) do
-    # Calculate overall variety score
+    # Calculate overall variety score with validation
+    novel_patterns_size = 
+      case variety_data[:novel_patterns] do
+        map when is_map(map) -> map_size(map)
+        _ -> 0
+      end
+    
+    recursive_potential_length = 
+      case variety_data[:recursive_potential] do
+        list when is_list(list) -> length(list)
+        _ -> 0
+      end
+    
     factors = [
-      map_size(variety_data[:novel_patterns] || %{}) * 0.3,
-      length(variety_data[:recursive_potential] || []) * 0.2,
+      min(novel_patterns_size * 0.3, 100.0),  # Cap contribution at 100
+      min(recursive_potential_length * 0.2, 100.0),
       (if variety_data[:meta_system_seeds], do: 0.3, else: 0),
       (if variety_data[:emergent_properties], do: 0.2, else: 0)
     ]
     
-    Enum.sum(factors)
+    # Ensure result is between 0 and 1
+    score = Enum.sum(factors)
+    min(max(score, 0.0), 1.0)
   end
   
   # AMQP Functions
