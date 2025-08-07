@@ -150,12 +150,12 @@ defmodule VsmPhoenix.MCP.LLMBridge do
     
     headers = [
       {"Content-Type", "application/json"},
-      {"Authorization", "Bearer #{api_key}"},
+      {"x-api-key", api_key},
       {"anthropic-version", "2023-06-01"}
     ]
     
     body = Jason.encode!(%{
-      model: "claude-3-sonnet-20240229",
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 1024,
       messages: [%{
         role: "user",
@@ -188,12 +188,12 @@ defmodule VsmPhoenix.MCP.LLMBridge do
     
     headers = [
       {"Content-Type", "application/json"},
-      {"Authorization", "Bearer #{api_key}"},
+      {"x-api-key", api_key},
       {"anthropic-version", "2023-06-01"}
     ]
     
     body = Jason.encode!(%{
-      model: "claude-3-sonnet-20240229",
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 1024,
       messages: [%{
         role: "user",
