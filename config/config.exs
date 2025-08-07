@@ -164,6 +164,9 @@ config :vsm_phoenix, VsmPhoenix.Scheduler,
     {"*/30 * * * *", {VsmPhoenix.System3.Control, :optimize_performance, [:global]}}
   ]
 
+# Import security configuration
+import_config "security.exs"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

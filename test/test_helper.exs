@@ -12,6 +12,8 @@ defmodule VsmPhoenix.TestHelpers do
   Test helpers for VSM Phoenix variety engineering tests.
   """
   
+  import ExUnit.Assertions
+  
   def create_test_message(text, opts \\ []) do
     %{
       "update_id" => Keyword.get(opts, :update_id, System.unique_integer([:positive])),

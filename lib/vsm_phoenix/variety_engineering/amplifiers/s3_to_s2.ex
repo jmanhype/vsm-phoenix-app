@@ -22,6 +22,10 @@ defmodule VsmPhoenix.VarietyEngineering.Amplifiers.S3ToS2 do
   def set_factor(factor) do
     GenServer.call(@name, {:set_factor, factor})
   end
+
+  def adjust_amplification(factor) do
+    GenServer.call(@name, {:set_factor, factor})
+  end
   
   @impl true
   def init(_opts) do

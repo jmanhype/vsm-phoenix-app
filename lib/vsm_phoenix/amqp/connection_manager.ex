@@ -5,6 +5,7 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
   
   use GenServer
   require Logger
+  alias VsmPhoenix.Infrastructure.DynamicConfig
   
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -13,8 +14,12 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
   @doc """
   Get a channel for a specific purpose
   """
+  def get_channel(purpose \\ :default)
   def get_channel(purpose) do
-    GenServer.call(__MODULE__, {:get_channel, purpose})
+    # Use dynamic timeout for channel operations
+    config = DynamicConfig.get_component(:amqp)
+    timeout = config[:channel_timeout] || 5_000
+    GenServer.call(__MODULE__, {:get_channel, purpose}, timeout)
   end
   
   def init(_opts) do
@@ -39,8 +44,10 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
       {:error, reason} ->
         Logger.warning("⚠️  RabbitMQ not available: #{inspect(reason)}. VSM will operate without AMQP.")
         
-        # Schedule reconnection attempt
-        Process.send_after(self(), :reconnect, 5000)
+        # Schedule reconnection attempt with dynamic delay
+        config = DynamicConfig.get_component(:amqp)
+        reconnect_delay = config[:reconnect_delay] || 5000
+        Process.send_after(self(), :reconnect, reconnect_delay)
         
         {:ok, %{connection: nil, channels: %{}, status: :disconnected}}
     end
@@ -54,7 +61,10 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
         {:noreply, %{state | connection: connection, status: :connected}}
         
       {:error, _reason} ->
-        Process.send_after(self(), :reconnect, 5000)
+        # Use dynamic reconnect delay
+        config = DynamicConfig.get_component(:amqp)
+        reconnect_delay = config[:reconnect_delay] || 5000
+        Process.send_after(self(), :reconnect, reconnect_delay)
         {:noreply, state}
     end
   end
@@ -77,22 +87,38 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
     GenServer.call(__MODULE__, :get_connection)
   end
   
-  def get_channel(purpose \\ :default) do
-    GenServer.call(__MODULE__, {:get_channel, purpose})
-  end
   
   # Private functions
   defp establish_connection do
-    # Default RabbitMQ connection settings
+    # Get dynamic AMQP configuration
+    config = DynamicConfig.get_component(:amqp)
+    
+    # Default RabbitMQ connection settings with dynamic overrides
     options = [
       host: System.get_env("RABBITMQ_HOST", "localhost"),
       port: String.to_integer(System.get_env("RABBITMQ_PORT", "5672")),
       username: System.get_env("RABBITMQ_USER", "guest"),
       password: System.get_env("RABBITMQ_PASS", "guest"),
-      virtual_host: System.get_env("RABBITMQ_VHOST", "/")
+      virtual_host: System.get_env("RABBITMQ_VHOST", "/"),
+      connection_timeout: config[:connection_timeout] || 10_000,
+      heartbeat: config[:heartbeat] || 60
     ]
     
-    AMQP.Connection.open(options)
+    start_time = System.monotonic_time(:millisecond)
+    
+    result = AMQP.Connection.open(options)
+    
+    case result do
+      {:ok, _conn} = success ->
+        connection_time = System.monotonic_time(:millisecond) - start_time
+        DynamicConfig.report_metric(:amqp, :connection_time, connection_time)
+        DynamicConfig.report_outcome(:amqp, :connection, :success)
+        success
+        
+      {:error, _reason} = error ->
+        DynamicConfig.report_outcome(:amqp, :connection, :connection_timeout)
+        error
+    end
   end
   
   defp setup_vsm_topology(connection) do
@@ -159,19 +185,28 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
         {:error, :not_connected}
         
       :connected ->
-        case Map.get(state.channels, purpose) do
-          nil ->
-            case AMQP.Channel.open(state.connection) do
-              {:ok, channel} ->
-                new_channels = Map.put(state.channels, purpose, channel)
-                {:ok, channel, %{state | channels: new_channels}}
-              error ->
-                error
-            end
-            
-          channel ->
+        # ALWAYS create a new channel - don't reuse
+        # This prevents the "second 'channel.open' seen" error
+        case AMQP.Channel.open(state.connection) do
+          {:ok, channel} ->
+            # Don't store it - let each caller manage their own channel
             {:ok, channel, state}
+            
+          {:error, reason} = error ->
+            Logger.error("Failed to create channel for #{purpose}: #{inspect(reason)}")
+            error
         end
+    end
+  end
+  
+  defp create_new_channel(state, purpose) do
+    case AMQP.Channel.open(state.connection) do
+      {:ok, channel} ->
+        new_channels = Map.put(state.channels, purpose, channel)
+        {:ok, channel, %{state | channels: new_channels}}
+      error ->
+        Logger.error("Failed to create channel for #{purpose}: #{inspect(error)}")
+        error
     end
   end
 end

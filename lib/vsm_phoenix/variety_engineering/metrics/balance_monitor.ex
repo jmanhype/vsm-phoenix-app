@@ -71,11 +71,16 @@ defmodule VsmPhoenix.VarietyEngineering.Metrics.BalanceMonitor do
   
   @impl true
   def handle_info(:check_balance, state) do
-    # Get current variety metrics
-    metrics = VsmPhoenix.VarietyEngineering.Metrics.VarietyCalculator.get_all_metrics()
+    # Get current variety metrics safely
+    metrics = try do
+      VsmPhoenix.VarietyEngineering.Metrics.VarietyCalculator.get_all_metrics()
+    rescue
+      _ -> %{variety_metrics: %{}}
+    end
     
     # Analyze balance for each level
-    new_balance_status = analyze_balance(metrics.variety_metrics, state.alert_threshold)
+    variety_metrics = Map.get(metrics || %{}, :variety_metrics, %{})
+    new_balance_status = analyze_balance(variety_metrics, state.alert_threshold)
     
     # Generate alerts for imbalances
     new_alerts = generate_alerts(new_balance_status, state.balance_status)
@@ -121,26 +126,66 @@ defmodule VsmPhoenix.VarietyEngineering.Metrics.BalanceMonitor do
   
   defp analyze_balance(metrics, threshold) do
     Enum.reduce([:s1, :s2, :s3, :s4, :s5], %{}, fn level, acc ->
-      ratio = metrics[level].ratio
+      level_metrics = metrics[level]
       
+      # Use entropy ratio for information-theoretic balance
+      entropy_ratio = get_in(level_metrics, [:entropy, :ratio]) || level_metrics.ratio || 0
+      
+      # Consider volume imbalance as well
+      volume_ratio = if level_metrics[:volume] do
+        input_vol = level_metrics.volume.input || 0
+        output_vol = level_metrics.volume.output || 0
+        if input_vol > 0, do: output_vol / input_vol, else: 0
+      else
+        1.0
+      end
+      
+      # Consider velocity for rapid changes
+      velocity = level_metrics[:velocity] || 0
+      
+      # Determine status based on multiple factors
       status = cond do
-        ratio < (1.0 - threshold) -> :underloaded
-        ratio > (1.0 + threshold) -> :overloaded
+        # Critical overload: high entropy ratio AND high volume
+        entropy_ratio > (1.0 + threshold * 2) && volume_ratio > 1.5 -> :critical_overload
+        
+        # Overloaded: either high entropy or high volume
+        entropy_ratio > (1.0 + threshold) || volume_ratio > (1.0 + threshold) -> :overloaded
+        
+        # Underloaded: low entropy ratio
+        entropy_ratio < (1.0 - threshold) -> :underloaded
+        
+        # Unstable: rapid changes in variety
+        abs(velocity) > 0.5 -> :unstable
+        
+        # Otherwise balanced
         true -> :balanced
       end
       
-      Map.put(acc, level, status)
+      Map.put(acc, level, %{
+        status: status,
+        entropy_ratio: entropy_ratio,
+        volume_ratio: volume_ratio,
+        velocity: velocity
+      })
     end)
   end
   
   defp generate_alerts(new_status, old_status) do
     Enum.reduce([:s1, :s2, :s3, :s4, :s5], [], fn level, alerts ->
-      if new_status[level] != old_status[level] && new_status[level] != :balanced do
+      new_level_status = new_status[level]
+      old_level_status = if is_map(old_status[level]), do: old_status[level].status, else: old_status[level]
+      
+      if new_level_status.status != old_level_status && new_level_status.status != :balanced do
         alert = %{
           timestamp: DateTime.utc_now(),
           level: level,
-          status: new_status[level],
-          message: format_alert_message(level, new_status[level])
+          status: new_level_status.status,
+          metrics: %{
+            entropy_ratio: Float.round(new_level_status.entropy_ratio, 3),
+            volume_ratio: Float.round(new_level_status.volume_ratio, 3),
+            velocity: Float.round(new_level_status.velocity, 3)
+          },
+          message: format_alert_message(level, new_level_status)
         }
         [alert | alerts]
       else
@@ -149,70 +194,192 @@ defmodule VsmPhoenix.VarietyEngineering.Metrics.BalanceMonitor do
     end)
   end
   
-  defp format_alert_message(level, status) do
-    case status do
+  defp format_alert_message(level, level_status) do
+    status = if is_map(level_status), do: level_status.status, else: level_status
+    
+    base_msg = case status do
+      :critical_overload ->
+        "System #{level} is critically overloaded - immediate intervention required"
       :overloaded ->
         "System #{level} is overloaded - receiving more variety than it can process"
       :underloaded ->
         "System #{level} is underloaded - not receiving sufficient variety for effective operation"
+      :unstable ->
+        "System #{level} is unstable - rapid variety changes detected"
+      _ ->
+        "System #{level} status: #{status}"
+    end
+    
+    if is_map(level_status) do
+      "#{base_msg} (entropy: #{Float.round(level_status.entropy_ratio, 2)}, volume: #{Float.round(level_status.volume_ratio, 2)}, velocity: #{Float.round(level_status.velocity, 2)})"
+    else
+      base_msg
     end
   end
   
   defp calculate_overall_health(balance_status) do
-    balanced_count = balance_status
-                     |> Map.values()
-                     |> Enum.count(& &1 == :balanced)
+    # Calculate health based on status and metrics
+    health_scores = balance_status
+    |> Map.values()
+    |> Enum.map(fn level_status ->
+      status = if is_map(level_status), do: level_status.status, else: level_status
+      
+      case status do
+        :balanced -> 1.0
+        :unstable -> 0.7
+        :underloaded -> 0.5
+        :overloaded -> 0.3
+        :critical_overload -> 0.1
+        _ -> 0.0
+      end
+    end)
     
-    balanced_count / 5.0  # Percentage of balanced systems
+    # Average health score
+    if length(health_scores) > 0 do
+      Enum.sum(health_scores) / length(health_scores)
+    else
+      0.0
+    end
   end
   
   defp critical_imbalance?(balance_status) do
-    # Critical if more than 2 systems are imbalanced
-    imbalanced_count = balance_status
-                       |> Map.values()
-                       |> Enum.count(& &1 != :balanced)
+    # Critical if systems are critically overloaded or multiple systems imbalanced
+    critical_count = balance_status
+    |> Map.values()
+    |> Enum.count(fn level_status ->
+      status = if is_map(level_status), do: level_status.status, else: level_status
+      status == :critical_overload
+    end)
     
-    imbalanced_count > 2
+    imbalanced_count = balance_status
+    |> Map.values()
+    |> Enum.count(fn level_status ->
+      status = if is_map(level_status), do: level_status.status, else: level_status
+      status != :balanced
+    end)
+    
+    critical_count > 0 || imbalanced_count > 2
   end
   
   defp trigger_rebalancing(balance_status, metrics) do
     # Notify variety engineering components to adjust filters/amplifiers
     Enum.each([:s1, :s2, :s3, :s4, :s5], fn level ->
-      case balance_status[level] do
+      level_status = balance_status[level]
+      status = if is_map(level_status), do: level_status.status, else: level_status
+      
+      adjustment_params = if is_map(level_status) do
+        %{
+          entropy_ratio: level_status.entropy_ratio,
+          volume_ratio: level_status.volume_ratio,
+          velocity: level_status.velocity,
+          metrics: metrics[level]
+        }
+      else
+        %{metrics: metrics[level]}
+      end
+      
+      case status do
+        :critical_overload ->
+          # Emergency filtering
+          adjust_boundary_filtering(level, :emergency_increase, adjustment_params)
+          
         :overloaded ->
           # Increase filtering (attenuation)
-          adjust_boundary_filtering(level, :increase, metrics[level])
+          adjust_boundary_filtering(level, :increase, adjustment_params)
+          
         :underloaded ->
           # Decrease filtering or increase amplification
-          adjust_boundary_filtering(level, :decrease, metrics[level])
+          adjust_boundary_filtering(level, :decrease, adjustment_params)
+          
+        :unstable ->
+          # Stabilize variety flow
+          adjust_boundary_filtering(level, :stabilize, adjustment_params)
+          
         _ ->
           :ok
       end
     end)
   end
   
-  defp adjust_boundary_filtering(level, direction, metrics) do
-    Logger.info("🔧 Adjusting variety #{direction} for #{level}")
+  defp adjust_boundary_filtering(level, direction, params) do
+    Logger.info("🔧 Adjusting variety #{direction} for #{level} with params: #{inspect(params)}")
     
-    # Notify appropriate filter/amplifier
+    # Calculate adjustment magnitude based on metrics
+    adjustment_magnitude = calculate_adjustment_magnitude(direction, params)
+    
+    # Notify appropriate filter/amplifier with magnitude
     case {level, direction} do
-      {:s1, :increase} -> 
-        VsmPhoenix.VarietyEngineering.Filters.S1ToS2.increase_filtering()
-      {:s2, :increase} -> 
-        VsmPhoenix.VarietyEngineering.Filters.S2ToS3.increase_filtering()
-      {:s3, :increase} -> 
-        VsmPhoenix.VarietyEngineering.Filters.S3ToS4.increase_filtering()
-      {:s4, :increase} -> 
-        VsmPhoenix.VarietyEngineering.Filters.S4ToS5.increase_filtering()
+      {:s1, dir} when dir in [:increase, :emergency_increase] -> 
+        VsmPhoenix.VarietyEngineering.Filters.S1ToS2.adjust_filtering(adjustment_magnitude)
+        
+      {:s2, dir} when dir in [:increase, :emergency_increase] -> 
+        VsmPhoenix.VarietyEngineering.Filters.S2ToS3.adjust_filtering(adjustment_magnitude)
+        
+      {:s3, dir} when dir in [:increase, :emergency_increase] -> 
+        VsmPhoenix.VarietyEngineering.Filters.S3ToS4.adjust_filtering(adjustment_magnitude)
+        
+      {:s4, dir} when dir in [:increase, :emergency_increase] -> 
+        VsmPhoenix.VarietyEngineering.Filters.S4ToS5.adjust_filtering(adjustment_magnitude)
+        
       {:s5, :decrease} -> 
-        VsmPhoenix.VarietyEngineering.Amplifiers.S5ToS4.increase_amplification()
+        VsmPhoenix.VarietyEngineering.Amplifiers.S5ToS4.adjust_amplification(adjustment_magnitude)
+        
       {:s4, :decrease} -> 
-        VsmPhoenix.VarietyEngineering.Amplifiers.S4ToS3.increase_amplification()
+        VsmPhoenix.VarietyEngineering.Amplifiers.S4ToS3.adjust_amplification(adjustment_magnitude)
+        
       {:s3, :decrease} -> 
-        VsmPhoenix.VarietyEngineering.Amplifiers.S3ToS2.increase_amplification()
+        VsmPhoenix.VarietyEngineering.Amplifiers.S3ToS2.adjust_amplification(adjustment_magnitude)
+        
       {:s2, :decrease} -> 
-        VsmPhoenix.VarietyEngineering.Amplifiers.S2ToS1.increase_amplification()
+        VsmPhoenix.VarietyEngineering.Amplifiers.S2ToS1.adjust_amplification(adjustment_magnitude)
+        
+      {level, :stabilize} ->
+        # For unstable systems, adjust both directions slightly
+        stabilize_system_variety(level, params)
+        
       _ -> 
+        :ok
+    end
+  end
+  
+  defp calculate_adjustment_magnitude(direction, params) do
+    base_magnitude = case direction do
+      :emergency_increase -> 2.0   # Double filtering
+      :increase -> 1.3             # 30% increase
+      :decrease -> 0.7             # 30% decrease
+      :stabilize -> 1.0            # No change in magnitude
+      _ -> 1.0
+    end
+    
+    # Adjust based on how far from balance
+    if params[:entropy_ratio] do
+      deviation = abs(params.entropy_ratio - 1.0)
+      base_magnitude * (1.0 + deviation)
+    else
+      base_magnitude
+    end
+  end
+  
+  defp stabilize_system_variety(level, params) do
+    # Stabilize by dampening oscillations
+    Logger.info("🎚️ Stabilizing variety for #{level}")
+    
+    # Small adjustments to both filter and amplifier
+    case level do
+      :s1 -> 
+        VsmPhoenix.VarietyEngineering.Filters.S1ToS2.dampen_oscillations()
+      :s2 ->
+        VsmPhoenix.VarietyEngineering.Filters.S2ToS3.dampen_oscillations()
+        VsmPhoenix.VarietyEngineering.Amplifiers.S2ToS1.dampen_oscillations()
+      :s3 ->
+        VsmPhoenix.VarietyEngineering.Filters.S3ToS4.dampen_oscillations()
+        VsmPhoenix.VarietyEngineering.Amplifiers.S3ToS2.dampen_oscillations()
+      :s4 ->
+        VsmPhoenix.VarietyEngineering.Filters.S4ToS5.dampen_oscillations()
+        VsmPhoenix.VarietyEngineering.Amplifiers.S4ToS3.dampen_oscillations()
+      :s5 ->
+        VsmPhoenix.VarietyEngineering.Amplifiers.S5ToS4.dampen_oscillations()
+      _ ->
         :ok
     end
   end

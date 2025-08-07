@@ -279,7 +279,7 @@ defmodule VsmPhoenix.MCP.MaggWrapper do
       try do
         System.cmd(@magg_binary, args, [stderr_to_stdout: true])
       rescue
-        e in System.Error ->
+        e in ErlangError ->
           {:error, "MAGG not found or not executable: #{inspect(e)}"}
       end
     end)
@@ -357,7 +357,7 @@ defmodule VsmPhoenix.MCP.MaggWrapper do
       try do
         System.cmd(@magg_binary, args, [stderr_to_stdout: true])
       rescue
-        e in System.Error ->
+        e in ErlangError ->
           {:error, "MAGG not found or not executable: #{inspect(e)}"}
       end
     end)

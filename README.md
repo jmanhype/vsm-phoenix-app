@@ -1,4 +1,10 @@
 # VSM Phoenix - Comprehensive Viable Systems Model Implementation
+  
+  [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://jmanhype.github.io/vsm-phoenix-app/)
+  
+  [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://jmanhype.github.io/vsm-phoenix-app/)
+  
+  [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://jmanhype.github.io/vsm-phoenix-app/)
 
 A complete Phoenix application implementing Stafford Beer's Viable Systems Model (VSM) with advanced cybernetic features including recursive spawning, MCP integration, AMQP messaging, real-time monitoring, and algedonic signal processing.
 
@@ -383,6 +389,64 @@ open http://localhost:4000
 - **Prediction Accuracy**: Accuracy of System 4 predictions
 - **Adaptation Success Rate**: Percentage of successful adaptations
 - **Innovation Index**: Rate of new capability development
+
+## 🎯 GitHub Actions & Automation
+
+### CI/CD Workflows (`.github/workflows/`)
+
+**Core Workflows**:
+
+1. **CI/CD Pipeline** (`ci-cd.yml`)
+   - Runs on every push and PR
+   - Quality checks, testing, and building
+   - Multi-environment support
+
+2. **Release Management** (`release.yml`)
+   - Automated release creation
+   - Changelog generation
+   - Multi-platform builds
+
+3. **Security Scanning** (`security.yml`)
+   - Vulnerability detection
+   - License compliance
+   - Container scanning
+
+**Automation Workflows**:
+
+4. **Documentation** (`documentation.yml`)
+   - Auto-generates documentation
+   - Deploys to GitHub Pages
+   - Creates architecture diagrams
+
+5. **PR Automation** (`pr-automation.yml`)
+   - Auto-labeling
+   - Review assignment
+   - Branch protection
+
+6. **Monitoring** (`monitoring.yml`)
+   - System health checks
+   - Performance metrics
+   - Automated reporting
+
+### Quick GitHub Actions Commands
+
+```bash
+# List all workflows
+gh workflow list
+
+# Run a specific workflow
+gh workflow run "CI/CD Pipeline"
+
+# View workflow runs
+gh run list
+
+# Create a release
+git tag -a v2.0.0 -m "Release v2.0.0"
+git push origin v2.0.0
+
+# Or use workflow dispatch
+gh workflow run release.yml -f version=v2.0.0
+```
 
 ## 🗺️ Roadmap & Future Development
 

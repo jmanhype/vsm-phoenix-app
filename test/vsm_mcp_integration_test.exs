@@ -9,8 +9,7 @@ defmodule VsmMcpIntegrationTest do
   - JSON-RPC protocol works correctly
   """
   
-  use ExUnit.Case, async: false
-  import Phoenix.ConnTest
+  use VsmPhoenixWeb.ConnCase, async: false
   require Logger
   
   # Set up the endpoint for ConnTest

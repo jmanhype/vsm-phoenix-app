@@ -129,7 +129,7 @@ defmodule VsmPhoenix.MCP.StdioTransport do
         # Response to our request
         case Map.pop(state.pending_requests, id) do
           {nil, _} ->
-            Logger.warn("Received response for unknown request: #{id}")
+            Logger.warning("Received response for unknown request: #{id}")
             state
             
           {from, new_pending} ->

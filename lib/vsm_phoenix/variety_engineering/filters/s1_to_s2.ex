@@ -25,6 +25,14 @@ defmodule VsmPhoenix.VarietyEngineering.Filters.S1ToS2 do
     GenServer.cast(@name, :increase_filtering)
   end
   
+  def adjust_filtering(magnitude) do
+    GenServer.cast(@name, {:adjust_filtering, magnitude})
+  end
+  
+  def dampen_oscillations() do
+    GenServer.cast(@name, :dampen_oscillations)
+  end
+  
   def get_stats do
     GenServer.call(@name, :get_stats)
   end
@@ -43,8 +51,13 @@ defmodule VsmPhoenix.VarietyEngineering.Filters.S1ToS2 do
         events_received: 0,
         patterns_forwarded: 0,
         noise_filtered: 0,
-        aggregation_ratio: 0.0
-      }
+        aggregation_ratio: 0.0,
+        effectiveness_score: 1.0,
+        pattern_quality: 1.0
+      },
+      adaptation_enabled: true,
+      pattern_feedback: %{},  # Track S2 feedback on pattern quality
+      effectiveness_history: []
     }
     
     # Subscribe to S1 events
@@ -72,6 +85,33 @@ defmodule VsmPhoenix.VarietyEngineering.Filters.S1ToS2 do
     new_level = min(state.filtering_level * 1.2, 2.0)
     Logger.info("📈 Increasing S1→S2 filtering to #{new_level}")
     {:noreply, %{state | filtering_level: new_level}}
+  end
+  
+  @impl true
+  def handle_cast({:adjust_filtering, magnitude}, state) do
+    new_level = state.filtering_level * magnitude
+    |> max(0.5)   # Minimum filtering (allow more through)
+    |> min(3.0)   # Maximum filtering (very restrictive)
+    
+    Logger.info("🔧 Adjusting S1→S2 filtering: #{state.filtering_level} → #{new_level}")
+    {:noreply, %{state | filtering_level: new_level}}
+  end
+  
+  @impl true
+  def handle_cast(:dampen_oscillations, state) do
+    # Increase filtering to reduce oscillations
+    dampened_level = state.filtering_level * 1.2
+    |> min(2.5)
+    
+    # Also increase pattern threshold
+    dampened_threshold = state.pattern_threshold * 1.1
+    |> min(0.9)
+    
+    Logger.info("🎚️ Dampening S1→S2 oscillations: level=#{dampened_level}, threshold=#{dampened_threshold}")
+    {:noreply, %{state | 
+      filtering_level: dampened_level,
+      pattern_threshold: dampened_threshold
+    }}
   end
   
   @impl true

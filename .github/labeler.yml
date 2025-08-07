@@ -1,0 +1,98 @@
+# Configuration for auto-labeling PRs based on file changes
+# Used by .github/workflows/pr-automation.yml
+
+# Frontend changes
+frontend:
+  - assets/**/*
+  - lib/vsm_phoenix_web/**/*
+  - priv/static/**/*
+
+# Backend changes
+backend:
+  - lib/vsm_phoenix/**/*
+  - '!lib/vsm_phoenix_web/**/*'
+
+# VSM System-specific labels
+system-1:
+  - lib/vsm_phoenix/system1/**/*
+
+system-2:
+  - lib/vsm_phoenix/system2/**/*
+
+system-3:
+  - lib/vsm_phoenix/system3/**/*
+
+system-4:
+  - lib/vsm_phoenix/system4/**/*
+
+system-5:
+  - lib/vsm_phoenix/system5/**/*
+
+# Infrastructure and resilience
+infrastructure:
+  - lib/vsm_phoenix/infrastructure/**/*
+  - lib/vsm_phoenix/resilience/**/*
+  - config/**/*
+
+# MCP Integration
+mcp:
+  - lib/vsm_phoenix/mcp/**/*
+  - scripts/mcp_*.exs
+
+# Testing
+test:
+  - test/**/*
+  - scripts/tests/**/*
+
+# Documentation
+documentation:
+  - '**/*.md'
+  - docs/**/*
+
+# CI/CD and GitHub Actions
+ci/cd:
+  - .github/**/*
+
+# Dependencies
+dependencies:
+  - mix.exs
+  - mix.lock
+  - package.json
+  - package-lock.json
+
+# Security-related changes
+security:
+  - lib/vsm_phoenix/infrastructure/security.ex
+  - lib/vsm_phoenix/infrastructure/security_integration.ex
+  - lib/vsm_phoenix/resilience/**/*
+
+# Telegram integration
+telegram:
+  - lib/vsm_phoenix/infrastructure/telegram_service.ex
+  - lib/vsm_phoenix/system1/agents/telegram_agent.ex
+  - lib/vsm_phoenix/resilience/telegram_resilient_client.ex
+
+# Database and migrations
+database:
+  - priv/repo/**/*
+  - lib/vsm_phoenix/repo.ex
+
+# Variety Engineering
+variety-engineering:
+  - lib/vsm_phoenix/variety_engineering/**/*
+
+# AMQP/RabbitMQ
+amqp:
+  - lib/vsm_phoenix/amqp/**/*
+  - lib/vsm_phoenix/infrastructure/amqp_*.ex
+
+# Performance-related
+performance:
+  - lib/vsm_phoenix/performance_monitor.ex
+  - lib/vsm_phoenix/telemetry_collector.ex
+
+# Docker and deployment
+deployment:
+  - Dockerfile
+  - docker-compose.yml
+  - .dockerignore

@@ -146,7 +146,7 @@ defmodule VsmPhoenix.Hive.Spawner do
   def handle_info({:spawn_complete, spawn_id, result}, state) do
     case Map.get(state.active_spawns, spawn_id) do
       nil ->
-        Logger.warn("⚠️  Received spawn complete for unknown spawn: #{spawn_id}")
+        Logger.warning("⚠️  Received spawn complete for unknown spawn: #{spawn_id}")
         {:noreply, state}
         
       spawn_info ->
@@ -182,7 +182,7 @@ defmodule VsmPhoenix.Hive.Spawner do
     # Handle spawned VSM process death
     case find_vsm_by_pid(pid, state.spawned_vsms) do
       {vsm_id, _vsm_info} ->
-        Logger.warn("💀 Spawned VSM died: #{vsm_id}, reason: #{inspect(reason)}")
+        Logger.warning("💀 Spawned VSM died: #{vsm_id}, reason: #{inspect(reason)}")
         
         new_spawned = Map.delete(state.spawned_vsms, vsm_id)
         {:noreply, %{state | spawned_vsms: new_spawned}}
