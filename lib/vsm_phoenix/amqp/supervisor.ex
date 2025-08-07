@@ -17,8 +17,17 @@ defmodule VsmPhoenix.AMQP.Supervisor do
       # Start AMQP connection manager
       {VsmPhoenix.AMQP.ConnectionManager, []},
       
+      # Start AMQP channel pool
+      {VsmPhoenix.AMQP.ChannelPool, []},
+      
+      # Start AMQP client for infrastructure
+      {VsmPhoenix.Infrastructure.AMQPClient, []},
+      
       # Start command router with RPC support
       {VsmPhoenix.AMQP.CommandRouter, []},
+      
+      # Start secure command router with cryptographic protection
+      {VsmPhoenix.AMQP.SecureCommandRouter, []},
       
       # Start recursive protocol handler
       # {VsmPhoenix.AMQP.RecursiveProtocol, [meta_pid: self(), config: %{identity: "vsm_main"}]}

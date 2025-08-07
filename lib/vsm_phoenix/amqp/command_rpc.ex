@@ -75,7 +75,7 @@ defmodule VsmPhoenix.AMQP.CommandRPC do
         {:ok, result}
         
       {:error, :timeout} ->
-        Logger.warn("⏱️  RPC call to #{target} timed out after #{timeout}ms")
+        Logger.warning("⏱️  RPC call to #{target} timed out after #{timeout}ms")
         {:error, :timeout}
         
       {:error, reason} = error ->

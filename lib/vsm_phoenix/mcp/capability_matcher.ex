@@ -81,7 +81,7 @@ defmodule VsmPhoenix.MCP.CapabilityMatcher do
         Logger.info("LLM available for semantic capability matching")
         %{state | llm_client: :available}
       _ ->
-        Logger.warn("LLM not available, using structural matching only")
+        Logger.warning("LLM not available, using structural matching only")
         state
     end
     

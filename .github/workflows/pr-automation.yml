@@ -1,0 +1,352 @@
+name: PR Automation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, ready_for_review, converted_to_draft]
+  pull_request_review:
+    types: [submitted, edited]
+  issue_comment:
+    types: [created, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  auto-label:
+    name: Auto Label PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Label based on changed files
+      uses: actions/labeler@v4
+      with:
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        configuration-path: .github/labeler.yml
+    
+    - name: Add size labels
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const additions = pr.additions;
+          const deletions = pr.deletions;
+          const changes = additions + deletions;
+          
+          let sizeLabel = '';
+          if (changes < 10) {
+            sizeLabel = 'size/XS';
+          } else if (changes < 50) {
+            sizeLabel = 'size/S';
+          } else if (changes < 200) {
+            sizeLabel = 'size/M';
+          } else if (changes < 500) {
+            sizeLabel = 'size/L';
+          } else {
+            sizeLabel = 'size/XL';
+          }
+          
+          // Remove existing size labels
+          const labels = await github.rest.issues.listLabelsOnIssue({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: pr.number
+          });
+          
+          for (const label of labels.data) {
+            if (label.name.startsWith('size/')) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                name: label.name
+              });
+            }
+          }
+          
+          // Add new size label
+          await github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: pr.number,
+            labels: [sizeLabel]
+          });
+    
+    - name: Check PR title format
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const title = pr.title;
+          
+          // Check if title follows conventional commits
+          const validPrefixes = ['feat:', 'fix:', 'docs:', 'style:', 'refactor:', 'perf:', 'test:', 'chore:', 'ci:'];
+          const hasValidPrefix = validPrefixes.some(prefix => title.toLowerCase().startsWith(prefix));
+          
+          if (!hasValidPrefix) {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: `⚠️ **PR Title Format**\n\nPlease update your PR title to follow the [Conventional Commits](https://www.conventionalcommits.org/) format:\n\n${validPrefixes.map(p => `- \`${p}\` for ${p.slice(0, -1)} changes`).join('\n')}\n\nExample: \`feat: add intelligent conversation management\``
+            });
+          }
+
+  assign-reviewers:
+    name: Assign Reviewers
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Auto-assign reviewers based on files
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const files = await github.rest.pulls.listFiles({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pr.number
+          });
+          
+          const reviewers = new Set();
+          const teamReviewers = new Set();
+          
+          // Define code ownership patterns
+          const ownership = {
+            'lib/vsm_phoenix_web/': ['web-team'],
+            'lib/vsm_phoenix/system5/': ['architecture-team'],
+            'lib/vsm_phoenix/mcp/': ['integration-team'],
+            'lib/vsm_phoenix/resilience/': ['infrastructure-team'],
+            'test/': ['qa-team'],
+            '.github/': ['devops-team']
+          };
+          
+          // Match files to owners
+          for (const file of files.data) {
+            for (const [pattern, teams] of Object.entries(ownership)) {
+              if (file.filename.startsWith(pattern)) {
+                teams.forEach(team => teamReviewers.add(team));
+              }
+            }
+          }
+          
+          // Request reviews if teams found
+          if (teamReviewers.size > 0) {
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                team_reviewers: Array.from(teamReviewers)
+              });
+            } catch (e) {
+              console.log('Could not assign team reviewers:', e.message);
+            }
+          }
+
+  pr-checklist:
+    name: PR Checklist
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'ready_for_review')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Add PR checklist
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          
+          // Skip if PR body already has a checklist
+          if (pr.body && pr.body.includes('## Checklist')) {
+            return;
+          }
+          
+          const checklist = `
+          ## Checklist
+          
+          Please ensure the following before marking PR as ready:
+          
+          ### Code Quality
+          - [ ] Code follows project style guidelines
+          - [ ] Self-review completed
+          - [ ] Comments added for complex logic
+          - [ ] No console.log or debug statements
+          
+          ### Testing
+          - [ ] Unit tests added/updated
+          - [ ] Integration tests added/updated
+          - [ ] All tests passing locally
+          - [ ] Test coverage maintained or improved
+          
+          ### Documentation
+          - [ ] README updated if needed
+          - [ ] API documentation updated
+          - [ ] Inline documentation added
+          - [ ] CHANGELOG entry added
+          
+          ### Security
+          - [ ] No hardcoded secrets or credentials
+          - [ ] Security implications considered
+          - [ ] Dependencies reviewed for vulnerabilities
+          
+          ### Phase 2 Specific
+          - [ ] Intelligent conversation features tested
+          - [ ] Security enhancements verified
+          - [ ] Causality tracking implemented correctly
+          - [ ] Resilience patterns followed
+          `;
+          
+          const newBody = pr.body ? `${pr.body}\n\n${checklist}` : checklist;
+          
+          await github.rest.pulls.update({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pr.number,
+            body: newBody
+          });
+
+  enforce-branch-protection:
+    name: Enforce Branch Rules
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Check PR base branch
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const baseBranch = pr.base.ref;
+          const headBranch = pr.head.ref;
+          
+          // Enforce naming conventions
+          const validBranchPrefixes = [
+            'feat/', 'feature/',
+            'fix/', 'bugfix/',
+            'docs/',
+            'style/',
+            'refactor/',
+            'perf/',
+            'test/',
+            'chore/',
+            'ci/',
+            'release/',
+            'hotfix/'
+          ];
+          
+          const hasValidPrefix = validBranchPrefixes.some(prefix => headBranch.startsWith(prefix));
+          
+          if (!hasValidPrefix && !['main', 'develop', 'phase-2-resilience-infrastructure'].includes(headBranch)) {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: `⚠️ **Branch Naming Convention**\n\nPlease rename your branch to follow our naming convention:\n\n${validBranchPrefixes.map(p => `- \`${p}<description>\``).join('\n')}\n\nExample: \`feat/intelligent-conversations\``
+            });
+          }
+          
+          // Check if PR targets correct base branch
+          if (headBranch.startsWith('hotfix/') && baseBranch !== 'main') {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: '❌ Hotfix branches must target the `main` branch directly.'
+            });
+          }
+
+  conflict-detection:
+    name: Detect Conflicts
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Check for conflicts with main
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          
+          if (pr.mergeable_state === 'dirty') {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: '⚠️ **Merge Conflicts Detected**\n\nThis PR has conflicts that must be resolved before merging.\n\nTo resolve:\n```bash\ngit checkout ${pr.head.ref}\ngit pull origin ${pr.base.ref}\n# Resolve conflicts\ngit add .\ngit commit -m "resolve: merge conflicts with ${pr.base.ref}"\ngit push\n```'
+            });
+          }
+
+  pr-metrics:
+    name: PR Metrics
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Calculate PR metrics
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          
+          // Calculate time to merge estimates based on size
+          const changes = pr.additions + pr.deletions;
+          let estimate = '';
+          if (changes < 50) {
+            estimate = '~30 minutes';
+          } else if (changes < 200) {
+            estimate = '~2 hours';
+          } else if (changes < 500) {
+            estimate = '~4 hours';
+          } else {
+            estimate = '1+ days';
+          }
+          
+          // Get commit count
+          const commits = await github.rest.pulls.listCommits({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pr.number
+          });
+          
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: pr.number,
+            body: `## 📊 PR Metrics\n\n- **Changes**: +${pr.additions} -${pr.deletions}\n- **Files**: ${pr.changed_files}\n- **Commits**: ${commits.data.length}\n- **Estimated Review Time**: ${estimate}\n\n---\n\n_These metrics help reviewers prioritize and allocate time for reviews._`
+          });
+
+  close-stale-prs:
+    name: Close Stale PRs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Close stale PRs
+      uses: actions/stale@v8
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        stale-pr-message: 'This PR has been automatically marked as stale due to inactivity. It will be closed in 7 days unless updated.'
+        close-pr-message: 'This PR has been closed due to inactivity. Feel free to reopen if you want to continue working on it.'
+        days-before-pr-stale: 30
+        days-before-pr-close: 7
+        stale-pr-label: 'stale'
+        exempt-pr-labels: 'pinned,security,in-progress'

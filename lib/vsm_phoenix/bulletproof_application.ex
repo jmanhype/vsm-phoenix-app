@@ -1,4 +1,5 @@
 defmodule VsmPhoenix.BulletproofApplication do
+  require Logger
   @moduledoc """
   Bulletproof VSM Phoenix Application with isolated MCP supervision.
   

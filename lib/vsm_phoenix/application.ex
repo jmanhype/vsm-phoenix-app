@@ -27,6 +27,37 @@ defmodule VsmPhoenix.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: VsmPhoenix.PubSub},
       
+      # Start Task Supervisor for async operations
+      {Task.Supervisor, name: VsmPhoenix.TaskSupervisor},
+      
+      # Start Dynamic Configuration system
+      VsmPhoenix.Infrastructure.DynamicConfig,
+      
+      # Start Operations Metrics tracking
+      VsmPhoenix.Infrastructure.OperationsMetrics,
+      
+      # Start Coordination Metrics tracking
+      VsmPhoenix.Infrastructure.CoordinationMetrics,
+      
+      # Start Systemic Operations Metrics (agnostic patterns)
+      VsmPhoenix.Infrastructure.SystemicOperationsMetrics,
+      
+      # Start Systemic Coordination Metrics (agnostic patterns)
+      VsmPhoenix.Infrastructure.SystemicCoordinationMetrics,
+      
+      # Start Security Infrastructure
+      VsmPhoenix.Infrastructure.Security,
+      
+      # Start Causality Tracker for event chain tracking
+      VsmPhoenix.Infrastructure.CausalityTracker,
+      
+      # Initialize infrastructure components
+      %{
+        id: :infrastructure_init,
+        start: {__MODULE__, :init_infrastructure, []},
+        type: :worker
+      },
+      
       # Start the Endpoint (http/https)
       VsmPhoenixWeb.Endpoint,
       
@@ -110,6 +141,9 @@ defmodule VsmPhoenix.Application do
       # Auto-spawn Telegram bot if configured
       {VsmPhoenix.System1.TelegramInit, []},
       
+      # Auto-spawn LLM workers for conversation processing
+      {VsmPhoenix.System1.LLMWorkerInit, []},
+      
       # Variety Engineering - Implements Ashby's Law across VSM hierarchy
       VsmPhoenix.VarietyEngineering.Supervisor,
       
@@ -136,5 +170,14 @@ defmodule VsmPhoenix.Application do
   def config_change(changed, _new, removed) do
     VsmPhoenixWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+  
+  @doc false
+  def init_infrastructure do
+    # Initialize similarity threshold ETS tables
+    VsmPhoenix.Infrastructure.SimilarityThreshold.init()
+    
+    # Return a dummy GenServer-like response
+    :ignore
   end
 end

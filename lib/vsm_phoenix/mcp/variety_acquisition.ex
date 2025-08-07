@@ -244,28 +244,39 @@ defmodule VsmPhoenix.MCP.VarietyAcquisition do
     
     Logger.info("🚀 Starting acquisition pipeline #{pipeline_id} for gap: #{inspect(gap)}")
     
-    with {:discover, {:ok, candidates}} <- {:discover, discover_capabilities(gap)},
-         {:evaluate, {:ok, selected}} <- {:evaluate, evaluate_candidates(candidates, gap, state)},
-         {:acquire, {:ok, connection}} <- {:acquire, acquire_external_capability(selected)},
-         {:integrate, {:ok, integration}} <- {:integrate, integrate_capability(connection, gap, state)},
-         {:validate, {:ok, validation}} <- {:validate, validate_acquisition(integration)} do
-      
-      # Record successful acquisition
-      result = %{
-        pipeline_id: pipeline_id,
-        gap: gap,
-        server: selected,
-        connection: connection,
-        integration: integration,
-        acquisition_time: DateTime.utc_now()
-      }
-      
-      new_state = record_acquisition_success(result, state)
-      
-      {:ok, result, new_state}
-      
-    else
-      {phase, {:error, reason}} ->
+    # Get timeout from config or use default
+    timeout = state.config[:acquisition_timeout] || 30_000
+    
+    # Execute pipeline with timeout protection
+    task = Task.async(fn ->
+      with {:discover, {:ok, candidates}} <- {:discover, discover_capabilities(gap)},
+           {:evaluate, {:ok, selected}} <- {:evaluate, evaluate_candidates(candidates, gap, state)},
+           {:acquire, {:ok, connection}} <- {:acquire, acquire_external_capability(selected)},
+           {:integrate, {:ok, integration}} <- {:integrate, integrate_capability(connection, gap, state)},
+           {:validate, {:ok, validation}} <- {:validate, validate_acquisition(integration)} do
+        
+        # Record successful acquisition
+        result = %{
+          pipeline_id: pipeline_id,
+          gap: gap,
+          server: selected,
+          connection: connection,
+          integration: integration,
+          acquisition_time: DateTime.utc_now()
+        }
+        
+        {:ok, result}
+      else
+        {phase, error} -> {:error, phase, error}
+      end
+    end)
+    
+    case Task.yield(task, timeout) || Task.shutdown(task, :brutal_kill) do
+      {:ok, {:ok, result}} ->
+        new_state = record_acquisition_success(result, state)
+        {:ok, result, new_state}
+        
+      {:ok, {:error, phase, reason}} ->
         Logger.error("❌ Acquisition pipeline #{pipeline_id} failed at #{phase}: #{inspect(reason)}")
         
         # Record failure for learning
@@ -285,6 +296,39 @@ defmodule VsmPhoenix.MCP.VarietyAcquisition do
         else
           {:error, {phase, reason}, new_state}
         end
+        
+      nil ->
+        Logger.error("⏱️ Acquisition pipeline #{pipeline_id} timed out after #{timeout}ms")
+        
+        failure = %{
+          pipeline_id: pipeline_id,
+          gap: gap,
+          failed_phase: :timeout,
+          reason: {:timeout, timeout},
+          timestamp: DateTime.utc_now()
+        }
+        
+        new_state = record_acquisition_failure(failure, state)
+        
+        if gap[:urgency] == :critical do
+          handle_critical_failure(gap, failure, new_state)
+        else
+          {:error, {:timeout, "Pipeline timed out after #{timeout}ms"}, new_state}
+        end
+        
+      {:exit, reason} ->
+        Logger.error("💥 Acquisition pipeline #{pipeline_id} crashed: #{inspect(reason)}")
+        
+        failure = %{
+          pipeline_id: pipeline_id,
+          gap: gap,
+          failed_phase: :crash,
+          reason: {:crash, reason},
+          timestamp: DateTime.utc_now()
+        }
+        
+        new_state = record_acquisition_failure(failure, state)
+        {:error, {:crash, reason}, new_state}
     end
   end
   
@@ -773,18 +817,32 @@ defmodule VsmPhoenix.MCP.VarietyAcquisition do
   end
   
   defp update_variety_metrics(state) do
-    # Calculate current system variety
+    # Calculate current system variety with validation
     system_variety = calculate_system_variety(state)
     
     # Get environmental variety from latest scan
     environmental_variety = get_environmental_variety(state)
     
-    # Calculate ratio
-    variety_ratio = if environmental_variety > 0 do
-      system_variety / environmental_variety
-    else
-      1.0
-    end
+    # Validate numeric values
+    system_variety = 
+      case system_variety do
+        n when is_number(n) and n >= 0 -> n
+        _ -> 10  # Default base variety
+      end
+    
+    environmental_variety = 
+      case environmental_variety do
+        n when is_number(n) and n > 0 -> n
+        _ -> 15  # Default environmental variety
+      end
+    
+    # Calculate ratio with division by zero protection
+    variety_ratio = 
+      if environmental_variety > 0 do
+        min(system_variety / environmental_variety, 10.0)  # Cap at 10x for sanity
+      else
+        1.0
+      end
     
     %{state |
       system_variety: system_variety,

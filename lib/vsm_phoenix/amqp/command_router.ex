@@ -95,7 +95,7 @@ defmodule VsmPhoenix.AMQP.CommandRouter do
       AMQP.Basic.publish(state.channel, exchange, "", message)
       Logger.debug("📤 Published #{event_type} event to #{exchange}")
     else
-      Logger.warn("Unknown event type: #{event_type}")
+      Logger.warning("Unknown event type: #{event_type}")
     end
     
     {:noreply, state}
@@ -171,7 +171,7 @@ defmodule VsmPhoenix.AMQP.CommandRouter do
   end
   
   # Handle incoming commands (for systems that registered handlers)
-  def handle_info({:basic_deliver, payload, meta}, state) do
+  def handle_info({:basic_deliver, payload, meta}, state) when not is_map_key(meta, :correlation_id) or meta.correlation_id == nil do
     with {:ok, message} <- Jason.decode(payload),
          %{"type" => "command"} <- message do
       
@@ -180,7 +180,7 @@ defmodule VsmPhoenix.AMQP.CommandRouter do
       
       case Map.get(state.handlers, system) do
         nil ->
-          Logger.warn("No handler registered for system: #{system}")
+          Logger.warning("No handler registered for system: #{system}")
           
         handler_fn ->
           # Execute handler and send response
@@ -200,10 +200,10 @@ defmodule VsmPhoenix.AMQP.CommandRouter do
   end
   
   # Handle RPC responses
-  def handle_info({:basic_deliver, payload, %{correlation_id: correlation_id} = meta}, state) do
+  def handle_info({:basic_deliver, payload, %{correlation_id: correlation_id} = _meta}, state) do
     case Map.pop(state.pending_rpcs, correlation_id) do
       {nil, _} ->
-        Logger.warn("Received response for unknown correlation_id: #{correlation_id}")
+        Logger.warning("Received response for unknown correlation_id: #{correlation_id}")
         {:noreply, state}
         
       {rpc_info, new_pending} ->

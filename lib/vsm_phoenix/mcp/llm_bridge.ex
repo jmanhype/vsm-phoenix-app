@@ -51,19 +51,20 @@ defmodule VsmPhoenix.MCP.LLMBridge do
   end
   
   defp execute_llm_request(prompt, mcp_client_pid) do
-    # Try to use Claude MCP if available
+    # FAIL FAST - NO FALLBACKS, NO MOCKS
     case System.get_env("ANTHROPIC_API_KEY") do
       nil ->
-        # Fallback to basic analysis
-        {:ok, basic_analysis(prompt)}
+        Logger.error("❌ NO ANTHROPIC_API_KEY - FAILING FAST")
+        {:error, :no_api_key}
         
-      _api_key ->
-        # Real LLM call would happen here
-        # For now, return structured response
-        {:ok, %{
-          "action" => determine_action(prompt),
-          "reasoning" => "Analyzed request using available context"
-        }}
+      api_key ->
+        # REAL LLM CALL - FAIL IF IT DOESN'T WORK
+        case make_real_claude_api_call(prompt, api_key) do
+          {:ok, response} -> {:ok, response}
+          {:error, reason} -> 
+            Logger.error("❌ Claude API failed: #{inspect(reason)} - FAILING FAST")
+            {:error, reason}
+        end
     end
   end
   
@@ -94,35 +95,127 @@ defmodule VsmPhoenix.MCP.LLMBridge do
     end
   end
   
-  defp basic_analysis(prompt) do
-    # Generate tool calls based on prompt - using CORRECT tool names!
-    tool_calls = cond do
-      String.contains?(prompt, "read") && String.contains?(prompt, "/tmp/test_report.txt") ->
-        [%{
-          "name" => "read_text_file",  # Correct tool name!
-          "arguments" => %{"path" => "/tmp/test_report.txt"}
-        }]
-        
-      String.contains?(prompt, ["list", "directory"]) ->
-        [%{
-          "name" => "list_directory",
-          "arguments" => %{"path" => "/tmp"}
-        }]
-        
-      String.contains?(prompt, "write") && String.contains?(prompt, "file") ->
-        [%{
-          "name" => "write_file",
-          "arguments" => %{"path" => "/tmp/output.txt", "content" => "Generated content"}
-        }]
-        
-      true ->
-        []
-    end
+  def generate_conversation_response(messages, system_prompt, mcp_client_pid) do
+    Logger.info("💬 Generating REAL conversation response - NO FALLBACKS")
     
-    %{
-      "action" => determine_action(prompt),
-      "reasoning" => "Basic analysis without LLM",
-      "tool_calls" => tool_calls
-    }
+    # Build conversation prompt
+    conversation_prompt = build_conversation_prompt(messages, system_prompt)
+    
+    # FAIL FAST - NO FALLBACKS, NO MOCKS, NO BULLSHIT
+    case System.get_env("ANTHROPIC_API_KEY") do
+      nil ->
+        Logger.error("❌ NO ANTHROPIC_API_KEY - FAILING FAST")
+        {:error, :no_api_key}
+        
+      api_key ->
+        # REAL CLAUDE API CALL - FAIL IF IT DOESN'T WORK
+        case make_real_claude_conversation_call(conversation_prompt, api_key) do
+          {:ok, response} -> 
+            Logger.info("🎯 Got REAL Claude response")
+            {:ok, %{
+              content: response,
+              model: "claude-3-sonnet"
+            }}
+          {:error, reason} -> 
+            Logger.error("❌ Claude API failed: #{inspect(reason)} - FAILING FAST")
+            {:error, reason}
+        end
+    end
   end
+  
+  defp build_conversation_prompt(messages, system_prompt) do
+    # Format messages for LLM
+    formatted_messages = messages
+    |> Enum.map(fn msg ->
+      "#{msg.role}: #{msg.content}"
+    end)
+    |> Enum.join("\n")
+    
+    """
+    #{system_prompt}
+    
+    Conversation History:
+    #{formatted_messages}
+    
+    Please provide a helpful, conversational response to the user's latest message.
+    """
+  end
+  
+  # ALL FALLBACK FUNCTIONS DELETED - NO MOCKS, NO FALLBACKS
+  # FAIL FAST OR REAL API ONLY
+  
+  # REAL CLAUDE API CALLS - NO FAKE BULLSHIT
+  defp make_real_claude_api_call(prompt, api_key) do
+    url = "https://api.anthropic.com/v1/messages"
+    
+    headers = [
+      {"Content-Type", "application/json"},
+      {"x-api-key", api_key},
+      {"anthropic-version", "2023-06-01"}
+    ]
+    
+    body = Jason.encode!(%{
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 1024,
+      messages: [%{
+        role: "user",
+        content: prompt
+      }]
+    })
+    
+    case HTTPoison.post(url, body, headers) do
+      {:ok, %{status_code: 200, body: response_body}} ->
+        case Jason.decode(response_body) do
+          {:ok, %{"content" => [%{"text" => text}]}} ->
+            # Try to parse as JSON for structured responses
+            case Jason.decode(text) do
+              {:ok, parsed} -> {:ok, parsed}
+              {:error, _} -> {:ok, %{"action" => "execute_tool", "reasoning" => text}}
+            end
+          {:error, _} -> {:error, :invalid_response}
+        end
+      {:ok, %{status_code: status_code, body: error_body}} ->
+        Logger.error("❌ Claude API error #{status_code}: #{error_body}")
+        {:error, :api_error}
+      {:error, reason} ->
+        Logger.error("❌ HTTP request failed: #{inspect(reason)}")
+        {:error, :network_error}
+    end
+  end
+  
+  defp make_real_claude_conversation_call(prompt, api_key) do
+    url = "https://api.anthropic.com/v1/messages"
+    
+    headers = [
+      {"Content-Type", "application/json"},
+      {"x-api-key", api_key},
+      {"anthropic-version", "2023-06-01"}
+    ]
+    
+    body = Jason.encode!(%{
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 1024,
+      messages: [%{
+        role: "user",
+        content: prompt
+      }]
+    })
+    
+    case HTTPoison.post(url, body, headers) do
+      {:ok, %{status_code: 200, body: response_body}} ->
+        case Jason.decode(response_body) do
+          {:ok, %{"content" => [%{"text" => text}]}} ->
+            {:ok, text}
+          {:error, _} -> {:error, :invalid_response}
+        end
+      {:ok, %{status_code: status_code, body: error_body}} ->
+        Logger.error("❌ Claude API error #{status_code}: #{error_body}")
+        {:error, :api_error}
+      {:error, reason} ->
+        Logger.error("❌ HTTP request failed: #{inspect(reason)}")
+        {:error, :network_error}
+    end
+  end
+
+  # basic_analysis DELETED - NO FALLBACKS, NO MOCKS
 end

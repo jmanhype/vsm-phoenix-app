@@ -124,7 +124,7 @@ defmodule VsmPhoenix.System1.Agents.WorkerAgent do
 
   @impl true
   def handle_info({:basic_cancel, _}, state) do
-    Logger.warn("Worker #{state.agent_id} consumer cancelled")
+    Logger.warning("Worker #{state.agent_id} consumer cancelled")
     {:stop, :consumer_cancelled, state}
   end
 

@@ -1,0 +1,27 @@
+# Auto-assignment configuration for PR reviews
+reviewers:
+  - jmanhype  # Primary maintainer
+
+assignees:
+  - jmanhype  # Auto-assign PRs to maintainer
+
+# Skip assignment if PR is a draft
+skipDraft: true
+
+# Number of reviewers to assign
+numberOfReviewers: 1
+
+# Number of assignees to assign  
+numberOfAssignees: 1
+
+# Add assignees as reviewers too
+addReviewers: true
+
+# Add assignees from reviewers list
+addAssignees: author
+
+# Skip assignment for specific files
+skipKeywords:
+  - wip
+  - draft
+  - "do not review"

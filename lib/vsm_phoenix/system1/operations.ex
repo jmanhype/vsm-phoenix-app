@@ -111,13 +111,39 @@ defmodule VsmPhoenix.System1.Operations do
   
   @impl true
   def initial_metrics do
-    %{
-      orders_processed: 0,
-      average_processing_time: 0,
-      success_rate: 1.0,
-      customer_satisfaction: 0.95,
-      inventory_accuracy: 0.98
-    }
+    # Return pure systemic metrics from SystemicOperationsMetrics
+    case VsmPhoenix.Infrastructure.SystemicOperationsMetrics.get_metrics() do
+      %{} = systemic ->
+        %{
+          # Pure systemic patterns
+          activity_rate: systemic.activity_rate,
+          success_ratio: systemic.success_ratio,
+          processing_latency_ms: systemic.avg_latency_ms,
+          throughput_per_second: systemic.throughput_per_second,
+          error_rate: systemic.error_rate,
+          
+          # Legacy fields for compatibility
+          orders_processed: systemic.total_operations,
+          average_processing_time: systemic.avg_latency_ms,
+          success_rate: systemic.success_ratio,
+          customer_satisfaction: calculate_satisfaction_from_metrics(systemic),
+          inventory_accuracy: calculate_accuracy_from_metrics(systemic)
+        }
+      _ ->
+        # Fallback to defaults if metrics not available
+        %{
+          activity_rate: 0.0,
+          success_ratio: 1.0,
+          processing_latency_ms: 0.0,
+          throughput_per_second: 0.0,
+          error_rate: 0.0,
+          orders_processed: 0,
+          average_processing_time: 0,
+          success_rate: 1.0,
+          customer_satisfaction: 0.95,
+          inventory_accuracy: 0.98
+        }
+    end
   end
   
   @impl true
@@ -210,6 +236,7 @@ defmodule VsmPhoenix.System1.Operations do
   # Private Functions
   
   defp process_order(order_data, state) do
+    start_time = :erlang.system_time(:millisecond)
     order_id = generate_order_id()
     
     # Validate order
@@ -237,6 +264,27 @@ defmodule VsmPhoenix.System1.Operations do
               inventory: new_inventory
             }
             
+            # Calculate processing time
+            processing_time = :erlang.system_time(:millisecond) - start_time
+            
+            # Record operation in BOTH metrics systems
+            # 1. Domain-specific metrics (legacy)
+            VsmPhoenix.Infrastructure.OperationsMetrics.record_operation(
+              :operations_context,
+              :process_order,
+              :success,
+              processing_time,
+              %{order_id: order_id, items_count: length(order_data.items)}
+            )
+            
+            # 2. Systemic metrics (agnostic patterns)
+            VsmPhoenix.Infrastructure.SystemicOperationsMetrics.record_operation(
+              order_id,
+              :success,
+              processing_time,
+              %{operation_type: :process_order}
+            )
+            
             # Update metrics
             new_metrics = update_order_metrics(state.metrics, :success)
             
@@ -251,11 +299,49 @@ defmodule VsmPhoenix.System1.Operations do
             {:ok, %{order_id: order_id, status: :processing}, new_state}
             
           {:error, :insufficient_inventory} ->
+            processing_time = :erlang.system_time(:millisecond) - start_time
+            
+            # Record failed operation
+            VsmPhoenix.Infrastructure.OperationsMetrics.record_operation(
+              :operations_context,
+              :process_order,
+              :inventory_failure,
+              processing_time,
+              %{failure_reason: :insufficient_inventory}
+            )
+            
+            # Also record in systemic metrics
+            VsmPhoenix.Infrastructure.SystemicOperationsMetrics.record_operation(
+              "order-#{:rand.uniform(1000000)}",
+              :failure,
+              processing_time,
+              %{failure_type: :insufficient_inventory}
+            )
+            
             new_metrics = update_order_metrics(state.metrics, :inventory_failure)
             {:error, :insufficient_inventory, %{state | metrics: new_metrics}}
         end
         
       {:error, reason} ->
+        processing_time = :erlang.system_time(:millisecond) - start_time
+        
+        # Record validation failure
+        VsmPhoenix.Infrastructure.OperationsMetrics.record_operation(
+          :operations_context,
+          :process_order,
+          :validation_failure,
+          processing_time,
+          %{failure_reason: reason}
+        )
+        
+        # Also record in systemic metrics
+        VsmPhoenix.Infrastructure.SystemicOperationsMetrics.record_operation(
+          "order-#{:rand.uniform(1000000)}",
+          :error,
+          processing_time,
+          %{error_type: :validation_failure, reason: reason}
+        )
+        
         new_metrics = update_order_metrics(state.metrics, :validation_failure)
         {:error, reason, %{state | metrics: new_metrics}}
     end
@@ -286,6 +372,7 @@ defmodule VsmPhoenix.System1.Operations do
   end
   
   defp serve_customer(customer_request, state) do
+    start_time = :erlang.system_time(:millisecond)
     Logger.info("Operations: Serving customer request")
     
     response = case customer_request.type do
@@ -298,6 +385,26 @@ defmodule VsmPhoenix.System1.Operations do
       :support ->
         handle_support_request(customer_request, state)
     end
+    
+    # Calculate response time and satisfaction impact
+    response_time = :erlang.system_time(:millisecond) - start_time
+    satisfaction_score = calculate_real_satisfaction_impact(customer_request, response_time, response)
+    
+    # Record customer interaction in dynamic metrics
+    VsmPhoenix.Infrastructure.OperationsMetrics.record_customer_interaction(
+      :operations_context,
+      customer_request.type,
+      satisfaction_score
+    )
+    
+    # Record operation timing
+    VsmPhoenix.Infrastructure.OperationsMetrics.record_operation(
+      :operations_context,
+      :serve_customer,
+      :success,
+      response_time,
+      %{request_type: customer_request.type, satisfaction: satisfaction_score}
+    )
     
     # Update satisfaction based on response time
     satisfaction_delta = calculate_satisfaction_impact(customer_request)
@@ -492,5 +599,77 @@ defmodule VsmPhoenix.System1.Operations do
   
   defp generate_ticket_id do
     "TKT-#{:erlang.system_time(:millisecond)}-#{:rand.uniform(1000)}"
+  end
+  
+  defp calculate_real_satisfaction_impact(request, response_time, response) do
+    # Calculate satisfaction based on actual response time and quality
+    base_satisfaction = 0.9
+    
+    # Response time impact (faster = better)
+    time_factor = cond do
+      response_time < 100 -> 1.0    # Excellent
+      response_time < 500 -> 0.95   # Good
+      response_time < 1000 -> 0.85  # Acceptable
+      response_time < 2000 -> 0.7   # Poor
+      true -> 0.5                   # Very poor
+    end
+    
+    # Response quality impact
+    quality_factor = case response do
+      %{status: :not_found} -> 0.6        # Disappointing
+      %{available: false} -> 0.7          # Product unavailable
+      %{available: true} -> 0.95          # Product available
+      %{response: _} -> 0.9               # Support response
+      %{status: status} when status != :not_found -> 0.9
+      _ -> 0.8  # Default
+    end
+    
+    # Request type impact
+    type_factor = case request.type do
+      :order_status -> 0.9   # Standard request
+      :product_inquiry -> 0.95  # Information request
+      :support -> 0.85      # Support can be complex
+      _ -> 0.8
+    end
+    
+    # Combined satisfaction score
+    satisfaction = base_satisfaction * time_factor * quality_factor * type_factor
+    max(0.0, min(1.0, satisfaction))
+  end
+  
+  defp calculate_real_inventory_accuracy do
+    # Calculate accuracy based on actual inventory operations
+    # This would typically check against external inventory systems
+    
+    # For now, use a dynamic calculation based on recent operations
+    case VsmPhoenix.Infrastructure.OperationsMetrics.get_performance_trends(:operations_context, :last_hour) do
+      %{success_rate: success_rate} when success_rate > 0 ->
+        # Higher success rate indicates better inventory accuracy
+        base_accuracy = 0.95
+        accuracy_bonus = (success_rate - 0.5) * 0.1  # Max 0.05 bonus
+        min(1.0, base_accuracy + accuracy_bonus)
+      _ ->
+        0.98  # Default accuracy
+    end
+  end
+  
+  defp calculate_satisfaction_from_metrics(systemic_metrics) do
+    # Derive satisfaction from systemic patterns
+    # High success ratio + low latency + low error rate = high satisfaction
+    success_factor = systemic_metrics.success_ratio * 0.5
+    latency_factor = if systemic_metrics.avg_latency_ms < 500, do: 0.3, else: 0.1
+    error_penalty = systemic_metrics.error_rate * 0.2
+    
+    satisfaction = success_factor + latency_factor - error_penalty
+    max(0.0, min(1.0, satisfaction + 0.4))  # Base satisfaction of 0.4
+  end
+  
+  defp calculate_accuracy_from_metrics(systemic_metrics) do
+    # Derive accuracy from systemic patterns
+    # Low error rate + high success ratio = high accuracy
+    error_factor = 1.0 - systemic_metrics.error_rate
+    success_factor = systemic_metrics.success_ratio
+    
+    (error_factor * 0.6 + success_factor * 0.4)
   end
 end

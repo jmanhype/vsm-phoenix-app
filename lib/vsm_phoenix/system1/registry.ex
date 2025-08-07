@@ -6,6 +6,7 @@ defmodule VsmPhoenix.System1.Registry do
 
   use GenServer
   require Logger
+  alias VsmPhoenix.Infrastructure.SafePubSub
 
   @registry_name :s1_registry
 
@@ -128,8 +129,7 @@ defmodule VsmPhoenix.System1.Registry do
         Process.monitor(pid)
         
         # Broadcast registration event
-        Phoenix.PubSub.broadcast(
-          VsmPhoenix.PubSub,
+        SafePubSub.broadcast!(
           "vsm.registry.events",
           {:agent_registered, agent_id, pid, metadata}
         )
@@ -147,8 +147,7 @@ defmodule VsmPhoenix.System1.Registry do
     case Registry.unregister(@registry_name, agent_id) do
       :ok ->
         # Broadcast unregistration event
-        Phoenix.PubSub.broadcast(
-          VsmPhoenix.PubSub,
+        SafePubSub.broadcast!(
           "vsm.registry.events",
           {:agent_unregistered, agent_id}
         )
@@ -168,13 +167,12 @@ defmodule VsmPhoenix.System1.Registry do
     |> Enum.each(fn agent_id ->
       Registry.unregister(@registry_name, agent_id)
       
-      Phoenix.PubSub.broadcast(
-        VsmPhoenix.PubSub,
+      SafePubSub.broadcast!(
         "vsm.registry.events",
         {:agent_crashed, agent_id, reason}
       )
       
-      Logger.warn("S1 Agent crashed: #{agent_id}, reason: #{inspect(reason)}")
+      Logger.warning("S1 Agent crashed: #{agent_id}, reason: #{inspect(reason)}")
     end)
     
     {:noreply, state}
@@ -188,7 +186,7 @@ defmodule VsmPhoenix.System1.Registry do
     total_count = length(agents)
     
     if alive_count < total_count do
-      Logger.warn("S1 Registry health check: #{alive_count}/#{total_count} agents alive")
+      Logger.warning("S1 Registry health check: #{alive_count}/#{total_count} agents alive")
     end
     
     # Schedule next health check

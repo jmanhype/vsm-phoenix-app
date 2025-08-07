@@ -23,6 +23,14 @@ defmodule VsmPhoenix.VarietyEngineering.Amplifiers.S2ToS1 do
     GenServer.call(@name, {:set_factor, factor})
   end
   
+  def adjust_amplification(magnitude) do
+    GenServer.cast(@name, {:adjust_amplification, magnitude})
+  end
+  
+  def dampen_oscillations() do
+    GenServer.cast(@name, :dampen_oscillations)
+  end
+  
   @impl true
   def init(_opts) do
     Logger.info("🔼 Starting S2→S1 Coordination Amplifier...")
@@ -42,6 +50,26 @@ defmodule VsmPhoenix.VarietyEngineering.Amplifiers.S2ToS1 do
   @impl true
   def handle_cast(:increase_amplification, state) do
     {:noreply, %{state | amplification_factor: min(state.amplification_factor * 1.5, 15)}}
+  end
+  
+  @impl true
+  def handle_cast({:adjust_amplification, magnitude}, state) do
+    new_factor = state.amplification_factor * magnitude
+    |> max(1)    # Minimum amplification
+    |> min(20)   # Maximum amplification
+    
+    Logger.info("🔧 Adjusting S2→S1 amplification: #{state.amplification_factor} → #{new_factor}")
+    {:noreply, %{state | amplification_factor: new_factor}}
+  end
+  
+  @impl true
+  def handle_cast(:dampen_oscillations, state) do
+    # Reduce amplification temporarily to dampen oscillations
+    dampened_factor = state.amplification_factor * 0.8
+    |> max(1)
+    
+    Logger.info("🎚️ Dampening S2→S1 oscillations: #{state.amplification_factor} → #{dampened_factor}")
+    {:noreply, %{state | amplification_factor: dampened_factor}}
   end
   
   @impl true

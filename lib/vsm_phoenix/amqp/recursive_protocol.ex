@@ -32,7 +32,7 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
     
     # Create queue for this meta-system
     queue_name = "vsm.meta.#{config[:identity] || :erlang.unique_integer()}"
-    {:ok, queue} = AMQP.Queue.declare(channel, queue_name, durable: true)
+    {:ok, _queue} = AMQP.Queue.declare(channel, queue_name, durable: true)
     
     # Bind to recursive patterns
     AMQP.Queue.bind(channel, queue_name, @exchange, routing_key: "meta.#{config[:identity]}.*")
@@ -71,11 +71,24 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
     end
   end
   
-  defp handle_vsmcp_message(%{"type" => "mcp_request"} = msg, meta, state) do
-    """
-    THIS IS IT! An MCP request coming through AMQP!
-    Just like how Microsoft Service Bus handles distributed systems!
-    """
+  def handle_info({:basic_consume_ok, %{consumer_tag: consumer_tag}}, state) do
+    Logger.info("🌀 VSMCP: Consumer registered: #{consumer_tag}")
+    {:noreply, state}
+  end
+  
+  def handle_info({:basic_cancel, _meta}, state) do
+    Logger.warning("VSMCP: Consumer cancelled")
+    {:noreply, state}
+  end
+  
+  def handle_info({:basic_cancel_ok, _meta}, state) do
+    Logger.info("VSMCP: Consumer cancel confirmed")
+    {:noreply, state}
+  end
+  
+  defp handle_vsmcp_message(%{"type" => "mcp_request"} = msg, _meta, state) do
+    # THIS IS IT! An MCP request coming through AMQP!
+    # Just like how Microsoft Service Bus handles distributed systems!
     
     Logger.info("📨 VSMCP: MCP request received: #{inspect(msg)}")
     
@@ -93,17 +106,15 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
         initiate_meta_learning(msg["params"], state)
         
       _ ->
-        Logger.warn("Unknown VSMCP method: #{msg["method"]}")
+        Logger.warning("Unknown VSMCP method: #{msg["method"]}")
     end
     
     {:noreply, state}
   end
   
-  defp handle_vsmcp_message(%{"type" => "recursive_signal"} = msg, meta, state) do
-    """
-    Recursive signals travel through the AMQP fabric!
-    Each level can add its own interpretation!
-    """
+  defp handle_vsmcp_message(%{"type" => "recursive_signal"} = msg, _meta, state) do
+    # Recursive signals travel through the AMQP fabric!
+    # Each level can add its own interpretation!
     
     if state.recursive_depth > 0 do
       # Propagate deeper!
@@ -141,10 +152,8 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
   end
   
   defp amplify_variety(params, state) do
-    """
-    Use the recursive network to amplify variety!
-    Each level adds its own variety, creating exponential growth!
-    """
+    # Use the recursive network to amplify variety!
+    # Each level adds its own variety, creating exponential growth!
     
     amplification_msg = %{
       type: "variety_request",
@@ -159,10 +168,8 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
   end
   
   defp initiate_meta_learning(params, state) do
-    """
-    Meta-learning across recursive levels!
-    Each VSM learns from all other VSMs in the recursive tree!
-    """
+    # Meta-learning across recursive levels!
+    # Each VSM learns from all other VSMs in the recursive tree!
     
     learning_msg = %{
       type: "meta_learning",
@@ -181,44 +188,26 @@ defmodule VsmPhoenix.AMQP.RecursiveProtocol do
     AMQP.Basic.publish(state.channel, @exchange, routing_key, payload)
   end
   
-  defp start_mcp_server(config) do
-    """
-    Each VSM is also an MCP server!
-    Other systems can connect to it and request capabilities!
-    """
+  defp start_mcp_server(_config) do
+    # Each VSM is also an MCP server!
+    # Other systems can connect to it and request capabilities!
     
     # This would start an actual MCP server
     {:ok, :mcp_server_stub}
   end
   
-  defp create_mcp_client(target_identity) do
-    """
-    Connect as an MCP client to another VSM!
-    This creates the recursive MCP network!
-    """
+  defp create_mcp_client(_target_identity) do
+    # Connect as an MCP client to another VSM!
+    # This creates the recursive MCP network!
     
     {:ok, :mcp_client_stub}
   end
+  
   
   def handle_call({:send_vsmcp_message, message}, _from, state) do
     # Send a message through the VSMCP protocol
     publish_recursive(message, state)
     {:reply, :ok, state}
-  end
-  
-  def handle_info({:basic_consume_ok, %{consumer_tag: consumer_tag}}, state) do
-    Logger.info("🌀 VSMCP: Consumer registered: #{consumer_tag}")
-    {:noreply, state}
-  end
-  
-  def handle_info({:basic_cancel, _meta}, state) do
-    Logger.warning("VSMCP: Consumer cancelled")
-    {:noreply, state}
-  end
-  
-  def handle_info({:basic_cancel_ok, _meta}, state) do
-    Logger.info("VSMCP: Consumer cancel confirmed")
-    {:noreply, state}
   end
   
   def terminate(_reason, state) do

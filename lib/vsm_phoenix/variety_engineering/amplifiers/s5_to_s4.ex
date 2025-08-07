@@ -20,6 +20,10 @@ defmodule VsmPhoenix.VarietyEngineering.Amplifiers.S5ToS4 do
   def set_factor(factor) do
     GenServer.call(@name, {:set_factor, factor})
   end
+
+  def adjust_amplification(factor) do
+    GenServer.call(@name, {:set_factor, factor})
+  end
   
   def increase_amplification do
     GenServer.cast(@name, :increase_amplification)
