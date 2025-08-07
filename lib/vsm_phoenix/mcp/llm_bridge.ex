@@ -57,13 +57,12 @@ defmodule VsmPhoenix.MCP.LLMBridge do
         # Fallback to basic analysis
         {:ok, basic_analysis(prompt)}
         
-      _api_key ->
-        # Real LLM call would happen here
-        # For now, return structured response
-        {:ok, %{
-          "action" => determine_action(prompt),
-          "reasoning" => "Analyzed request using available context"
-        }}
+      api_key ->
+        # REAL LLM CALL - NO MORE FAKE SHIT
+        case make_real_claude_api_call(prompt, api_key) do
+          {:ok, response} -> {:ok, response}
+          {:error, _reason} -> {:ok, basic_analysis(prompt)}
+        end
     end
   end
   
@@ -95,7 +94,7 @@ defmodule VsmPhoenix.MCP.LLMBridge do
   end
   
   def generate_conversation_response(messages, system_prompt, mcp_client_pid) do
-    Logger.info("💬 Generating conversation response")
+    Logger.info("💬 Generating REAL conversation response")
     
     # Build conversation prompt
     conversation_prompt = build_conversation_prompt(messages, system_prompt)
@@ -109,13 +108,22 @@ defmodule VsmPhoenix.MCP.LLMBridge do
           model: "fallback"
         }}
         
-      _api_key ->
-        # Real LLM call would happen here through MCP
-        # For now, generate a contextual response
-        {:ok, %{
-          content: generate_contextual_response(messages, system_prompt),
-          model: "simulated-claude"
-        }}
+      api_key ->
+        # REAL CLAUDE API CALL - NO MORE FAKE RESPONSES
+        case make_real_claude_conversation_call(conversation_prompt, api_key) do
+          {:ok, response} -> 
+            Logger.info("🎯 Got REAL Claude response")
+            {:ok, %{
+              content: response,
+              model: "claude-3-sonnet"
+            }}
+          {:error, reason} -> 
+            Logger.error("❌ Claude API failed: #{inspect(reason)}")
+            {:ok, %{
+              content: generate_fallback_response(messages),
+              model: "fallback"
+            }}
+        end
     end
   end
   
@@ -177,6 +185,79 @@ defmodule VsmPhoenix.MCP.LLMBridge do
     end
   end
   
+  # REAL CLAUDE API CALLS - NO FAKE BULLSHIT
+  defp make_real_claude_api_call(prompt, api_key) do
+    url = "https://api.anthropic.com/v1/messages"
+    
+    headers = [
+      {"Content-Type", "application/json"},
+      {"Authorization", "Bearer #{api_key}"},
+      {"anthropic-version", "2023-06-01"}
+    ]
+    
+    body = Jason.encode!(%{
+      model: "claude-3-sonnet-20240229",
+      max_tokens: 1024,
+      messages: [%{
+        role: "user",
+        content: prompt
+      }]
+    })
+    
+    case HTTPoison.post(url, body, headers) do
+      {:ok, %{status_code: 200, body: response_body}} ->
+        case Jason.decode(response_body) do
+          {:ok, %{"content" => [%{"text" => text}]}} ->
+            # Try to parse as JSON for structured responses
+            case Jason.decode(text) do
+              {:ok, parsed} -> {:ok, parsed}
+              {:error, _} -> {:ok, %{"action" => "execute_tool", "reasoning" => text}}
+            end
+          {:error, _} -> {:error, :invalid_response}
+        end
+      {:ok, %{status_code: status_code, body: error_body}} ->
+        Logger.error("❌ Claude API error #{status_code}: #{error_body}")
+        {:error, :api_error}
+      {:error, reason} ->
+        Logger.error("❌ HTTP request failed: #{inspect(reason)}")
+        {:error, :network_error}
+    end
+  end
+  
+  defp make_real_claude_conversation_call(prompt, api_key) do
+    url = "https://api.anthropic.com/v1/messages"
+    
+    headers = [
+      {"Content-Type", "application/json"},
+      {"Authorization", "Bearer #{api_key}"},
+      {"anthropic-version", "2023-06-01"}
+    ]
+    
+    body = Jason.encode!(%{
+      model: "claude-3-sonnet-20240229",
+      max_tokens: 1024,
+      messages: [%{
+        role: "user",
+        content: prompt
+      }]
+    })
+    
+    case HTTPoison.post(url, body, headers) do
+      {:ok, %{status_code: 200, body: response_body}} ->
+        case Jason.decode(response_body) do
+          {:ok, %{"content" => [%{"text" => text}]}} ->
+            {:ok, text}
+          {:error, _} -> {:error, :invalid_response}
+        end
+      {:ok, %{status_code: status_code, body: error_body}} ->
+        Logger.error("❌ Claude API error #{status_code}: #{error_body}")
+        {:error, :api_error}
+      {:error, reason} ->
+        Logger.error("❌ HTTP request failed: #{inspect(reason)}")
+        {:error, :network_error}
+    end
+  end
+
   defp basic_analysis(prompt) do
     # Generate tool calls based on prompt - using CORRECT tool names!
     tool_calls = cond do
