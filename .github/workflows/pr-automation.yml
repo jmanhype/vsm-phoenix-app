@@ -341,7 +341,7 @@ jobs:
     
     steps:
     - name: Close stale PRs
-      uses: actions/stale@v8
+      uses: actions/stale@v9
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         stale-pr-message: 'This PR has been automatically marked as stale due to inactivity. It will be closed in 7 days unless updated.'
