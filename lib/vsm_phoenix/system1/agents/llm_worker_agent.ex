@@ -615,37 +615,51 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
   end
   
   defp send_conversation_response({:ok, response}, meta, state) do
-    # Send successful response
+    # Send successful response using fresh channel from pool
     reply_to = meta[:reply_to] || "vsm.telegram.commands"
     correlation_id = meta[:correlation_id] || response.request_id
     
-    AMQP.Basic.publish(
-      state.channel,
-      reply_to,  # Send to reply exchange
-      "",  # Default routing key
-      Jason.encode!(response),
-      content_type: "application/json",
-      correlation_id: correlation_id
-    )
-    
-    Logger.info("✅ Sent conversation response for request #{correlation_id}")
+    VsmPhoenix.AMQP.ChannelPool.with_channel(:llm_response, fn channel ->
+      case AMQP.Basic.publish(
+        channel,
+        reply_to,  # Send to reply exchange
+        "",  # Default routing key
+        Jason.encode!(response),
+        content_type: "application/json",
+        correlation_id: correlation_id
+      ) do
+        :ok ->
+          Logger.info("✅ Sent conversation response for request #{correlation_id}")
+          :ok
+        error ->
+          Logger.error("❌ Failed to send response: #{inspect(error)}")
+          error
+      end
+    end)
   end
   
   defp send_conversation_response({:error, error_data}, meta, state) do
-    # Send error response
+    # Send error response using fresh channel from pool
     reply_to = meta[:reply_to] || "vsm.telegram.commands"
     correlation_id = meta[:correlation_id] || error_data.request_id
     
-    AMQP.Basic.publish(
-      state.channel,
-      reply_to,
-      "",
-      Jason.encode!(error_data),
-      content_type: "application/json",
-      correlation_id: correlation_id
-    )
-    
-    Logger.error("❌ Sent error response for request #{correlation_id}")
+    VsmPhoenix.AMQP.ChannelPool.with_channel(:llm_error_response, fn channel ->
+      case AMQP.Basic.publish(
+        channel,
+        reply_to,
+        "",
+        Jason.encode!(error_data),
+        content_type: "application/json",
+        correlation_id: correlation_id
+      ) do
+        :ok ->
+          Logger.error("❌ Sent error response for request #{correlation_id}")
+          :ok
+        error ->
+          Logger.error("❌ Failed to send error response: #{inspect(error)}")
+          error
+      end
+    end)
   end
   
   defp find_agent_by_name(name) do
