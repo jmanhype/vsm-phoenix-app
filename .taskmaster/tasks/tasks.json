@@ -4,40 +4,259 @@
       {
         "id": 1,
         "title": "Implement Recursive VSM Spawning in RecursiveProtocol Module",
-        "description": "Develop functionality in the RecursiveProtocol module that enables parent Virtual State Machines (VSMs) to spawn child VSMs using Advanced Message Queuing Protocol (AMQP).",
-        "details": "This task involves implementing a recursive spawning mechanism for Virtual State Machines within the RecursiveProtocol module. The implementation should:\n\n1. Create a new `SpawnManager` class in the RecursiveProtocol module that handles the lifecycle of child VSMs.\n2. Implement methods for parent VSMs to create, initialize, and manage child VSMs:\n   - `spawnChild(config)`: Creates a new child VSM with specified configuration\n   - `terminateChild(id)`: Gracefully terminates a specific child VSM\n   - `listChildren()`: Returns information about all active child VSMs\n\n3. Set up AMQP communication channels between parent and child VSMs:\n   - Configure message queues for parent-child communication\n   - Implement serialization/deserialization of VSM state for transmission\n   - Establish proper error handling and recovery mechanisms\n\n4. Implement state synchronization between parent and child VSMs:\n   - Define protocols for state updates and notifications\n   - Create mechanisms for propagating state changes up/down the hierarchy\n   - Handle potential race conditions in state updates\n\n5. Add resource management capabilities:\n   - Implement resource allocation strategies for child VSMs\n   - Add monitoring of child VSM resource usage\n   - Create throttling mechanisms to prevent resource exhaustion\n\n6. Document the API thoroughly with examples of spawning patterns and best practices.\n\nThe implementation should ensure proper isolation between VSMs while maintaining efficient communication pathways. Consider performance implications of different spawning strategies and optimize accordingly.",
-        "testStrategy": "1. Unit Tests:\n   - Create unit tests for the SpawnManager class and all its public methods\n   - Test VSM spawning with various configurations\n   - Verify proper cleanup when child VSMs are terminated\n   - Test error handling for invalid spawn requests\n\n2. Integration Tests:\n   - Set up test scenarios with multiple levels of VSM nesting (parent → child → grandchild)\n   - Verify AMQP message passing between different levels of the hierarchy\n   - Test state synchronization between parent and child VSMs\n   - Measure performance metrics for different spawning patterns\n\n3. Stress Tests:\n   - Test system behavior when spawning large numbers of child VSMs\n   - Measure resource consumption and identify potential bottlenecks\n   - Verify system stability under high message throughput conditions\n\n4. Failure Recovery Tests:\n   - Simulate network partitions between parent and child VSMs\n   - Test recovery mechanisms when child VSMs crash unexpectedly\n   - Verify parent VSM behavior when AMQP broker becomes unavailable\n\n5. End-to-End Tests:\n   - Create a complete test application that demonstrates recursive VSM spawning\n   - Verify that all VSM levels function correctly in a production-like environment\n   - Test interoperability with existing system components\n\nAll tests should be automated and included in the CI/CD pipeline. Document any performance benchmarks and include them in the test results.",
+        "description": "Extend the existing VsmPhoenix.AMQP.RecursiveProtocol module to enhance its recursive VSM spawning capabilities using Advanced Message Queuing Protocol (AMQP).",
         "status": "pending",
         "dependencies": [],
         "priority": "high",
-        "subtasks": []
+        "details": "This task involves extending the existing recursive spawning mechanism in the VsmPhoenix.AMQP.RecursiveProtocol module. The implementation should:\n\n1. Implement a proper `SpawnManager` GenServer in the RecursiveProtocol module that handles the lifecycle of child VSMs:\n   - Build upon the existing `spawn_recursive_vsm/2` function\n   - Implement state tracking for all spawned child VSMs\n   - Add monitoring capabilities to detect and handle child VSM termination\n\n2. Enhance the existing methods for parent VSMs to create, initialize, and manage child VSMs:\n   - Extend `spawn_recursive_vsm/2` with additional configuration options\n   - Add `terminate_child_vsm/1`: Gracefully terminates a specific child VSM\n   - Implement `list_child_vsms/0`: Returns information about all active child VSMs\n\n3. Enhance the existing AMQP communication infrastructure:\n   - Extend the \"vsm.recursive\" exchange with proper routing for parent-child relationships\n   - Complete the implementation of `create_mcp_client` and `start_mcp_server` stubs\n   - Implement serialization/deserialization of VSM state for transmission\n   - Establish proper error handling and recovery mechanisms\n\n4. Implement state synchronization between parent and child VSMs:\n   - Define protocols for state updates and notifications\n   - Create mechanisms for propagating state changes up/down the hierarchy\n   - Handle potential race conditions in state updates\n\n5. Use Elixir's DynamicSupervisor for managing child VSM processes:\n   - Implement proper supervision strategies for child VSMs\n   - Add resource allocation and monitoring capabilities\n   - Create throttling mechanisms to prevent resource exhaustion\n\n6. Document the API thoroughly with examples of spawning patterns and best practices.\n\nThe implementation should ensure proper isolation between VSMs while maintaining efficient communication pathways. Consider performance implications of different spawning strategies and optimize accordingly.",
+        "testStrategy": "1. Unit Tests:\n   - Create unit tests for the SpawnManager GenServer and all its public functions\n   - Test VSM spawning with various configurations using the enhanced spawn_recursive_vsm/2\n   - Verify proper cleanup when child VSMs are terminated\n   - Test error handling for invalid spawn requests\n   - Verify proper functioning of the DynamicSupervisor implementation\n\n2. Integration Tests:\n   - Set up test scenarios with multiple levels of VSM nesting (parent → child → grandchild)\n   - Verify AMQP message passing through the extended \"vsm.recursive\" exchange\n   - Test routing between different levels of the hierarchy\n   - Test state synchronization between parent and child VSMs\n   - Verify the enhanced create_mcp_client and start_mcp_server functions\n   - Measure performance metrics for different spawning patterns\n\n3. Stress Tests:\n   - Test system behavior when spawning large numbers of child VSMs\n   - Measure resource consumption and identify potential bottlenecks\n   - Verify system stability under high message throughput conditions\n   - Test the effectiveness of the implemented throttling mechanisms\n\n4. Failure Recovery Tests:\n   - Simulate network partitions between parent and child VSMs\n   - Test recovery mechanisms when child VSMs crash unexpectedly\n   - Verify parent VSM behavior when AMQP broker becomes unavailable\n   - Test the DynamicSupervisor's ability to handle and recover from failures\n\n5. End-to-End Tests:\n   - Create a complete test application that demonstrates recursive VSM spawning\n   - Verify that all VSM levels function correctly in a production-like environment\n   - Test interoperability with existing system components\n\nAll tests should be automated and included in the CI/CD pipeline. Document any performance benchmarks and include them in the test results.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement SpawnManager GenServer",
+            "description": "Create a SpawnManager GenServer that builds upon the existing spawn_recursive_vsm/2 function to manage child VSM lifecycles.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Enhance child VSM management functions",
+            "description": "Extend spawn_recursive_vsm/2 and implement terminate_child_vsm/1 and list_child_vsms/0 functions.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Extend AMQP exchange with proper routing",
+            "description": "Enhance the existing \"vsm.recursive\" exchange with proper routing keys for parent-child relationships.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Complete MCP client and server implementations",
+            "description": "Finish implementing the create_mcp_client and start_mcp_server stubs for AMQP communication.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement DynamicSupervisor for child VSM processes",
+            "description": "Use Elixir's DynamicSupervisor to manage child VSM processes with proper supervision strategies.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Implement state synchronization between VSM levels",
+            "description": "Create mechanisms for propagating state changes between parent and child VSMs with proper handling of race conditions.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Add resource management and throttling",
+            "description": "Implement resource allocation, monitoring, and throttling mechanisms to prevent resource exhaustion.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Document API and create examples",
+            "description": "Create comprehensive documentation for the enhanced recursive VSM spawning API with examples and best practices.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 2,
         "title": "Implement Meta-Learning Infrastructure for Inter-VSM Pattern Sharing",
-        "description": "Develop a meta-learning infrastructure that enables Virtual State Machines (VSMs) to learn from each other's patterns through AMQP message passing.",
-        "details": "This task involves implementing a meta-learning system that allows VSMs to share learned patterns and insights with each other:\n\n1. Create a new `MetaLearningManager` class that will:\n   - Define a standardized message format for sharing learned patterns between VSMs\n   - Implement AMQP publishers and subscribers for pattern exchange\n   - Develop pattern serialization/deserialization mechanisms for transmission\n\n2. Implement core meta-learning components:\n   - Pattern extraction module to identify valuable patterns from VSM operations\n   - Pattern validation to ensure quality of shared insights\n   - Pattern integration mechanism to incorporate external patterns into a VSM's knowledge base\n   - Conflict resolution for contradictory patterns from different sources\n\n3. Add configuration options to control meta-learning behavior:\n   - Enable/disable pattern sharing for specific VSMs\n   - Set trust levels for different pattern sources\n   - Configure pattern acceptance thresholds\n   - Set up pattern sharing frequency and bandwidth limits\n\n4. Implement security measures:\n   - Authenticate pattern sources\n   - Validate pattern integrity\n   - Prevent malicious pattern injection\n   - Implement rate limiting for pattern sharing\n\n5. Create monitoring and analytics for the meta-learning process:\n   - Track pattern sharing statistics\n   - Measure pattern adoption rates\n   - Evaluate pattern effectiveness\n   - Generate reports on knowledge transfer between VSMs\n\n6. Integrate with the existing RecursiveProtocol module:\n   - Ensure meta-learning works with parent-child VSM relationships\n   - Enable pattern inheritance from parent to child VSMs\n   - Allow pattern promotion from child to parent VSMs",
-        "testStrategy": "1. Unit Tests:\n   - Test pattern extraction from VSM operational data\n   - Verify pattern serialization/deserialization\n   - Test AMQP message publishing and subscription\n   - Validate pattern integration mechanisms\n   - Test security measures including authentication and validation\n   - Verify conflict resolution logic\n\n2. Integration Tests:\n   - Set up a network of test VSMs and verify pattern sharing\n   - Test pattern sharing between parent and child VSMs\n   - Measure performance impact of meta-learning on VSM operations\n   - Verify system behavior under high message volume\n   - Test recovery from communication failures\n\n3. Functional Tests:\n   - Verify that VSMs actually improve performance after incorporating patterns\n   - Test with different types of patterns (algorithmic, behavioral, resource management)\n   - Validate that pattern sharing respects configured limits and thresholds\n   - Test the system's ability to identify and reject invalid patterns\n\n4. Performance Tests:\n   - Measure throughput of pattern sharing under various loads\n   - Test scalability with increasing numbers of VSMs\n   - Benchmark memory usage during pattern processing\n   - Evaluate network bandwidth consumption\n\n5. Security Tests:\n   - Attempt to inject malicious patterns\n   - Test authentication bypass scenarios\n   - Verify rate limiting effectiveness\n   - Test pattern validation robustness",
+        "description": "Develop a meta-learning infrastructure that enables Virtual State Machines (VSMs) to learn from each other's patterns through AMQP message passing by extending the existing VsmPhoenix.AMQP.RecursiveProtocol module.",
         "status": "pending",
         "dependencies": [
           1
         ],
         "priority": "high",
-        "subtasks": []
+        "details": "This task involves implementing a meta-learning system that allows VSMs to share learned patterns and insights with each other by extending the existing VsmPhoenix.AMQP.RecursiveProtocol module:\n\n1. Extend the existing VsmPhoenix.AMQP.RecursiveProtocol module:\n   - Utilize the existing initiate_meta_learning/2 function\n   - Integrate with the existing publish_recursive/2 function for pattern sharing\n   - Implement additional helper functions as needed for meta-learning operations\n\n2. Create new modules for meta-learning:\n   - Implement VsmPhoenix.MetaLearning.Manager as a GenServer to coordinate pattern sharing\n   - Develop VsmPhoenix.MetaLearning.PatternExtractor for identifying valuable patterns\n   - Use ETS tables for efficient pattern storage and retrieval\n   - Implement Phoenix.PubSub for real-time pattern sharing notifications\n\n3. Implement core meta-learning components:\n   - Pattern extraction module to identify valuable patterns from VSM operations\n   - Pattern validation to ensure quality of shared insights\n   - Pattern integration mechanism to incorporate external patterns into a VSM's knowledge base\n   - Conflict resolution for contradictory patterns from different sources\n\n4. Add configuration options to control meta-learning behavior:\n   - Enable/disable pattern sharing for specific VSMs\n   - Set trust levels for different pattern sources\n   - Configure pattern acceptance thresholds\n   - Set up pattern sharing frequency and bandwidth limits\n\n5. Implement security measures:\n   - Authenticate pattern sources\n   - Validate pattern integrity\n   - Prevent malicious pattern injection\n   - Implement rate limiting for pattern sharing\n\n6. Create monitoring and analytics for the meta-learning process:\n   - Track pattern sharing statistics\n   - Measure pattern adoption rates\n   - Evaluate pattern effectiveness\n   - Generate reports on knowledge transfer between VSMs\n\n7. Integrate with the existing RecursiveProtocol module:\n   - Ensure meta-learning works with parent-child VSM relationships\n   - Enable pattern inheritance from parent to child VSMs\n   - Allow pattern promotion from child to parent VSMs",
+        "testStrategy": "1. Unit Tests:\n   - Test pattern extraction from VSM operational data\n   - Verify pattern serialization/deserialization\n   - Test integration with publish_recursive/2 function\n   - Test VsmPhoenix.MetaLearning.Manager GenServer functionality\n   - Test VsmPhoenix.MetaLearning.PatternExtractor operations\n   - Test ETS table operations for pattern storage and retrieval\n   - Test Phoenix.PubSub for pattern sharing notifications\n   - Validate pattern integration mechanisms\n   - Test security measures including authentication and validation\n   - Verify conflict resolution logic\n\n2. Integration Tests:\n   - Set up a network of test VSMs and verify pattern sharing\n   - Test pattern sharing between parent and child VSMs\n   - Verify integration with the existing initiate_meta_learning/2 function\n   - Measure performance impact of meta-learning on VSM operations\n   - Verify system behavior under high message volume\n   - Test recovery from communication failures\n\n3. Functional Tests:\n   - Verify that VSMs actually improve performance after incorporating patterns\n   - Test with different types of patterns (algorithmic, behavioral, resource management)\n   - Validate that pattern sharing respects configured limits and thresholds\n   - Test the system's ability to identify and reject invalid patterns\n   - Verify real-time notifications through Phoenix.PubSub\n\n4. Performance Tests:\n   - Measure throughput of pattern sharing under various loads\n   - Test scalability with increasing numbers of VSMs\n   - Benchmark memory usage during pattern processing\n   - Evaluate network bandwidth consumption\n   - Measure ETS table performance under high load\n\n5. Security Tests:\n   - Attempt to inject malicious patterns\n   - Test authentication bypass scenarios\n   - Verify rate limiting effectiveness\n   - Test pattern validation robustness",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Extend VsmPhoenix.AMQP.RecursiveProtocol module",
+            "description": "Extend the existing RecursiveProtocol module to support meta-learning capabilities",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement VsmPhoenix.MetaLearning.Manager GenServer",
+            "description": "Create a GenServer to manage the meta-learning process, pattern sharing, and coordination",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement VsmPhoenix.MetaLearning.PatternExtractor",
+            "description": "Develop a module for extracting valuable patterns from VSM operations",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement ETS-based pattern storage",
+            "description": "Create ETS tables for efficient storage and retrieval of patterns",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement Phoenix.PubSub for real-time notifications",
+            "description": "Set up Phoenix.PubSub for real-time pattern sharing notifications between VSMs",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Integrate with publish_recursive/2 function",
+            "description": "Ensure meta-learning pattern sharing works with the existing publish_recursive/2 function",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Implement security and validation measures",
+            "description": "Add authentication, validation, and rate limiting for pattern sharing",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Create monitoring and analytics",
+            "description": "Implement tracking and reporting for pattern sharing effectiveness",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 3,
         "title": "Implement Variety Engineering with Attenuation and Amplification Between VSM Levels",
         "description": "Develop mechanisms for variety engineering that implement proper attenuation and amplification between different VSM levels in accordance with Ashby's Law of Requisite Variety.",
-        "details": "This task involves implementing variety engineering mechanisms to manage complexity between VSM levels:\n\n1. Create a `VarietyEngineeringManager` class that will:\n   - Implement attenuation filters to reduce complexity flowing from lower to higher VSM levels\n   - Implement amplification mechanisms to enhance response capabilities from higher to lower VSM levels\n   - Develop adaptive filters that automatically adjust based on system state and requirements\n\n2. Implement core variety engineering components:\n   - Signal classification module to categorize incoming information based on relevance and priority\n   - Attenuation algorithms that filter, aggregate, and abstract lower-level details for higher VSM levels\n   - Amplification algorithms that expand high-level directives into detailed instructions for lower VSM levels\n   - Feedback loops to continuously optimize attenuation/amplification ratios\n\n3. Integrate with existing VSM infrastructure:\n   - Connect with the RecursiveProtocol module to intercept and process messages between parent and child VSMs\n   - Integrate with the MetaLearningManager to leverage learned patterns for optimizing variety engineering\n   - Implement monitoring hooks to measure variety levels and engineering effectiveness\n\n4. Implement Ashby's Law compliance mechanisms:\n   - Develop metrics to measure variety at each VSM level\n   - Create automatic balancing algorithms to ensure requisite variety is maintained\n   - Implement alerts when variety imbalances are detected\n   - Build visualization tools for system operators to monitor variety levels\n\n5. Develop configuration interfaces:\n   - Create APIs for manual adjustment of attenuation/amplification parameters\n   - Implement configuration persistence and versioning\n   - Develop presets for common variety engineering scenarios",
-        "testStrategy": "1. Unit Tests:\n   - Test attenuation algorithms with various input complexities\n   - Verify amplification algorithms correctly expand high-level directives\n   - Test adaptive filtering under different system conditions\n   - Verify correct measurement of variety metrics\n   - Test configuration persistence and loading\n\n2. Integration Tests:\n   - Test integration with RecursiveProtocol module\n   - Verify proper interaction with MetaLearningManager\n   - Test end-to-end message flow with variety engineering applied\n   - Verify correct behavior during parent-child VSM communication\n\n3. Performance Tests:\n   - Measure processing overhead introduced by variety engineering\n   - Test system behavior under high message volume\n   - Verify scalability with increasing numbers of VSM levels\n\n4. Compliance Tests:\n   - Verify system maintains requisite variety under various conditions\n   - Test recovery from artificially induced variety imbalances\n   - Validate that variety metrics accurately reflect system state\n\n5. Acceptance Tests:\n   - Demonstrate variety engineering in action with real-world scenarios\n   - Verify that higher VSM levels receive appropriately attenuated information\n   - Confirm that lower VSM levels receive properly amplified instructions\n   - Validate that the system remains stable under changing conditions",
         "status": "pending",
         "dependencies": [
           1,
           2
         ],
         "priority": "high",
-        "subtasks": []
+        "details": "This task involves enhancing the existing variety engineering mechanisms to better manage complexity between VSM levels:\n\n1. Enhance the existing `VsmPhoenix.VarietyEngineering.Supervisor` and its components:\n   - Build upon the existing filters (S1ToS2, S2ToS3, etc.) and amplifiers\n   - Add adaptive filtering capabilities to existing modules\n   - Ensure backward compatibility with existing implementations\n\n2. Create a new `VsmPhoenix.VarietyEngineering.AdaptiveManager` GenServer that will:\n   - Coordinate with the existing VarietyCalculator and BalanceMonitor\n   - Implement dynamic adjustment of attenuation and amplification parameters\n   - Monitor system state to automatically optimize variety engineering\n   - Provide APIs for manual override and configuration\n\n3. Enhance core variety engineering components:\n   - Extend the existing signal classification modules with adaptive capabilities\n   - Implement learning algorithms that improve attenuation/amplification over time\n   - Add contextual awareness to filtering decisions\n   - Develop feedback mechanisms to evaluate filtering effectiveness\n\n4. Integrate with existing VSM infrastructure:\n   - Connect with the existing amplify_variety/2 function in RecursiveProtocol\n   - Ensure proper interaction with MetaLearningManager\n   - Implement monitoring hooks to measure variety levels and engineering effectiveness\n\n5. Improve Ashby's Law compliance mechanisms:\n   - Enhance existing metrics to better measure variety at each VSM level\n   - Implement more sophisticated balancing algorithms to ensure requisite variety\n   - Develop visualization tools for system operators to monitor variety levels\n\n6. Extend configuration interfaces:\n   - Create APIs for dynamic adjustment of attenuation/amplification parameters\n   - Implement configuration persistence and versioning\n   - Develop presets for common variety engineering scenarios",
+        "testStrategy": "1. Unit Tests:\n   - Test enhanced attenuation algorithms with various input complexities\n   - Verify integration with existing filters (S1ToS2, S2ToS3, etc.)\n   - Test the new AdaptiveManager GenServer functionality\n   - Verify coordination between AdaptiveManager and VarietyCalculator/BalanceMonitor\n   - Test adaptive filtering under different system conditions\n   - Verify correct measurement of variety metrics\n   - Test configuration persistence and loading\n\n2. Integration Tests:\n   - Test integration with existing amplify_variety/2 function in RecursiveProtocol\n   - Verify proper interaction with MetaLearningManager\n   - Test end-to-end message flow with enhanced variety engineering applied\n   - Verify correct behavior during parent-child VSM communication\n\n3. Performance Tests:\n   - Measure processing overhead introduced by adaptive variety engineering\n   - Compare performance with previous non-adaptive implementation\n   - Test system behavior under high message volume\n   - Verify scalability with increasing numbers of VSM levels\n\n4. Compliance Tests:\n   - Verify system maintains requisite variety under various conditions\n   - Test recovery from artificially induced variety imbalances\n   - Validate that variety metrics accurately reflect system state\n\n5. Acceptance Tests:\n   - Demonstrate adaptive variety engineering in action with real-world scenarios\n   - Verify that higher VSM levels receive appropriately attenuated information\n   - Confirm that lower VSM levels receive properly amplified instructions\n   - Validate that the system remains stable under changing conditions",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create VsmPhoenix.VarietyEngineering.AdaptiveManager GenServer",
+            "description": "Implement a new GenServer that coordinates adaptive filtering capabilities with existing components",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Enhance existing filter modules with adaptive capabilities",
+            "description": "Modify S1ToS2, S2ToS3, and other existing filters to support dynamic parameter adjustment",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Integrate AdaptiveManager with VarietyCalculator and BalanceMonitor",
+            "description": "Establish communication between the new AdaptiveManager and existing monitoring components",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement adaptive learning algorithms for filter optimization",
+            "description": "Develop algorithms that improve filter performance based on system feedback and historical data",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Connect with existing amplify_variety/2 function in RecursiveProtocol",
+            "description": "Ensure proper integration with the existing amplification mechanisms in RecursiveProtocol",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Create configuration API for adaptive filtering parameters",
+            "description": "Develop interfaces for manual adjustment and monitoring of adaptive filtering behavior",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Implement visualization tools for variety engineering metrics",
+            "description": "Create dashboards and monitoring tools to observe variety levels and engineering effectiveness",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Develop comprehensive test suite for adaptive variety engineering",
+            "description": "Create tests that verify the effectiveness of adaptive filtering under various conditions",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       }
     ],
     "metadata": {
@@ -51,40 +270,86 @@
       {
         "id": 1,
         "title": "Implement CRDT-based Context Persistence for aMCP Protocol",
-        "description": "Design and implement a Conflict-free Replicated Data Type (CRDT) mechanism for the aMCP protocol to enable distributed state synchronization across multiple agents without central coordination.",
-        "details": "This task involves implementing CRDT-based persistence for the aMCP (Agent Message Communication Protocol) to enable robust distributed state management:\n\n1. Research and select appropriate CRDT algorithms for the specific requirements of agent state synchronization:\n   - Consider operation-based CRDTs (like Logoot or WOOT) for sequential operations\n   - Consider state-based CRDTs (like G-Set, OR-Set) for set operations\n   - Evaluate hybrid approaches if necessary\n\n2. Design the CRDT data structures:\n   - Define the core data structures that will represent agent context\n   - Implement vector clocks or version vectors for causality tracking\n   - Design merge functions that guarantee eventual consistency\n\n3. Implement the core CRDT operations:\n   - Add/update/remove operations with conflict resolution\n   - State synchronization protocol between agents\n   - Efficient delta-based state transfer to minimize bandwidth\n\n4. Integrate with the existing aMCP protocol:\n   - Extend the protocol message format to include CRDT operations\n   - Implement handlers for CRDT-specific messages\n   - Ensure backward compatibility with existing protocol features\n\n5. Implement persistence layer:\n   - Design storage format for CRDT operations and state\n   - Implement efficient serialization/deserialization\n   - Create recovery mechanisms for agent restarts\n\n6. Optimize for performance:\n   - Minimize memory footprint for CRDT metadata\n   - Implement garbage collection for obsolete operations\n   - Optimize network usage with delta-based synchronization\n\n7. Document the implementation:\n   - Create technical documentation for the CRDT mechanism\n   - Provide usage examples for developers\n   - Document conflict resolution strategies",
-        "testStrategy": "1. Unit Testing:\n   - Create unit tests for each CRDT operation (add, update, remove)\n   - Test merge functions with various conflict scenarios\n   - Verify idempotence, commutativity, and associativity properties\n   - Test vector clock/version vector implementation\n\n2. Integration Testing:\n   - Set up a test environment with multiple agent instances\n   - Simulate network partitions and verify correct reconciliation\n   - Test concurrent operations from different agents\n   - Verify eventual consistency is achieved after synchronization\n\n3. Performance Testing:\n   - Measure memory overhead of CRDT metadata\n   - Benchmark synchronization performance with increasing number of operations\n   - Test with large state sizes to ensure scalability\n   - Measure network bandwidth usage during synchronization\n\n4. Fault Tolerance Testing:\n   - Simulate agent crashes and verify recovery\n   - Test with unreliable network conditions (packet loss, reordering)\n   - Verify correct behavior with message duplication\n\n5. Specific Test Scenarios:\n   - Test A: Create concurrent updates to the same state from multiple agents, verify consistent resolution\n   - Test B: Disconnect an agent, make changes, reconnect and verify correct synchronization\n   - Test C: Perform rapid sequential updates and verify all agents converge to the same state\n   - Test D: Test with realistic agent workloads to verify real-world performance\n\n6. Validation:\n   - Create a visualization tool to display the CRDT state across agents\n   - Implement logging to track CRDT operations and state changes\n   - Verify correctness with formal CRDT properties",
+        "description": "Design and implement a Conflict-free Replicated Data Type (CRDT) mechanism for the existing AMQP infrastructure to enable distributed state synchronization across multiple agents without central coordination in the Elixir/Phoenix architecture.",
         "status": "pending",
         "dependencies": [],
         "priority": "high",
+        "details": "This task involves implementing CRDT-based persistence for the existing AMQP infrastructure to enable robust distributed state management in the Elixir/Phoenix architecture:\n\n1. Research and select appropriate CRDT algorithms for the specific requirements of agent state synchronization in Elixir:\n   - Consider operation-based CRDTs (like Logoot or WOOT) for sequential operations\n   - Consider state-based CRDTs (like G-Set, OR-Set) for set operations\n   - Evaluate hybrid approaches if necessary\n   - Focus on Elixir-compatible implementations or libraries\n\n2. Design the CRDT data structures using Elixir's GenServer and ETS tables:\n   - Create VsmPhoenix.AMQP.CRDT.StateManager module as a GenServer for managing CRDT state\n   - Implement VsmPhoenix.AMQP.CRDT.VectorClock for causality tracking\n   - Design merge functions that guarantee eventual consistency\n   - Use ETS tables for efficient state storage and retrieval\n\n3. Implement the core CRDT operations in Elixir:\n   - Add/update/remove operations with conflict resolution\n   - State synchronization protocol between agents\n   - Efficient delta-based state transfer to minimize bandwidth\n   - Leverage Elixir's pattern matching for elegant conflict resolution\n\n4. Integrate with the existing AMQP infrastructure:\n   - Extend the VsmPhoenix.AMQP modules to include CRDT operations\n   - Implement handlers for CRDT-specific messages\n   - Ensure backward compatibility with existing protocol features\n   - Integrate with VsmPhoenix.AMQP.ConnectionManager and VsmPhoenix.AMQP.ChannelPool\n\n5. Implement persistence layer using Elixir's capabilities:\n   - Design storage format for CRDT operations and state in ETS tables\n   - Implement efficient serialization/deserialization using Elixir's binary protocols\n   - Create recovery mechanisms for agent restarts leveraging OTP supervision trees\n\n6. Optimize for performance in the Elixir environment:\n   - Minimize memory footprint for CRDT metadata\n   - Implement garbage collection for obsolete operations\n   - Optimize network usage with delta-based synchronization\n   - Leverage Elixir's concurrency model for parallel processing\n\n7. Document the implementation:\n   - Create technical documentation for the CRDT mechanism\n   - Provide usage examples for developers\n   - Document conflict resolution strategies\n   - Include ExDoc documentation for all modules",
+        "testStrategy": "1. Unit Testing:\n   - Create ExUnit tests for each CRDT operation (add, update, remove)\n   - Test merge functions with various conflict scenarios\n   - Verify idempotence, commutativity, and associativity properties\n   - Test VsmPhoenix.AMQP.CRDT.VectorClock implementation\n   - Test GenServer callbacks in VsmPhoenix.AMQP.CRDT.StateManager\n\n2. Integration Testing:\n   - Set up a test environment with multiple Elixir nodes\n   - Simulate network partitions and verify correct reconciliation\n   - Test concurrent operations from different nodes\n   - Verify eventual consistency is achieved after synchronization\n   - Test integration with VsmPhoenix.AMQP.ConnectionManager and VsmPhoenix.AMQP.ChannelPool\n\n3. Performance Testing:\n   - Measure memory overhead of CRDT metadata in ETS tables\n   - Benchmark synchronization performance with increasing number of operations\n   - Test with large state sizes to ensure scalability\n   - Measure network bandwidth usage during synchronization\n   - Profile GenServer message handling performance\n\n4. Fault Tolerance Testing:\n   - Simulate node crashes and verify recovery using OTP supervision\n   - Test with unreliable network conditions (packet loss, reordering)\n   - Verify correct behavior with message duplication\n   - Test recovery from ETS table corruption\n\n5. Specific Test Scenarios:\n   - Test A: Create concurrent updates to the same state from multiple Elixir nodes, verify consistent resolution\n   - Test B: Disconnect a node, make changes, reconnect and verify correct synchronization\n   - Test C: Perform rapid sequential updates and verify all nodes converge to the same state\n   - Test D: Test with realistic agent workloads to verify real-world performance\n   - Test E: Verify correct interaction between CRDT modules and existing AMQP infrastructure\n\n6. Validation:\n   - Create a Phoenix LiveView visualization tool to display the CRDT state across nodes\n   - Implement structured logging with Elixir's Logger to track CRDT operations and state changes\n   - Verify correctness with formal CRDT properties",
         "subtasks": []
       },
       {
         "id": 2,
         "title": "Implement Cryptographic Security Layer for VSM Communications",
         "description": "Develop a comprehensive cryptographic security layer for VSM (Virtual State Machine) communications with nonce generation and replay attack protection to ensure secure agent message exchanges.",
-        "details": "This task involves implementing a robust cryptographic security layer for VSM communications:\n\n1. Design the cryptographic architecture:\n   - Define the encryption standards (e.g., AES-256 for symmetric encryption, RSA-2048 or ECC for asymmetric)\n   - Establish key management protocols (generation, distribution, rotation)\n   - Design the authentication mechanism (HMAC, digital signatures)\n\n2. Implement nonce generation system:\n   - Create a cryptographically secure random nonce generator\n   - Implement timestamp-based nonce components to ensure uniqueness\n   - Design nonce lifecycle management (creation, validation, expiration)\n   - Ensure nonce size is sufficient to prevent collision (at least 128 bits)\n\n3. Develop replay attack protection:\n   - Implement a sliding window mechanism to track and validate message freshness\n   - Create a message history cache with configurable retention period\n   - Design efficient lookup mechanisms for nonce verification\n   - Implement TTL (Time-To-Live) for messages to prevent delayed replay attacks\n\n4. Integrate with aMCP protocol:\n   - Extend the aMCP message format to include security headers (nonce, timestamp, signature)\n   - Implement message signing and verification procedures\n   - Create middleware for transparent encryption/decryption of message payloads\n   - Ensure backward compatibility with existing message formats\n\n5. Performance optimization:\n   - Implement caching mechanisms for frequently used cryptographic operations\n   - Consider hardware acceleration for cryptographic functions if available\n   - Optimize the security layer to minimize latency in agent communications\n   - Implement batching for cryptographic operations where appropriate\n\n6. Error handling and recovery:\n   - Design comprehensive error handling for cryptographic failures\n   - Implement secure fallback mechanisms for key compromise scenarios\n   - Create logging and alerting for security-related events\n   - Design recovery procedures for synchronization issues\n\n7. Documentation:\n   - Document the cryptographic protocols and algorithms used\n   - Create integration guides for developers\n   - Document security assumptions and limitations\n   - Provide usage examples and best practices",
-        "testStrategy": "1. Unit Testing:\n   - Test nonce generation for randomness, uniqueness, and collision resistance\n   - Verify encryption/decryption functions with various input sizes and types\n   - Test signature creation and verification with valid and invalid keys\n   - Validate replay attack detection with simulated replay scenarios\n   - Test boundary conditions (empty messages, maximum size messages)\n\n2. Integration Testing:\n   - Verify seamless integration with the aMCP protocol\n   - Test end-to-end message security across multiple agent communications\n   - Validate performance under normal and high-load conditions\n   - Test compatibility with the CRDT-based persistence layer\n\n3. Security Testing:\n   - Perform cryptanalysis on the implemented algorithms\n   - Conduct penetration testing to identify vulnerabilities\n   - Test against known attack vectors (replay, man-in-the-middle, timing attacks)\n   - Verify key management procedures for security compliance\n\n4. Performance Testing:\n   - Benchmark encryption/decryption operations under various loads\n   - Measure latency impact of the security layer on message processing\n   - Test scalability with increasing numbers of concurrent communications\n   - Profile memory usage during cryptographic operations\n\n5. Compliance Testing:\n   - Verify adherence to relevant security standards (e.g., NIST, FIPS)\n   - Ensure compliance with data protection regulations if applicable\n   - Validate secure storage of cryptographic materials\n\n6. Regression Testing:\n   - Ensure existing functionality continues to work with security layer enabled\n   - Verify backward compatibility with non-secured message formats if required",
         "status": "pending",
         "dependencies": [
           1
         ],
         "priority": "high",
+        "details": "This task involves extending the existing cryptographic security layer for VSM communications in the Elixir/Phoenix architecture:\n\n1. Extend VsmPhoenix.AMQP.SecureCommandRouter:\n   - Review the existing implementation with HMAC SHA256 signatures\n   - Identify integration points for the new nonce and replay protection features\n   - Ensure compatibility with existing security mechanisms\n   - Extend the module to support the enhanced security features\n\n2. Implement VsmPhoenix.Security.NonceManager as a GenServer:\n   - Create a cryptographically secure random nonce generator using Elixir's :crypto module\n   - Implement timestamp-based nonce components to ensure uniqueness\n   - Design nonce lifecycle management (creation, validation, expiration)\n   - Ensure nonce size is sufficient to prevent collision (at least 128 bits)\n   - Implement proper GenServer callbacks (init/1, handle_call/3, handle_cast/2, etc.)\n\n3. Develop replay attack protection:\n   - Implement a sliding window mechanism to track and validate message freshness\n   - Create a message history cache with configurable retention period\n   - Design efficient lookup mechanisms for nonce verification\n   - Implement TTL (Time-To-Live) for messages to prevent delayed replay attacks\n\n4. Extend VsmPhoenix.Infrastructure.Security module:\n   - Add functions for nonce validation and management\n   - Implement replay attack detection algorithms\n   - Create helper functions for secure message handling\n   - Ensure proper integration with existing security infrastructure\n\n5. Integrate with existing aMCP protocol implementation:\n   - Extend the aMCP message format to include security headers (nonce, timestamp)\n   - Leverage existing HMAC SHA256 signatures in VsmPhoenix.AMQP.SecureCommandRouter\n   - Create middleware for transparent encryption/decryption of message payloads\n   - Ensure backward compatibility with existing message formats\n\n6. Performance optimization:\n   - Implement caching mechanisms for frequently used cryptographic operations\n   - Optimize the security layer to minimize latency in agent communications\n   - Implement batching for cryptographic operations where appropriate\n   - Ensure efficient use of Elixir processes and OTP patterns\n\n7. Error handling and recovery:\n   - Design comprehensive error handling for cryptographic failures\n   - Implement secure fallback mechanisms for key compromise scenarios\n   - Create logging and alerting for security-related events\n   - Design recovery procedures for synchronization issues\n\n8. Documentation:\n   - Document the cryptographic protocols and algorithms used\n   - Create integration guides for developers\n   - Document security assumptions and limitations\n   - Provide usage examples and best practices for the Elixir implementation",
+        "testStrategy": "1. Unit Testing with ExUnit:\n   - Test VsmPhoenix.Security.NonceManager for randomness, uniqueness, and collision resistance\n   - Verify encryption/decryption functions with various input sizes and types\n   - Test signature creation and verification with valid and invalid keys using the existing HMAC SHA256 implementation\n   - Validate replay attack detection with simulated replay scenarios\n   - Test boundary conditions (empty messages, maximum size messages)\n   - Test GenServer behavior and state management\n\n2. Integration Testing:\n   - Verify seamless integration with the existing VsmPhoenix.AMQP.SecureCommandRouter\n   - Test end-to-end message security across multiple agent communications\n   - Validate performance under normal and high-load conditions\n   - Test compatibility with the CRDT-based persistence layer\n   - Verify proper interaction between VsmPhoenix.Security.NonceManager and VsmPhoenix.Infrastructure.Security\n\n3. Security Testing:\n   - Perform cryptanalysis on the implemented algorithms\n   - Conduct penetration testing to identify vulnerabilities\n   - Test against known attack vectors (replay, man-in-the-middle, timing attacks)\n   - Verify key management procedures for security compliance\n   - Test the security of the Elixir/OTP implementation specifically\n\n4. Performance Testing:\n   - Benchmark encryption/decryption operations under various loads\n   - Measure latency impact of the security layer on message processing\n   - Test scalability with increasing numbers of concurrent communications\n   - Profile memory usage during cryptographic operations\n   - Evaluate the performance characteristics of the GenServer implementation\n\n5. Compliance Testing:\n   - Verify adherence to relevant security standards (e.g., NIST, FIPS)\n   - Ensure compliance with data protection regulations if applicable\n   - Validate secure storage of cryptographic materials\n\n6. Regression Testing:\n   - Ensure existing functionality continues to work with security layer enabled\n   - Verify backward compatibility with non-secured message formats if required\n   - Test that existing VsmPhoenix.AMQP.SecureCommandRouter functionality is preserved",
         "subtasks": []
       },
       {
         "id": 3,
         "title": "Implement Advanced aMCP Protocol Extensions for Distributed Coordination",
-        "description": "Extend the aMCP protocol with advanced features for distributed coordination and agent discovery, enabling agents to dynamically find and collaborate with each other in a decentralized network.",
-        "details": "This task involves implementing advanced extensions to the aMCP protocol to support distributed coordination and agent discovery:\n\n1. Design and implement agent discovery mechanism:\n   - Develop a gossip-based discovery protocol for agents to announce their presence\n   - Implement capability advertisement allowing agents to broadcast their functions and services\n   - Create a distributed agent registry using DHT (Distributed Hash Table) approach\n   - Design efficient heartbeat mechanism to track agent availability\n\n2. Implement distributed coordination features:\n   - Develop a consensus algorithm for multi-agent decision making (e.g., Raft or Paxos-based)\n   - Create distributed locking mechanisms to handle concurrent operations\n   - Implement leader election protocols for coordinator selection when needed\n   - Design conflict resolution strategies for competing agent actions\n\n3. Extend the aMCP message format:\n   - Add discovery message types (ANNOUNCE, QUERY, RESPOND)\n   - Create coordination message types (PROPOSE, VOTE, COMMIT)\n   - Implement message routing for indirect agent communication\n   - Design extensible headers for coordination metadata\n\n4. Optimize for network efficiency:\n   - Implement message batching for reduced network overhead\n   - Create adaptive timeout mechanisms based on network conditions\n   - Design compression strategies for large state transfers\n   - Implement bandwidth-aware communication patterns\n\n5. Integrate with existing CRDT and security layers:\n   - Ensure discovery messages are properly secured\n   - Coordinate CRDT state synchronization with agent discovery events\n   - Implement secure capability verification before coordination\n   - Design permission models for coordination actions",
-        "testStrategy": "1. Unit Testing:\n   - Test each discovery message type with various agent configurations\n   - Verify consensus algorithm with different voting scenarios\n   - Test leader election with simulated node failures\n   - Validate distributed locking with concurrent access patterns\n   - Verify message routing with complex network topologies\n\n2. Integration Testing:\n   - Test interaction between discovery and security layer\n   - Verify coordination mechanisms work with CRDT state synchronization\n   - Test end-to-end agent discovery and coordination in multi-node setup\n   - Validate system behavior during network partitions and merges\n\n3. Performance Testing:\n   - Measure discovery time with varying network sizes (10, 100, 1000 agents)\n   - Benchmark coordination overhead for different consensus scenarios\n   - Test scalability of the discovery mechanism with high agent churn\n   - Measure bandwidth usage during normal and peak operations\n\n4. Fault Injection Testing:\n   - Simulate agent failures during coordination processes\n   - Test discovery mechanism with unreliable network conditions\n   - Verify system recovery after coordinator failure\n   - Test behavior with message loss and out-of-order delivery\n\n5. Security Testing:\n   - Verify that discovery doesn't leak sensitive agent information\n   - Test against spoofing attacks in the discovery process\n   - Validate that coordination respects security permissions\n   - Verify encryption of all discovery and coordination messages",
+        "description": "Extend the existing VsmPhoenix.AMQP modules with advanced features for distributed coordination and agent discovery, enabling agents to dynamically find and collaborate with each other in a decentralized network within the Elixir/Phoenix architecture.",
         "status": "pending",
         "dependencies": [
           1,
           2
         ],
         "priority": "high",
-        "subtasks": []
+        "details": "This task involves implementing advanced extensions to the VsmPhoenix.AMQP modules to support distributed coordination and agent discovery:\n\n1. Design and implement VsmPhoenix.AMQP.Discovery module:\n   - Develop a gossip-based discovery protocol for agents to announce their presence\n   - Implement capability advertisement allowing agents to broadcast their functions and services\n   - Leverage Elixir's Registry module for agent tracking and discovery\n   - Design efficient heartbeat mechanism using existing AMQP exchanges\n\n2. Implement VsmPhoenix.AMQP.Consensus for distributed coordination:\n   - Develop a consensus algorithm for multi-agent decision making (e.g., using Elixir's distributed capabilities)\n   - Create distributed locking mechanisms to handle concurrent operations\n   - Implement leader election protocols for coordinator selection when needed\n   - Design conflict resolution strategies for competing agent actions\n\n3. Extend the existing AMQP message format:\n   - Add discovery message types (ANNOUNCE, QUERY, RESPOND)\n   - Create coordination message types (PROPOSE, VOTE, COMMIT)\n   - Implement message routing for indirect agent communication\n   - Design extensible headers for coordination metadata\n   - Build upon VsmPhoenix.AMQP.RecursiveProtocol for recursive message patterns\n\n4. Optimize for network efficiency:\n   - Implement message batching for reduced network overhead\n   - Create adaptive timeout mechanisms based on network conditions\n   - Design compression strategies for large state transfers\n   - Implement bandwidth-aware communication patterns\n\n5. Integrate with existing CRDT and security layers:\n   - Ensure discovery messages are properly secured through VsmPhoenix.AMQP.SecureCommandRouter\n   - Coordinate CRDT state synchronization with agent discovery events\n   - Implement secure capability verification before coordination\n   - Design permission models for coordination actions",
+        "testStrategy": "1. Unit Testing with ExUnit:\n   - Test each discovery message type with various agent configurations\n   - Verify consensus algorithm with different voting scenarios\n   - Test leader election with simulated node failures\n   - Validate distributed locking with concurrent access patterns\n   - Verify message routing with complex network topologies\n   - Test Registry integration for agent tracking\n\n2. Integration Testing:\n   - Test interaction between VsmPhoenix.AMQP.Discovery and security layer\n   - Verify coordination mechanisms work with CRDT state synchronization\n   - Test end-to-end agent discovery and coordination in multi-node Elixir setup\n   - Validate system behavior during network partitions and merges\n   - Test integration with VsmPhoenix.AMQP.RecursiveProtocol\n\n3. Performance Testing:\n   - Measure discovery time with varying network sizes (10, 100, 1000 agents)\n   - Benchmark coordination overhead for different consensus scenarios\n   - Test scalability of the Registry-based discovery mechanism with high agent churn\n   - Measure bandwidth usage during normal and peak operations\n   - Profile BEAM VM behavior under load\n\n4. Fault Injection Testing:\n   - Simulate agent failures during coordination processes\n   - Test discovery mechanism with unreliable network conditions\n   - Verify system recovery after coordinator failure\n   - Test behavior with message loss and out-of-order delivery\n   - Test Elixir supervisor recovery strategies\n\n5. Security Testing:\n   - Verify that discovery doesn't leak sensitive agent information\n   - Test against spoofing attacks in the discovery process\n   - Validate that coordination respects security permissions\n   - Verify encryption of all discovery and coordination messages\n   - Test integration with VsmPhoenix.AMQP.SecureCommandRouter",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement VsmPhoenix.AMQP.Discovery module",
+            "description": "Create a new module for agent discovery leveraging Elixir's Registry and AMQP exchanges",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement VsmPhoenix.AMQP.Consensus module",
+            "description": "Develop distributed coordination mechanisms using Elixir's distributed capabilities",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Extend AMQP message format for discovery and coordination",
+            "description": "Add new message types and integrate with VsmPhoenix.AMQP.RecursiveProtocol",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Optimize network communication for Elixir/Phoenix architecture",
+            "description": "Implement batching, timeouts, and compression optimized for BEAM VM",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Integrate with existing VsmPhoenix security and CRDT layers",
+            "description": "Ensure proper integration with VsmPhoenix.AMQP.SecureCommandRouter and CRDT modules",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       }
     ],
     "metadata": {
@@ -98,39 +363,149 @@
       {
         "id": 1,
         "title": "Integrate GEPA Core for Reflective Prompt Evolution",
-        "description": "Implement the GEPA (Generative Evolutionary Prompt Adaptation) Core framework to enable reflective prompt evolution, targeting a 35x efficiency improvement in LLM operations through automated prompt optimization.",
-        "details": "1. Set up the GEPA Core library:\n   - Install the GEPA Core package via npm/pip depending on the project stack\n   - Configure API keys and environment variables for LLM access\n\n2. Implement the Reflective Prompt Evolution pipeline:\n   - Create a PromptEvolutionManager class that handles the lifecycle of prompts\n   - Implement the core evolutionary algorithms:\n     - Mutation: Modify prompts based on performance metrics\n     - Crossover: Combine high-performing prompt segments\n     - Selection: Evaluate and rank prompt variations\n   - Build a feedback loop mechanism that captures LLM response quality metrics\n\n3. Develop the efficiency optimization components:\n   - Implement token usage tracking and analytics\n   - Create caching mechanisms for similar prompt patterns\n   - Build prompt compression algorithms that maintain semantic integrity\n   - Develop context window optimization techniques\n\n4. Create an abstraction layer for existing LLM calls:\n   - Refactor current direct LLM calls to use the GEPA middleware\n   - Implement adapters for different LLM providers (OpenAI, Anthropic, etc.)\n   - Ensure backward compatibility with existing code\n\n5. Implement the monitoring dashboard:\n   - Create metrics collection for prompt performance\n   - Build visualization components for efficiency gains\n   - Implement A/B testing framework for prompt variations\n\n6. Documentation and integration:\n   - Document the GEPA Core API for other developers\n   - Create examples of optimized prompts vs. original prompts\n   - Provide guidelines for writing \"evolution-friendly\" prompts",
-        "testStrategy": "1. Benchmark Testing:\n   - Establish baseline metrics for current LLM usage (tokens per task, cost, latency)\n   - Run identical workloads through both original and GEPA-optimized systems\n   - Verify the 35x efficiency improvement claim with quantitative metrics\n\n2. Unit Testing:\n   - Create unit tests for each evolutionary algorithm component\n   - Test the PromptEvolutionManager with mock LLM responses\n   - Verify proper functioning of the caching and compression mechanisms\n\n3. Integration Testing:\n   - Test the GEPA Core with actual LLM providers\n   - Verify that all adapters work correctly with their respective LLM services\n   - Ensure the abstraction layer correctly handles all existing use cases\n\n4. Performance Testing:\n   - Conduct load testing to ensure the system can handle production volumes\n   - Measure memory usage and CPU utilization during peak loads\n   - Test recovery mechanisms for API failures or timeouts\n\n5. Quality Assurance:\n   - Compare output quality between original and optimized prompts\n   - Ensure semantic equivalence is maintained after optimization\n   - Verify that edge cases are handled correctly\n\n6. User Acceptance Testing:\n   - Have team members use the new system for typical tasks\n   - Collect feedback on any differences in output quality\n   - Verify that the integration is seamless from a user perspective\n\n7. Monitoring Validation:\n   - Verify that all metrics are correctly captured and displayed\n   - Test alerting mechanisms for performance degradation\n   - Ensure the dashboard accurately reflects real-time efficiency gains",
+        "description": "Implement the GEPA (Generative Evolutionary Prompt Adaptation) Core framework to enable reflective prompt evolution, targeting a 35x efficiency improvement in LLM operations through automated prompt optimization. Integrate with existing VsmPhoenix.System4.LLMVarietySource module and leverage the System4.Intelligence module for environmental scanning.",
         "status": "pending",
         "dependencies": [],
         "priority": "high",
-        "subtasks": []
+        "details": "1. Set up the GEPA Core module in the Elixir project:\n   - Create the VsmPhoenix.GEPA.Core module structure\n   - Configure API keys and environment variables for LLM access\n   - Establish integration points with VsmPhoenix.System4.LLMVarietySource module\n\n2. Implement the Reflective Prompt Evolution pipeline:\n   - Create a VsmPhoenix.GEPA.PromptEvolutionManager GenServer that handles the lifecycle of prompts\n   - Implement the core evolutionary algorithms:\n     - Mutation: Modify prompts based on performance metrics\n     - Crossover: Combine high-performing prompt segments\n     - Selection: Evaluate and rank prompt variations\n   - Build a feedback loop mechanism that captures LLM response quality metrics\n   - Integrate with existing System4.Intelligence module for environmental context awareness\n\n3. Develop the efficiency optimization components:\n   - Implement token usage tracking and analytics\n   - Create caching mechanisms using Elixir's ETS tables for similar prompt patterns\n   - Build prompt compression algorithms that maintain semantic integrity\n   - Develop context window optimization techniques\n\n4. Create an abstraction layer for existing LLM calls:\n   - Refactor current direct LLM calls to use the GEPA middleware\n   - Implement adapters for different LLM providers (OpenAI, Anthropic, etc.)\n   - Ensure backward compatibility with existing code\n   - Integrate with existing AMQP infrastructure for distributed prompt optimization\n\n5. Implement the monitoring dashboard:\n   - Create metrics collection for prompt performance\n   - Build visualization components for efficiency gains\n   - Implement A/B testing framework for prompt variations\n\n6. Documentation and integration:\n   - Document the GEPA Core API for other developers\n   - Create examples of optimized prompts vs. original prompts\n   - Provide guidelines for writing \"evolution-friendly\" prompts",
+        "testStrategy": "1. Benchmark Testing:\n   - Establish baseline metrics for current LLM usage (tokens per task, cost, latency)\n   - Run identical workloads through both original and GEPA-optimized systems\n   - Verify the 35x efficiency improvement claim with quantitative metrics\n\n2. Unit Testing:\n   - Create unit tests for each evolutionary algorithm component\n   - Test the VsmPhoenix.GEPA.PromptEvolutionManager GenServer with mock LLM responses\n   - Verify proper functioning of the ETS caching and compression mechanisms\n   - Test integration with System4.Intelligence module\n\n3. Integration Testing:\n   - Test the GEPA Core with actual LLM providers\n   - Verify that all adapters work correctly with their respective LLM services\n   - Ensure the abstraction layer correctly handles all existing use cases\n   - Test AMQP integration for distributed prompt optimization\n   - Verify proper integration with VsmPhoenix.System4.LLMVarietySource module\n\n4. Performance Testing:\n   - Conduct load testing to ensure the system can handle production volumes\n   - Measure memory usage and CPU utilization during peak loads\n   - Test recovery mechanisms for API failures or timeouts\n   - Benchmark ETS table performance under high load\n\n5. Quality Assurance:\n   - Compare output quality between original and optimized prompts\n   - Ensure semantic equivalence is maintained after optimization\n   - Verify that edge cases are handled correctly\n\n6. User Acceptance Testing:\n   - Have team members use the new system for typical tasks\n   - Collect feedback on any differences in output quality\n   - Verify that the integration is seamless from a user perspective\n\n7. Monitoring Validation:\n   - Verify that all metrics are correctly captured and displayed\n   - Test alerting mechanisms for performance degradation\n   - Ensure the dashboard accurately reflects real-time efficiency gains",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create VsmPhoenix.GEPA.Core module structure",
+            "description": "",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement VsmPhoenix.GEPA.PromptEvolutionManager GenServer",
+            "description": "",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Integrate with VsmPhoenix.System4.LLMVarietySource module",
+            "description": "",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement ETS-based caching for prompt patterns",
+            "description": "",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Integrate with existing System4.Intelligence for environmental scanning",
+            "description": "",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Set up AMQP integration for distributed prompt optimization",
+            "description": "",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 2,
         "title": "Implement System 4 GEPA Intelligence with Self-Optimizing Environmental Scan Prompts",
         "description": "Develop and integrate the System 4 GEPA Intelligence module that autonomously optimizes environmental scan prompts to achieve a 35x efficiency improvement in data collection and analysis workflows.",
-        "details": "1. Build on the GEPA Core framework to implement the System 4 Intelligence module:\n   - Extend the PromptEvolutionManager to include environmental context awareness\n   - Implement the ScanPromptOptimizer class with the following components:\n     - ContextualSensor: Monitors and analyzes the operational environment\n     - FeedbackLoop: Captures performance metrics and user interactions\n     - AdaptiveGenerator: Creates optimized prompts based on environmental data\n\n2. Develop the self-optimization algorithms:\n   - Implement reinforcement learning mechanisms to evaluate prompt effectiveness\n   - Create a prompt efficiency scoring system based on:\n     - Token utilization ratio\n     - Information density metrics\n     - Response relevance scoring\n     - Execution time optimization\n\n3. Design the environmental scanning framework:\n   - Implement data source connectors for diverse information streams\n   - Create scanning schedules with priority-based resource allocation\n   - Develop pattern recognition for identifying high-value information\n   - Build adaptive filtering to reduce noise in collected data\n\n4. Integrate with existing systems:\n   - Connect to the GEPA Core reflective evolution pipeline\n   - Implement API endpoints for external system integration\n   - Create configuration interfaces for customizing scan parameters\n   - Develop logging and monitoring for system performance\n\n5. Implement the efficiency optimization features:\n   - Create prompt templates specialized for environmental scanning\n   - Develop context-aware prompt compression techniques\n   - Implement parallel processing for simultaneous environmental scans\n   - Build caching mechanisms for frequently accessed environmental data",
-        "testStrategy": "1. Performance Testing:\n   - Establish baseline metrics for current environmental scanning operations\n   - Measure key performance indicators:\n     - Tokens consumed per information unit extracted\n     - Time to complete standard scanning operations\n     - Accuracy of information extraction compared to manual processes\n     - Cost reduction in API usage for equivalent information gathering\n   - Verify the 35x efficiency improvement through comparative analysis\n\n2. Integration Testing:\n   - Test the interaction between System 4 Intelligence and GEPA Core\n   - Verify proper data flow between environmental scanning and prompt evolution\n   - Ensure the system correctly adapts to changing environmental conditions\n   - Validate that optimized prompts are correctly deployed to production systems\n\n3. Functional Testing:\n   - Create test scenarios with varying environmental complexity\n   - Verify the system's ability to identify relevant information\n   - Test the self-optimization mechanisms with deliberately suboptimal prompts\n   - Validate that prompt quality improves over successive iterations\n\n4. Stress Testing:\n   - Simulate high-volume environmental data streams\n   - Test system performance under resource constraints\n   - Verify graceful degradation when approaching system limits\n   - Measure recovery time after deliberate system overloads\n\n5. User Acceptance Testing:\n   - Develop a dashboard showing efficiency improvements\n   - Create A/B testing scenarios for comparing original vs. optimized prompts\n   - Collect feedback on the quality and relevance of extracted information\n   - Validate that the system meets or exceeds the 35x efficiency target in real-world usage",
         "status": "pending",
         "dependencies": [
           1
         ],
         "priority": "high",
-        "subtasks": []
+        "details": "1. Enhance the existing VsmPhoenix.System4.Intelligence module:\n   - Leverage existing scan_environment/1 and generate_adaptation_proposal/1 functions\n   - Create VsmPhoenix.GEPA.ScanPromptOptimizer that integrates with:\n     - System4.Intelligence.Scanner: For environmental data collection\n     - System4.Intelligence.AdaptationEngine: For implementing optimizations\n     - HermesClient: For LLM interactions\n     - Phoenix.PubSub: For real-time optimization updates\n\n2. Implement the ScanPromptOptimizer components:\n   - ContextualSensor: Monitors and analyzes the operational environment\n   - FeedbackLoop: Captures performance metrics and user interactions\n   - AdaptiveGenerator: Creates optimized prompts based on environmental data\n\n3. Develop the self-optimization algorithms:\n   - Implement reinforcement learning mechanisms to evaluate prompt effectiveness\n   - Create a prompt efficiency scoring system based on:\n     - Token utilization ratio\n     - Information density metrics\n     - Response relevance scoring\n     - Execution time optimization\n\n4. Extend the environmental scanning framework:\n   - Connect to existing System4.Intelligence.Scanner for data source integration\n   - Implement adaptive filtering to reduce noise in collected data\n   - Create scanning schedules with priority-based resource allocation\n   - Develop pattern recognition for identifying high-value information\n\n5. Implement the efficiency optimization features:\n   - Create prompt templates specialized for environmental scanning\n   - Develop context-aware prompt compression techniques\n   - Implement parallel processing for simultaneous environmental scans\n   - Build caching mechanisms for frequently accessed environmental data\n\n6. Integrate with Phoenix.PubSub for real-time updates:\n   - Implement subscription topics for optimization events\n   - Create broadcast mechanisms for newly optimized prompts\n   - Develop listeners for environmental change notifications",
+        "testStrategy": "1. Performance Testing:\n   - Establish baseline metrics for current environmental scanning operations\n   - Measure key performance indicators:\n     - Tokens consumed per information unit extracted\n     - Time to complete standard scanning operations\n     - Accuracy of information extraction compared to manual processes\n     - Cost reduction in API usage for equivalent information gathering\n   - Verify the 35x efficiency improvement through comparative analysis\n\n2. Integration Testing:\n   - Test the interaction between VsmPhoenix.GEPA.ScanPromptOptimizer and System4.Intelligence modules\n   - Verify proper data flow between Scanner, AdaptationEngine, and ScanPromptOptimizer\n   - Test HermesClient integration for LLM interactions\n   - Validate Phoenix.PubSub event propagation for optimization updates\n   - Ensure the system correctly adapts to changing environmental conditions\n\n3. Functional Testing:\n   - Create test scenarios with varying environmental complexity\n   - Verify the system's ability to identify relevant information\n   - Test the self-optimization mechanisms with deliberately suboptimal prompts\n   - Validate that prompt quality improves over successive iterations\n\n4. Stress Testing:\n   - Simulate high-volume environmental data streams\n   - Test system performance under resource constraints\n   - Verify graceful degradation when approaching system limits\n   - Measure recovery time after deliberate system overloads\n\n5. User Acceptance Testing:\n   - Develop a dashboard showing efficiency improvements\n   - Create A/B testing scenarios for comparing original vs. optimized prompts\n   - Collect feedback on the quality and relevance of extracted information\n   - Validate that the system meets or exceeds the 35x efficiency target in real-world usage",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create VsmPhoenix.GEPA.ScanPromptOptimizer module",
+            "description": "Implement the ScanPromptOptimizer module that integrates with System4.Intelligence.Scanner and System4.Intelligence.AdaptationEngine",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement core optimizer components",
+            "description": "Develop the ContextualSensor, FeedbackLoop, and AdaptiveGenerator components within the ScanPromptOptimizer",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Integrate with HermesClient",
+            "description": "Connect the ScanPromptOptimizer with the existing HermesClient for LLM interactions and prompt optimization",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Phoenix.PubSub integration",
+            "description": "Set up real-time optimization updates using Phoenix.PubSub for broadcasting optimization events and environmental changes",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Develop self-optimization algorithms",
+            "description": "Create the reinforcement learning mechanisms and efficiency scoring system for prompt optimization",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Create test suite",
+            "description": "Develop comprehensive tests for the ScanPromptOptimizer integration with existing System4.Intelligence modules",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 3,
         "title": "Implement System 5 GEPA Policy Synthesis with Self-Evolving Policy Generation",
         "description": "Develop the System 5 GEPA Policy Synthesis module that leverages AI reflection on outcomes to autonomously generate, evaluate, and evolve operational policies, building upon the environmental intelligence gathered by System 4.",
-        "details": "1. Build the GEPA Policy Synthesis framework:\n   - Create a PolicySynthesisEngine class that integrates with existing GEPA Core and System 4 components\n   - Implement the following key components:\n     - OutcomeReflector: Analyzes the results of applied policies against intended goals\n     - PolicyGenerator: Creates candidate policies based on environmental data and historical performance\n     - PolicyEvaluator: Simulates and scores potential policies before deployment\n     - PolicyEvolutionManager: Handles the lifecycle of policies including versioning and retirement\n\n2. Develop the self-evolution mechanisms:\n   - Implement a feedback loop that captures policy performance metrics\n   - Create a ReflectionEngine that applies meta-learning to understand policy effectiveness patterns\n   - Build a PolicyMutationEngine that generates policy variations based on reflection insights\n   - Develop a PolicySelectionAlgorithm that promotes successful policies and deprecates underperforming ones\n\n3. Integrate with System 4 GEPA Intelligence:\n   - Establish data pipelines from environmental scans to policy synthesis\n   - Create interfaces for bidirectional communication between System 4 and System 5\n   - Implement context-aware policy triggering based on environmental conditions\n\n4. Implement policy deployment mechanisms:\n   - Create a PolicyDeploymentManager to handle the safe rollout of new policies\n   - Develop canary deployment capabilities for testing policies in limited contexts\n   - Build rollback mechanisms for quick recovery from problematic policies\n\n5. Create visualization and monitoring tools:\n   - Develop dashboards for tracking policy performance metrics\n   - Implement policy genealogy visualization to understand evolution paths\n   - Create alerts for policy performance anomalies\n\n6. Implement security and governance controls:\n   - Add policy validation against organizational constraints and compliance requirements\n   - Create audit trails for all policy changes and their justifications\n   - Implement approval workflows for policies exceeding certain risk thresholds",
-        "testStrategy": "1. Unit Testing:\n   - Test each component of the Policy Synthesis framework in isolation\n   - Verify correct behavior of the OutcomeReflector, PolicyGenerator, PolicyEvaluator, and PolicyEvolutionManager\n   - Create mock environmental data to test policy generation under various conditions\n\n2. Integration Testing:\n   - Verify proper data flow between System 4 and System 5 components\n   - Test end-to-end policy generation, evaluation, deployment, and reflection cycles\n   - Validate that environmental changes trigger appropriate policy adaptations\n\n3. Performance Testing:\n   - Measure the computational efficiency of policy generation and evaluation\n   - Test the system's ability to handle multiple concurrent policy evolution cycles\n   - Benchmark the speed of policy adaptation in response to changing conditions\n\n4. Simulation Testing:\n   - Create synthetic environments with known optimal policies\n   - Measure how quickly and effectively the system converges on optimal policies\n   - Test recovery from deliberately suboptimal starting policies\n\n5. A/B Testing:\n   - Deploy competing policy variants in controlled environments\n   - Measure relative performance against key metrics\n   - Verify that the system correctly identifies and promotes superior policies\n\n6. Adversarial Testing:\n   - Introduce unexpected environmental changes to test adaptation capabilities\n   - Simulate resource constraints and verify graceful degradation\n   - Test recovery from deliberately corrupted policy states\n\n7. Validation Testing:\n   - Compare policy outcomes against the 35x efficiency improvement target\n   - Validate that policies respect all defined constraints and compliance requirements\n   - Verify that policy evolution converges rather than oscillates over time",
         "status": "pending",
         "dependencies": [
           1,
           2
         ],
         "priority": "high",
+        "details": "1. Enhance the existing VsmPhoenix.System5.PolicySynthesizer module:\n   - Leverage existing synthesize_policy_from_anomaly/1 and trigger_recursive_policy_domain/1 functions\n   - Create VsmPhoenix.GEPA.PolicySynthesisEngine that integrates with existing HermesStdioClient\n   - Implement ETS tables for policy versioning and evolution tracking\n\n2. Build upon the existing policy generation capabilities:\n   - Create an OutcomeReflector module that analyzes the results of applied policies against intended goals\n   - Extend PolicyGenerator functionality to create candidate policies based on environmental data and historical performance\n   - Implement PolicyEvaluator to simulate and score potential policies before deployment\n   - Develop PolicyEvolutionManager that uses ETS tables for tracking policy lifecycle including versioning and retirement\n\n3. Develop the self-evolution mechanisms:\n   - Implement a feedback loop that captures policy performance metrics\n   - Create a ReflectionEngine that applies meta-learning to understand policy effectiveness patterns\n   - Build a PolicyMutationEngine that generates policy variations based on reflection insights\n   - Develop a PolicySelectionAlgorithm that promotes successful policies and deprecates underperforming ones\n\n4. Integrate with System 4 GEPA Intelligence:\n   - Establish data pipelines from environmental scans to policy synthesis\n   - Create interfaces for bidirectional communication between System 4 and System 5\n   - Implement context-aware policy triggering based on environmental conditions\n   - Enhance recursive VSM spawning triggers for dynamic policy domain creation\n\n5. Implement policy deployment mechanisms:\n   - Create a PolicyDeploymentManager to handle the safe rollout of new policies\n   - Develop canary deployment capabilities for testing policies in limited contexts\n   - Build rollback mechanisms for quick recovery from problematic policies\n\n6. Create visualization and monitoring tools:\n   - Develop dashboards for tracking policy performance metrics\n   - Implement policy genealogy visualization to understand evolution paths\n   - Create alerts for policy performance anomalies\n\n7. Implement security and governance controls:\n   - Add policy validation against organizational constraints and compliance requirements\n   - Create audit trails for all policy changes and their justifications\n   - Implement approval workflows for policies exceeding certain risk thresholds",
+        "testStrategy": "1. Unit Testing:\n   - Test each component of the Policy Synthesis framework in isolation\n   - Verify correct behavior of the OutcomeReflector, PolicyGenerator, PolicyEvaluator, and PolicyEvolutionManager\n   - Create mock environmental data to test policy generation under various conditions\n   - Test ETS table operations for policy versioning and evolution tracking\n\n2. Integration Testing:\n   - Verify proper data flow between System 4 and System 5 components\n   - Test end-to-end policy generation, evaluation, deployment, and reflection cycles\n   - Validate that environmental changes trigger appropriate policy adaptations\n   - Test integration with HermesStdioClient for LLM interactions\n\n3. Performance Testing:\n   - Measure the computational efficiency of policy generation and evaluation\n   - Test the system's ability to handle multiple concurrent policy evolution cycles\n   - Benchmark the speed of policy adaptation in response to changing conditions\n   - Evaluate ETS table performance under high-volume policy evolution scenarios\n\n4. Simulation Testing:\n   - Create synthetic environments with known optimal policies\n   - Measure how quickly and effectively the system converges on optimal policies\n   - Test recovery from deliberately suboptimal starting policies\n   - Verify recursive VSM spawning triggers create appropriate policy domains\n\n5. A/B Testing:\n   - Deploy competing policy variants in controlled environments\n   - Measure relative performance against key metrics\n   - Verify that the system correctly identifies and promotes superior policies\n\n6. Adversarial Testing:\n   - Introduce unexpected environmental changes to test adaptation capabilities\n   - Simulate resource constraints and verify graceful degradation\n   - Test recovery from deliberately corrupted policy states\n\n7. Validation Testing:\n   - Compare policy outcomes against the 35x efficiency improvement target\n   - Validate that policies respect all defined constraints and compliance requirements\n   - Verify that policy evolution converges rather than oscillates over time",
         "subtasks": []
       }
     ],
@@ -146,39 +521,195 @@
         "id": 1,
         "title": "Implement Event-as-Evidence Architecture with Causal Graph Construction",
         "description": "Design and implement an event-as-evidence architecture that captures system events and constructs causal graphs to support decision-making in the Value Stream Management (VSM) system.",
-        "details": "This task involves creating a robust architecture that treats events as evidence for decision-making processes:\n\n1. Define an event model schema:\n   - Create a standardized event structure with fields for timestamp, source, type, payload, and metadata\n   - Implement serialization/deserialization for event objects\n   - Design event categorization taxonomy relevant to VSM contexts\n\n2. Implement event collection mechanisms:\n   - Create event listeners for various system components\n   - Develop an event buffer to handle high-volume event streams\n   - Implement event filtering and preprocessing capabilities\n\n3. Design the causal graph construction engine:\n   - Define graph node and edge structures to represent causal relationships\n   - Implement algorithms to infer causality between events\n   - Create temporal reasoning capabilities to establish event sequences\n   - Develop confidence scoring for causal relationships\n\n4. Build the evidence evaluation system:\n   - Implement Bayesian inference for probability calculations\n   - Create weighting mechanisms for different evidence types\n   - Design an evidence aggregation framework\n\n5. Integrate with decision-making components:\n   - Create APIs for querying the causal graph\n   - Implement visualization helpers for graph exploration\n   - Develop decision recommendation algorithms based on causal analysis\n\nTechnical considerations:\n- Use a graph database (e.g., Neo4j) for storing causal relationships\n- Implement event streaming with Kafka or similar technology\n- Ensure the system can handle retroactive updates to the causal model\n- Design for scalability to process thousands of events per second\n- Consider using probabilistic programming libraries for causal inference",
-        "testStrategy": "1. Unit Testing:\n   - Create unit tests for event model serialization/deserialization\n   - Test causal inference algorithms with known cause-effect scenarios\n   - Verify Bayesian calculation accuracy against expected probabilities\n   - Test event filtering logic with various input patterns\n\n2. Integration Testing:\n   - Verify end-to-end event flow from collection to causal graph construction\n   - Test integration with event sources using mock producers\n   - Validate graph database persistence and retrieval operations\n   - Ensure proper API responses for causal queries\n\n3. Performance Testing:\n   - Benchmark event processing throughput under various loads\n   - Measure graph construction time for different event volumes\n   - Test system behavior under sustained high event rates\n   - Verify memory usage remains within acceptable bounds\n\n4. Validation Testing:\n   - Create test scenarios with known causal relationships\n   - Compare system-inferred causality with expected outcomes\n   - Validate confidence scores against expert-defined benchmarks\n   - Test with real-world VSM decision scenarios and verify results\n\n5. Acceptance Criteria:\n   - System correctly identifies causal relationships with >85% accuracy\n   - Causal graph construction completes within 5 seconds for 1000 events\n   - Decision recommendations based on causal analysis match expert expectations\n   - Visualization correctly represents complex causal chains\n   - System handles retroactive updates to the causal model without errors",
         "status": "pending",
         "dependencies": [],
         "priority": "high",
-        "subtasks": []
+        "details": "This task involves creating a robust architecture that treats events as evidence for decision-making processes by integrating with existing VSM Phoenix components:\n\n1. Define an event model schema:\n   - Extend the existing VsmPhoenixWeb.Telemetry module to support standardized event structure\n   - Ensure compatibility with fields for timestamp, source, type, payload, and metadata\n   - Implement serialization/deserialization for event objects\n   - Design event categorization taxonomy relevant to VSM contexts\n\n2. Implement event collection mechanisms:\n   - Create VsmPhoenix.Cybernetic.EventCapture GenServer to extend telemetry events\n   - Leverage existing AMQP infrastructure for event streaming\n   - Use ETS tables for event buffering to handle high-volume event streams\n   - Implement event filtering and preprocessing capabilities\n\n3. Design the causal graph construction engine:\n   - Implement VsmPhoenix.Cybernetic.CausalGraph module using :digraph\n   - Define graph node and edge structures to represent causal relationships\n   - Implement algorithms to infer causality between events\n   - Create temporal reasoning capabilities to establish event sequences\n   - Develop confidence scoring for causal relationships\n\n4. Build the evidence evaluation system:\n   - Implement Bayesian inference for probability calculations\n   - Create weighting mechanisms for different evidence types\n   - Design an evidence aggregation framework\n   - Integrate with existing Infrastructure.CausalityAMQP module\n\n5. Integrate with decision-making components:\n   - Create APIs for querying the causal graph\n   - Implement visualization helpers for graph exploration\n   - Develop decision recommendation algorithms based on causal analysis\n\nTechnical considerations:\n- Use :digraph for in-memory graph representation\n- Leverage existing AMQP infrastructure for event streaming\n- Ensure the system can handle retroactive updates to the causal model\n- Design for scalability to process thousands of events per second\n- Consider using probabilistic programming libraries for causal inference",
+        "testStrategy": "1. Unit Testing:\n   - Create unit tests for event model serialization/deserialization\n   - Test causal inference algorithms with known cause-effect scenarios\n   - Verify Bayesian calculation accuracy against expected probabilities\n   - Test event filtering logic with various input patterns\n   - Verify VsmPhoenix.Cybernetic.EventCapture GenServer functionality\n   - Test VsmPhoenix.Cybernetic.CausalGraph module operations\n\n2. Integration Testing:\n   - Verify end-to-end event flow from collection to causal graph construction\n   - Test integration with VsmPhoenixWeb.Telemetry module\n   - Validate ETS table operations for event buffering\n   - Test integration with existing AMQP infrastructure\n   - Ensure proper API responses for causal queries\n   - Verify integration with Infrastructure.CausalityAMQP module\n\n3. Performance Testing:\n   - Benchmark event processing throughput under various loads\n   - Measure graph construction time for different event volumes\n   - Test system behavior under sustained high event rates\n   - Verify memory usage remains within acceptable bounds\n   - Benchmark ETS table performance for event buffering\n\n4. Validation Testing:\n   - Create test scenarios with known causal relationships\n   - Compare system-inferred causality with expected outcomes\n   - Validate confidence scores against expert-defined benchmarks\n   - Test with real-world VSM decision scenarios and verify results\n\n5. Acceptance Criteria:\n   - System correctly identifies causal relationships with >85% accuracy\n   - Causal graph construction completes within 5 seconds for 1000 events\n   - Decision recommendations based on causal analysis match expert expectations\n   - Visualization correctly represents complex causal chains\n   - System handles retroactive updates to the causal model without errors\n   - Successful integration with VsmPhoenixWeb.Telemetry and Infrastructure.CausalityAMQP",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Extend VsmPhoenixWeb.Telemetry module",
+            "description": "Extend the existing telemetry module to support the event-as-evidence architecture",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement VsmPhoenix.Cybernetic.EventCapture GenServer",
+            "description": "Create a GenServer that extends telemetry events and handles event capture functionality",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement ETS-based event buffer",
+            "description": "Develop an event buffer using ETS tables to handle high-volume event streams",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Create VsmPhoenix.Cybernetic.CausalGraph module",
+            "description": "Implement the causal graph module using Erlang's :digraph library",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Integrate with Infrastructure.CausalityAMQP",
+            "description": "Connect the event capture and causal graph components with the existing AMQP infrastructure",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Implement Bayesian inference for causal relationships",
+            "description": "Develop the probabilistic reasoning component for evaluating evidence and establishing causality",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Create API for causal graph queries",
+            "description": "Design and implement an API for querying the causal graph and retrieving decision support information",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 2,
         "title": "Build Contextual Fusion Engine with Meaning Graphs",
         "description": "Develop a contextual fusion engine that integrates parallel event processing streams into meaning graphs to enable distributed cognition capabilities within the VSM system.",
-        "details": "This task involves creating a sophisticated fusion engine that combines multiple event streams into coherent meaning graphs:\n\n1. Design the meaning graph data structure:\n   - Define node types (events, entities, concepts, relationships)\n   - Implement edge types with semantic relationship definitions\n   - Create graph traversal and query capabilities\n   - Design temporal aspects of the graph to represent evolving contexts\n\n2. Develop the fusion engine core:\n   - Implement stream processing interfaces to consume events from multiple sources\n   - Create correlation algorithms to identify related events across streams\n   - Develop pattern recognition for identifying higher-order structures\n   - Implement real-time graph construction and updating mechanisms\n\n3. Build contextual reasoning capabilities:\n   - Develop context extraction from event clusters\n   - Implement semantic enrichment of graph nodes and relationships\n   - Create inference rules for deriving implicit knowledge\n   - Design confidence scoring for derived knowledge\n\n4. Implement distributed cognition features:\n   - Create mechanisms for sharing partial graphs between system components\n   - Develop consensus algorithms for resolving conflicting interpretations\n   - Implement collaborative reasoning across distributed components\n   - Design interfaces for human-in-the-loop augmentation of meaning graphs\n\n5. Optimize for performance and scalability:\n   - Implement efficient graph storage and retrieval mechanisms\n   - Create indexing strategies for rapid context lookup\n   - Develop caching mechanisms for frequently accessed subgraphs\n   - Implement parallel processing for graph operations",
-        "testStrategy": "1. Unit Testing:\n   - Test individual fusion algorithms with controlled input streams\n   - Verify graph construction correctness with predefined event sequences\n   - Test semantic relationship extraction with known patterns\n   - Validate temporal aspects of graph construction\n\n2. Integration Testing:\n   - Verify correct integration with the event-as-evidence architecture\n   - Test end-to-end flow from event capture to meaning graph construction\n   - Validate distributed components can share and merge partial graphs\n   - Test system behavior under various event volume scenarios\n\n3. Performance Testing:\n   - Measure graph construction performance with increasing event volumes\n   - Test query response times for complex graph traversals\n   - Evaluate memory usage patterns during sustained operation\n   - Benchmark distributed processing capabilities\n\n4. Semantic Validation:\n   - Create test cases with known semantic relationships\n   - Verify that the system correctly identifies implicit relationships\n   - Test with domain-specific scenarios relevant to VSM\n   - Validate that meaning graphs accurately represent the underlying events\n\n5. Distributed Cognition Testing:\n   - Simulate distributed environments with multiple processing nodes\n   - Test consensus mechanisms with deliberately conflicting interpretations\n   - Verify knowledge sharing across system boundaries\n   - Validate system resilience when components fail",
         "status": "pending",
         "dependencies": [
           1
         ],
         "priority": "high",
-        "subtasks": []
+        "details": "This task involves creating a sophisticated fusion engine that combines multiple event streams into coherent meaning graphs using Elixir and Phoenix:\n\n1. Design the meaning graph data structure using VsmPhoenix.Cybernetic.MeaningGraph:\n   - Implement using Erlang's :digraph for semantic relationships\n   - Define node types (events, entities, concepts, relationships)\n   - Implement edge types with semantic relationship definitions\n   - Create graph traversal and query capabilities\n   - Design temporal aspects of the graph to represent evolving contexts\n\n2. Develop the fusion engine core as VsmPhoenix.Cybernetic.FusionEngine GenServer:\n   - Implement AMQP interfaces to consume events from multiple channels\n   - Create correlation algorithms to identify related events across streams\n   - Develop pattern recognition for identifying higher-order structures\n   - Implement real-time graph construction and updating mechanisms\n\n3. Build contextual reasoning capabilities:\n   - Develop context extraction from event clusters\n   - Implement semantic enrichment of graph nodes and relationships\n   - Create inference rules for deriving implicit knowledge\n   - Design confidence scoring for derived knowledge\n\n4. Implement distributed cognition features using Phoenix.PubSub:\n   - Create mechanisms for sharing partial graphs between system components\n   - Develop consensus algorithms for resolving conflicting interpretations\n   - Implement collaborative reasoning across distributed components\n   - Design interfaces for human-in-the-loop augmentation of meaning graphs\n\n5. Optimize for performance and scalability using ETS tables:\n   - Implement efficient graph storage and retrieval mechanisms with ETS\n   - Create indexing strategies for rapid context lookup\n   - Develop caching mechanisms for frequently accessed subgraphs\n   - Implement parallel processing for graph operations",
+        "testStrategy": "1. Unit Testing:\n   - Test individual fusion algorithms with controlled input streams\n   - Verify graph construction correctness with predefined event sequences\n   - Test semantic relationship extraction with known patterns\n   - Validate temporal aspects of graph construction\n   - Test VsmPhoenix.Cybernetic.MeaningGraph operations with :digraph\n   - Verify AMQP channel integration with the FusionEngine GenServer\n\n2. Integration Testing:\n   - Verify correct integration with the event-as-evidence architecture\n   - Test end-to-end flow from event capture to meaning graph construction\n   - Validate Phoenix.PubSub integration for distributed components\n   - Test system behavior under various event volume scenarios\n   - Verify ETS table performance for graph storage operations\n\n3. Performance Testing:\n   - Measure graph construction performance with increasing event volumes\n   - Test query response times for complex graph traversals\n   - Evaluate memory usage patterns during sustained operation\n   - Benchmark distributed processing capabilities\n   - Test ETS table scaling with large graph structures\n\n4. Semantic Validation:\n   - Create test cases with known semantic relationships\n   - Verify that the system correctly identifies implicit relationships\n   - Test with domain-specific scenarios relevant to VSM\n   - Validate that meaning graphs accurately represent the underlying events\n\n5. Distributed Cognition Testing:\n   - Simulate distributed environments with multiple Phoenix nodes\n   - Test consensus mechanisms with deliberately conflicting interpretations\n   - Verify knowledge sharing across system boundaries using Phoenix.PubSub\n   - Validate system resilience when components fail",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement VsmPhoenix.Cybernetic.MeaningGraph module",
+            "description": "Create the MeaningGraph module using Erlang's :digraph for representing semantic relationships between events, entities, and concepts.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Develop VsmPhoenix.Cybernetic.FusionEngine GenServer",
+            "description": "Implement the FusionEngine as a GenServer that processes events from multiple AMQP channels and constructs meaning graphs.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Integrate with Phoenix.PubSub for distributed cognition",
+            "description": "Implement mechanisms for sharing partial graphs and collaborative reasoning across VSM components using Phoenix.PubSub.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement ETS-based storage for meaning graphs",
+            "description": "Create efficient graph storage and retrieval mechanisms using ETS tables for performance optimization.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Develop contextual reasoning capabilities",
+            "description": "Implement context extraction, semantic enrichment, and inference rules for deriving implicit knowledge from meaning graphs.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 3,
         "title": "Implement AI Immune System with Proactive Anomaly Detection",
         "description": "Develop an AI-based immune system that continuously monitors the VSM environment for anomalies, automatically detects potential issues, and implements self-healing policies through auto-synthesis of corrective actions.",
-        "details": "This task involves building an AI immune system with the following components:\n\n1. Anomaly Detection Framework:\n   - Implement multiple detection algorithms (statistical, ML-based, and rule-based)\n   - Design baseline profiling system to establish normal operational patterns\n   - Create real-time monitoring agents that observe system metrics, event patterns, and performance indicators\n   - Develop sensitivity controls to adjust detection thresholds based on operational context\n\n2. Behavioral Analysis Engine:\n   - Build pattern recognition for identifying known attack signatures and novel threats\n   - Implement temporal analysis to detect slow-developing anomalies\n   - Create correlation engine to connect related anomalous events across system components\n   - Design feedback loops to improve detection accuracy over time\n\n3. Auto-Synthesis Policy Engine:\n   - Develop policy definition language for specifying self-healing responses\n   - Implement decision tree for selecting appropriate remediation strategies\n   - Create action synthesis module to generate custom responses to novel threats\n   - Build rollback capabilities for unsuccessful remediation attempts\n   - Implement sandbox environment for testing remediation actions before deployment\n\n4. Self-Healing Execution Framework:\n   - Design secure execution environment for remediation actions\n   - Implement priority-based scheduling for critical vs. non-critical fixes\n   - Create audit logging for all self-healing activities\n   - Develop human oversight interface for reviewing autonomous actions\n   - Implement progressive response escalation for persistent issues\n\n5. Integration with Existing Components:\n   - Connect to event-as-evidence architecture to consume system events\n   - Utilize meaning graphs from contextual fusion engine to understand event context\n   - Implement bidirectional communication with other system components\n   - Design isolation mechanisms to prevent cascade failures during remediation",
-        "testStrategy": "1. Unit Testing:\n   - Test individual anomaly detection algorithms with synthetic data\n   - Verify policy engine decision logic with predefined scenarios\n   - Test remediation action generation with mock system states\n   - Validate isolation mechanisms function correctly\n   - Verify logging and audit trail completeness\n\n2. Integration Testing:\n   - Test end-to-end anomaly detection to remediation workflow\n   - Verify correct interaction with event architecture and fusion engine\n   - Test system behavior under various load conditions\n   - Validate proper handling of concurrent anomalies\n\n3. Simulation Testing:\n   - Create simulated attack scenarios to test detection capabilities\n   - Introduce artificial anomalies to measure detection sensitivity and accuracy\n   - Simulate system component failures to test self-healing responses\n   - Measure false positive/negative rates under various conditions\n\n4. Performance Testing:\n   - Measure detection latency under different system loads\n   - Test scalability with increasing event volumes\n   - Benchmark resource utilization during remediation activities\n   - Verify system stability during high-stress scenarios\n\n5. Acceptance Testing:\n   - Validate that critical system functions remain available during remediation\n   - Verify that human oversight controls function as expected\n   - Test that all remediation actions are properly logged and can be reviewed\n   - Confirm that the system learns from past incidents to improve future responses",
         "status": "pending",
         "dependencies": [
           1,
           2
         ],
         "priority": "high",
-        "subtasks": []
+        "details": "This task involves building an AI immune system with the following components:\n\n1. VsmPhoenix.Cybernetic.ImmuneSystem GenServer:\n   - Implement as a GenServer that monitors system health metrics\n   - Integrate with existing System4.Intelligence for anomaly detection algorithms\n   - Design baseline profiling system to establish normal operational patterns\n   - Create real-time monitoring agents that observe system metrics, event patterns, and performance indicators\n   - Develop sensitivity controls to adjust detection thresholds based on operational context\n\n2. Behavioral Analysis Engine:\n   - Build pattern recognition for identifying known attack signatures and novel threats\n   - Implement temporal analysis to detect slow-developing anomalies\n   - Create correlation engine to connect related anomalous events across system components\n   - Design feedback loops to improve detection accuracy over time\n\n3. VsmPhoenix.Cybernetic.PolicyAutoSynthesis:\n   - Integrate with System5.PolicySynthesizer for remediation policy generation\n   - Develop policy definition language for specifying self-healing responses\n   - Implement decision tree for selecting appropriate remediation strategies\n   - Create action synthesis module to generate custom responses to novel threats\n   - Build rollback capabilities for unsuccessful remediation attempts\n   - Implement sandbox environment for testing remediation actions before deployment\n\n4. Self-Healing Execution Framework:\n   - Implement DynamicSupervisor for safe remediation action execution\n   - Design secure execution environment for remediation actions\n   - Implement priority-based scheduling for critical vs. non-critical fixes\n   - Create audit logging for all self-healing activities\n   - Develop human oversight interface for reviewing autonomous actions\n   - Implement progressive response escalation for persistent issues\n\n5. Phoenix.PubSub Integration:\n   - Implement real-time anomaly alerts through Phoenix.PubSub\n   - Create self-healing notification system using PubSub channels\n   - Connect to event-as-evidence architecture to consume system events\n   - Utilize meaning graphs from contextual fusion engine to understand event context\n   - Implement bidirectional communication with other system components\n   - Design isolation mechanisms to prevent cascade failures during remediation",
+        "testStrategy": "1. Unit Testing:\n   - Test VsmPhoenix.Cybernetic.ImmuneSystem GenServer functionality\n   - Test integration with System4.Intelligence for anomaly detection\n   - Test VsmPhoenix.Cybernetic.PolicyAutoSynthesis with mock System5.PolicySynthesizer\n   - Verify policy engine decision logic with predefined scenarios\n   - Test remediation action generation with mock system states\n   - Validate DynamicSupervisor isolation mechanisms function correctly\n   - Verify logging and audit trail completeness\n   - Test Phoenix.PubSub message handling for anomaly alerts\n\n2. Integration Testing:\n   - Test end-to-end anomaly detection to remediation workflow\n   - Verify correct interaction with event architecture and fusion engine\n   - Test system behavior under various load conditions\n   - Validate proper handling of concurrent anomalies\n   - Test Phoenix.PubSub real-time notification delivery\n\n3. Simulation Testing:\n   - Create simulated attack scenarios to test detection capabilities\n   - Introduce artificial anomalies to measure detection sensitivity and accuracy\n   - Simulate system component failures to test self-healing responses\n   - Measure false positive/negative rates under various conditions\n   - Test DynamicSupervisor behavior during remediation actions\n\n4. Performance Testing:\n   - Measure detection latency under different system loads\n   - Test scalability with increasing event volumes\n   - Benchmark resource utilization during remediation activities\n   - Verify system stability during high-stress scenarios\n   - Measure Phoenix.PubSub performance with high message volumes\n\n5. Acceptance Testing:\n   - Validate that critical system functions remain available during remediation\n   - Verify that human oversight controls function as expected\n   - Test that all remediation actions are properly logged and can be reviewed\n   - Confirm that the system learns from past incidents to improve future responses\n   - Verify real-time alerts are delivered promptly and accurately",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement VsmPhoenix.Cybernetic.ImmuneSystem GenServer",
+            "description": "Create a GenServer that monitors system health and integrates with System4.Intelligence for anomaly detection",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Develop behavioral analysis engine",
+            "description": "Implement pattern recognition, temporal analysis, and correlation engine for anomaly detection",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Create VsmPhoenix.Cybernetic.PolicyAutoSynthesis",
+            "description": "Implement policy auto-synthesis module that integrates with System5.PolicySynthesizer for remediation policy generation",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Build self-healing execution framework with DynamicSupervisor",
+            "description": "Implement DynamicSupervisor for safe execution of remediation actions with proper isolation and rollback capabilities",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Integrate Phoenix.PubSub for real-time alerts",
+            "description": "Implement real-time anomaly alerts and self-healing notifications using Phoenix.PubSub channels",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       }
     ],
     "metadata": {
