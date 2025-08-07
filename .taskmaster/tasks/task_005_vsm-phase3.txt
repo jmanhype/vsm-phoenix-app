@@ -1,0 +1,80 @@
+# Task ID: 5
+# Title: Implement Neuro-Inspired Observability with Emergent Pattern Monitoring
+# Status: pending
+# Dependencies: 2, 3
+# Priority: high
+# Description: Shift from node-level to emergent-pattern monitoring by implementing Miller's representational drift detection through AMQP bus taps, entropy metrics, and EEG-style analytics for System 3 resilience monitoring
+# Details:
+This task implements neuro-inspired observability that treats the AMQP message bus as a neural network, monitoring emergent patterns rather than individual agent metrics:
+
+1. **Create VsmPhoenix.Telemetry.BusTap GenStage**:
+   - Subscribe to all AMQP exchanges (`vsm.#`) with fanout pattern
+   - Bucket messages per exchange per 1-second window
+   - Compute Shannon entropy and inter-queue cross-correlation
+   - Emit `{:bus_stats, exchange, entropy, msg_rate}` events
+
+2. **Implement Brain Wave Mapping**:
+   - **Gamma waves** (sensory flood): Monitor S1→S2/S3 data flows via `vsm.s1.<id>.results` and `vsm.intelligence`
+   - **Beta waves** (top-down control): Track S5 policy broadcasts via `vsm.policy` and `vsm.control`
+   - **Coherence test**: Measure message entropy changes after policy updates
+
+3. **Enhance ResilienceDashboardLive**:
+   - Extend existing dashboard with coherence vs. policy epochs visualization
+   - Add rolling heat-map with beta-gamma overlay
+   - Implement waveform displays for entropy patterns
+   - Only elevate alerts when coherence drops below threshold
+
+4. **Create VsmPhoenix.Observability.CohortAnomalyDetector**:
+   - Integrate with GoldRush PatternEngine
+   - Implement rule language: `if failure_rate(capability, Δt) > X ...`
+   - Trigger only when ≥N% agents in same capability cohort fail within Δt
+   - Generate population-level anomaly alerts
+
+5. **Implement ViabilityEvaluator 2.0**:
+   - Replace boolean `agent_health` with coherence score (0-1)
+   - Integrate with entropy metrics from BusTap
+   - Align with existing algedonic ratios
+   - Feed coherence data to VarietyCalculator
+
+6. **Build Log-EEG Pipeline**:
+   - Ship logs → Beats → Kafka topic `vsm.eeg`
+   - Stream into GoldRush for spectral analysis
+   - Run FFT on timestamp density for EEG visualization
+   - Correlate log patterns with AMQP coherence metrics
+
+Technical Integration:
+- Leverage existing GoldRush.EventProcessor pattern subscriptions
+- Extend VsmPhoenixWeb.Telemetry module
+- Use ETS tables for real-time entropy/correlation storage
+- Integrate with existing Infrastructure.CausalityAMQP
+
+# Test Strategy:
+1. **Unit Tests**:
+   - Test BusTap GenStage with mock AMQP message streams
+   - Verify Shannon entropy calculations with known data patterns
+   - Test inter-queue correlation algorithms
+   - Validate CohortAnomalyDetector rule engine
+
+2. **Integration Tests**:
+   - Test end-to-end flow from AMQP bus to dashboard visualization
+   - Verify GoldRush PatternEngine integration
+   - Test ResilienceDashboardLive coherence displays
+   - Validate ViabilityEvaluator 2.0 coherence scoring
+
+3. **Performance Tests**:
+   - Benchmark BusTap overhead on AMQP message throughput
+   - Test dashboard responsiveness with high entropy data volumes
+   - Measure ETS table performance for real-time metrics storage
+   - Profile Log-EEG pipeline latency
+
+4. **Simulation Tests**:
+   - Create synthetic policy update bursts to test coherence detection
+   - Simulate agent failure cohorts to validate anomaly detection
+   - Test entropy pattern recognition with known failure scenarios
+   - Verify gamma/beta wave correlation with system state changes
+
+5. **Validation Tests**:
+   - Compare coherence metrics against manual system health assessments
+   - Validate that representational drift detection accurately identifies real issues
+   - Test that emergent pattern alerts reduce false positives vs. node-level monitoring
+   - Verify alignment with Miller's emergent reliability principles

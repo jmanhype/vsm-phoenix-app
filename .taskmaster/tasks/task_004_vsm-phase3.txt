@@ -1,0 +1,72 @@
+# Task ID: 4
+# Title: Implement Cortical-Style PolyAgent Architecture with Mixed-Selectivity
+# Status: pending
+# Dependencies: 1, 3
+# Priority: high
+# Description: Refactor System 1 agents from rigid types to capability-driven PolyAgents that can dynamically switch roles based on workload demands, implementing Miller's mixed-selectivity principle for increased variety handling
+# Details:
+This task implements cortical-style mixed-selectivity agents to replace rigid agent types with flexible, capability-driven PolyAgents:
+
+1. **Registry Schema Refactor**:
+   - Modify VsmPhoenix.S1Registry to support capability-based registration
+   - Replace rigid `:type` field with dynamic `:role` field
+   - Update registration to: `Registry.register(VsmPhoenix.S1Registry, agent_id(), %{capabilities: caps, role: :idle})`
+
+2. **Create VsmPhoenix.System1.PolyAgent Module**:
+   - Rename/refactor existing worker_agent.ex to poly_agent.ex
+   - Implement role-switching logic based on command patterns
+   - Add telemetry events for role transitions
+   - Support capability inheritance for spawned children
+
+3. **Enhance CommandRouter with Predicate Dispatch**:
+   - Refactor VsmPhoenix.AMQP.CommandRouter to use capability queries
+   - Implement predicate-based routing: `pick_agent(fn meta -> :data_processing in meta.capabilities end)`
+   - Remove hard-coded queue selection by agent type
+   - Add capability-matching algorithms for optimal agent selection
+
+4. **Unify DynamicSupervisor Pool**:
+   - Replace per-type supervisors with unified PolyAgentSupervisor
+   - Implement uniform PolyAgent children management
+   - Integrate with Phase 3 Task 7 resource throttling mechanisms
+   - Enable dynamic scaling based on capability demands
+
+5. **Metrics and Telemetry Integration**:
+   - Tag telemetry events with role changes
+   - Feed role-switch data to VarietyCalculator
+   - Track capability utilization patterns
+   - Monitor pool efficiency improvements
+
+Technical Implementation Details:
+- Leverages Elixir's pattern matching for capability predicates
+- Uses Registry for distributed capability lookups
+- Integrates with Phoenix.PubSub for role change notifications
+- Maintains backward compatibility during migration
+
+# Test Strategy:
+1. **Unit Tests**:
+   - Test PolyAgent role switching with various command patterns
+   - Verify capability-based registration in Registry
+   - Test CommandRouter predicate dispatch logic
+   - Validate telemetry event generation for role transitions
+
+2. **Integration Tests**:
+   - Test end-to-end command routing to PolyAgents
+   - Verify role switches under workload changes
+   - Test capability inheritance in spawned children
+   - Validate integration with VarietyCalculator
+
+3. **Performance Tests**:
+   - Benchmark routing overhead with capability queries vs. type-based routing
+   - Measure role-switch latency
+   - Test pool efficiency with mixed workloads
+   - Compare variety handling capacity before/after refactor
+
+4. **Simulation Tests**:
+   - Simulate various workload mixes to trigger role switches
+   - Test pool adaptation to changing capability demands
+   - Verify Ashby's Law compliance with poly-agent variety
+
+5. **Migration Tests**:
+   - Test backward compatibility during migration
+   - Verify existing agents continue functioning
+   - Test gradual migration from typed to poly agents
