@@ -17,6 +17,9 @@ defmodule VsmPhoenix.AMQP.Supervisor do
       # Start AMQP connection manager
       {VsmPhoenix.AMQP.ConnectionManager, []},
       
+      # Start AMQP channel pool
+      {VsmPhoenix.AMQP.ChannelPool, []},
+      
       # Start AMQP client for infrastructure
       {VsmPhoenix.Infrastructure.AMQPClient, []},
       

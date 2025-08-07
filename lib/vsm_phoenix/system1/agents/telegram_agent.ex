@@ -70,8 +70,8 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
         })
       end
     
-      # Get AMQP channel
-      {:ok, channel} = ConnectionManager.get_channel(:telegram)
+      # Get AMQP channel from pool
+      {:ok, channel} = VsmPhoenix.AMQP.ChannelPool.checkout(:telegram)
       
       # Setup AMQP exchanges
       events_exchange = "vsm.s1.#{agent_id}.telegram.events"
@@ -834,52 +834,63 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     correlation_id = :erlang.unique_integer() |> Integer.to_string()
     reply_queue = "telegram.#{state.agent_id}.replies.#{correlation_id}"
     
-    # Declare temporary reply queue
-    case AMQP.Queue.declare(state.channel, reply_queue, exclusive: true, auto_delete: true) do
-      {:ok, _} ->
-        # Subscribe to reply queue
-        AMQP.Basic.consume(state.channel, reply_queue, nil, no_ack: true)
-        
-        # Publish request to LLM workers
-        message = %{
-          request: request,
-          reply_to: reply_queue,
-          correlation_id: correlation_id,
-          timestamp: DateTime.utc_now()
-        }
-        
-        case AMQP.Basic.publish(
-          state.channel,
-          "vsm.llm.requests",  # LLM workers listen on this exchange
-          "llm.request.conversation",
-          Jason.encode!(message),
-          reply_to: reply_queue,
-          correlation_id: correlation_id
-        ) do
-          :ok ->
-            # Wait for response
-            receive do
-              {:basic_deliver, payload, _meta} ->
-                case Jason.decode(payload) do
-                  {:ok, %{"response" => response}} -> {:ok, response}
-                  {:ok, %{"error" => error}} -> {:error, error}
-                  _ -> {:error, :invalid_response}
-                end
-            after
-              30_000 -> # 30 second timeout
-                Logger.warning("LLM request timeout for chat #{request.chat_id}")
-                {:error, :timeout}
-            end
-            
-          error ->
-            Logger.error("Failed to publish LLM request: #{inspect(error)}")
-            {:error, :publish_failed}
-        end
-        
-      error ->
-        Logger.error("Failed to declare reply queue: #{inspect(error)}")
-        {:error, :queue_failed}
-    end
+    # Use channel pool to get a fresh channel
+    VsmPhoenix.AMQP.ChannelPool.with_channel(:telegram_llm_request, fn channel ->
+      # Declare temporary reply queue
+      case AMQP.Queue.declare(channel, reply_queue, exclusive: true, auto_delete: true) do
+        {:ok, _} ->
+          # Subscribe to reply queue
+          AMQP.Basic.consume(channel, reply_queue, nil, no_ack: true)
+          
+          # Publish request to LLM workers
+          message = %{
+            request: request,
+            reply_to: reply_queue,
+            correlation_id: correlation_id,
+            timestamp: DateTime.utc_now()
+          }
+          
+          case AMQP.Basic.publish(
+            channel,
+            "vsm.llm.requests",  # LLM workers listen on this exchange
+            "llm.request.conversation",
+            Jason.encode!(message),
+            reply_to: reply_queue,
+            correlation_id: correlation_id
+          ) do
+            :ok ->
+              Logger.info("📤 Published LLM request #{correlation_id} for chat #{request.chat_id}")
+              
+              # Wait for response
+              receive do
+                {:basic_deliver, payload, _meta} ->
+                  case Jason.decode(payload) do
+                    {:ok, %{"response" => response}} -> 
+                      Logger.info("📨 Received LLM response for #{correlation_id}")
+                      {:ok, response}
+                    {:ok, %{"error" => error}} -> 
+                      Logger.error("❌ LLM error: #{error}")
+                      {:error, error}
+                    _ -> 
+                      Logger.error("❌ Invalid LLM response format")
+                      {:error, :invalid_response}
+                  end
+              after
+                30_000 -> # 30 second timeout
+                  Logger.warning("⏱️ LLM request timeout for chat #{request.chat_id}")
+                  {:error, :timeout}
+              end
+              
+            error ->
+              Logger.error("Failed to publish LLM request: #{inspect(error)}")
+              {:error, :publish_failed}
+          end
+          
+        error ->
+          Logger.error("Failed to declare reply queue: #{inspect(error)}")
+          {:error, :queue_failed}
+      end
+    end)
   end
 
   # AMQP Command Processing
