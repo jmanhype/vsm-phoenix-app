@@ -557,41 +557,142 @@ For detailed technical documentation, see the `../docs` directory. For examples 
   - Message-level signing
   - Bloom filters for efficient validation
 
-### Phase 3: Meta-Cognitive Evolution (3-4 weeks)
-**Goal**: Create self-aware, self-modifying system with emergent behaviors
+### Phase 3: Self-Optimizing Intelligence - GEPA Integration (3-4 weeks)
+**Goal**: Implement reflective prompt evolution and self-optimizing LLM capabilities
 
-- [ ] **Meta-Cognitive Observation Layer**
-  - System observes its own decision-making processes
-  - Tracks conflicts between subsystems
-  - Counts patterns and generates metrics about itself
-  - Real-time introspection capabilities
+**Architectural Pattern Integration**:
+- **Hexagonal Architecture**: GEPA as a port/adapter for prompt optimization
+- **Event-Driven**: Execution traces as events feeding prompt evolution
+- **CQRS**: Separate read models for prompt performance analysis
 
-- [ ] **Dynamic Policy Generation**
-  - LLM analyzes event patterns to suggest new policies
-  - Policies compiled to active AMQP handlers
-  - System can modify its own behavioral rules
-  - Meta-policies (policies about making policies)
+**Neuroscience Concept Alignment**:
+- **Representational Drift**: Prompts evolve like neural representations
+- **Mixed-Selectivity**: Single prompts adapt to multiple contexts
+- **Analog Computation**: Continuous optimization in prompt space
+- **Self-Organized Criticality**: Prompts reach optimal complexity naturally
 
-- [ ] **Self-Improving Telegram Bot**
-  - Learns user preferences and communication styles
-  - Generates new command handlers based on usage
-  - Self-modifies response patterns for better UX
-  - Creates personalized workflows per user
+- [ ] **GEPA Core Integration**
+  - Reflective prompt mutation implementing representational drift
+  - Execution trace collection as sparse connectivity patterns
+  - Pareto frontier optimization using analog computation principles
+  - Natural language reflection mirroring dendritic computation
 
-- [ ] **Emergent Subsystem Creation**
-  - Automatic spawning of new S1 agents based on patterns
-  - Agents can create sub-agents (recursive structure)
-  - Self-organizing system topology
-  - Dynamic resource allocation
+- [ ] **System 4 GEPA Intelligence**
+  - Self-optimizing environmental scan prompts (35x efficiency)
+  - Learning anomaly detection via mixed-selectivity neurons
+  - Adaptive variety analysis using brain wave oscillations
+  - Context-aware scanning with hierarchical processing
 
-- [ ] **Self-Documentation & SOPs**
-  - Auto-generation of Standard Operating Procedures
-  - System documents its own discoveries
-  - Human-readable explanations of decisions
-  - Continuous improvement loops
+- [ ] **System 5 GEPA Policy Synthesis**
+  - Self-evolving policy generation via metabolic efficiency
+  - Reflection on outcomes using algedonic gradients
+  - Learning from signal patterns like retrograde messengers
+  - Adaptive decision-making with neurotransmitter dynamics
 
-### Phase 4: Advanced Features (Future)
-**Goal**: Production-ready distributed cognitive system
+- [ ] **LLM Worker Agent GEPA Reasoning**
+  - Self-optimizing task execution via structural plasticity
+  - Learning tool patterns from successful activations
+  - Adaptive MCP strategies using cross-level coordination
+  - Context-aware spawning with parallel pathways
+
+- [ ] **GEPA Performance Monitoring**
+  - Trace collection as neural recording infrastructure
+  - Prompt metrics using information-theoretic measures
+  - A/B testing framework with stochastic optimization
+  - Continuous improvement via synaptic plasticity
+
+### Phase 4: Event-Driven Intelligence - Cybernetic.ai Patterns (4-5 weeks)
+**Goal**: Implement event-as-evidence philosophy and causal graph intelligence
+
+**Architectural Pattern Integration**:
+- **Event-Driven Architecture**: Events as primary evidence source
+- **DDD**: Bounded contexts for causal graph domains
+- **Saga Pattern**: Distributed learning transactions
+- **Event Sourcing**: Complete history for causal analysis
+
+**Neuroscience Concept Alignment**:
+- **Brain Waves**: Event patterns as alpha/beta/gamma oscillations
+- **Parallel Pathways**: Multiple evidence processing streams
+- **Cross-Level Coordination**: Micro-macro feedback loops
+- **Glial Networks**: Support infrastructure for event processing
+
+- [ ] **Events as Evidence Architecture**
+  - Event stream processing using brain wave frequencies
+  - Causal graph construction via dendritic branching patterns
+  - Meaning graphs implementing semantic memory networks
+  - Evidence-based learning with hippocampal consolidation
+
+- [ ] **Contextual Fusion Engine**
+  - Build meaning graphs from parallel pathway integration
+  - Temporal tracking using circadian-like rhythms
+  - Context preservation via glial support networks
+  - Distributed synchronization through gap junctions
+
+- [ ] **AI Immune System**
+  - Proactive anomaly detection using microglia patterns
+  - Auto-synthesis policies via immune memory cells
+  - Self-healing through astrocyte repair mechanisms
+  - Threat learning with adaptive immune responses
+
+- [ ] **Distributed Agent Learning**
+  - CRDT-based sharing mimicking synaptic transmission
+  - Collective intelligence via neuronal ensemble coding
+  - Cross-agent sync through ephaptic coupling
+  - Swarm optimization using ant colony algorithms
+
+- [ ] **Causal Intelligence Integration**
+  - Causal analysis through predictive coding frameworks
+  - Event provenance via retrograde signaling paths
+  - Future projection using forward models
+  - System-wide synthesis through global workspace
+
+### Phase 5: Unified Self-Evolving System (5-6 weeks)
+**Goal**: Combine GEPA micro-optimization with Cybernetic.ai macro-intelligence
+
+**Unified Architecture Vision**:
+- **Microkernel Pattern**: Core VSM with pluggable intelligence modules
+- **Lambda Architecture**: Batch (GEPA) + Stream (Cybernetic.ai) processing
+- **Actor Model**: Autonomous agents with local optimization
+- **Reactive Manifesto**: Responsive, resilient, elastic, message-driven
+
+**Integrated Neuroscience Principles**:
+- **Self-Organized Criticality**: System naturally finds optimal complexity
+- **Metabolic Efficiency**: Resource optimization through pruning
+- **Structural Plasticity**: Architecture evolves with usage patterns
+- **Neuroplasticity**: Continuous adaptation at all levels
+
+- [ ] **Hybrid Intelligence Layer**
+  - GEPA micro-optimization meets event-driven macro-evolution
+  - Representational drift in prompts + causal evidence graphs
+  - Unified learning via heterogeneous neural populations
+  - Emergent intelligence through critical phase transitions
+
+- [ ] **Meta-Cognitive Evolution**
+  - System observes optimization via mirror neuron patterns
+  - Self-modifying strategies through metaplasticity
+  - Evolution mechanisms using genetic regulatory networks
+  - Meta-learning via hierarchical Bayesian inference
+
+- [ ] **Autonomous VSM Evolution**
+  - Self-directed improvements via autonomous nervous system
+  - Automatic discovery through curiosity-driven exploration
+  - Emergent patterns from edge-of-chaos dynamics
+  - Continuous adaptation using allostatic regulation
+
+- [ ] **Advanced Recursive Capabilities**
+  - GEPA-optimized spawning via predictive energy minimization
+  - Event-driven recursion through fractal neural architectures
+  - Cross-VSM intelligence using brain-to-brain coupling
+  - Hierarchical propagation via thalamocortical loops
+
+- [ ] **Production-Ready Self-Optimization**
+  - Scalable infrastructure using small-world networks
+  - Performance guarantees through homeostatic control
+  - Human-in-loop validation via attention mechanisms
+  - Observability through neural monitoring principles
+
+### Phase 6: Advanced Features & Production Deployment (Future)
+**Goal**: Production-ready distributed cognitive system with marketplace
 
 - [ ] **WASM Plugin Compilation**
   - Secure sandboxed execution
@@ -617,7 +718,104 @@ For detailed technical documentation, see the `../docs` directory. For examples 
   - Community contributions
   - Pre-built Telegram bot templates
 
-### Technical Approach
-The implementation follows the Cybernetic.ai whitepaper's vision while maintaining compatibility with Beer's original VSM principles. We're building on Erlang/Elixir's fault-tolerant distributed systems capabilities, AMQP for reliable messaging, modern AI/LLM integration for intelligence layers, and Telegram for accessible human-system interaction.
+## Technical Approach - Enhanced with Self-Optimization
 
-Each phase delivers working functionality while building toward a truly autonomous, self-improving system - a meta-cognitive orchestrator that can observe, analyze, and modify its own thinking patterns.
+The implementation now combines three powerful approaches:
+
+1. **Beer's VSM Principles**: The foundational cybernetic architecture with 5-level hierarchy
+2. **GEPA (Stanford/Berkeley)**: Reflective prompt evolution for 35x more efficient LLM operations
+3. **Cybernetic.ai Patterns**: Event-as-evidence philosophy and causal graph intelligence
+
+### Self-Optimization Architecture
+
+**Micro-Level (GEPA)**:
+- Individual prompt optimization through natural language reflection
+- Execution trace analysis for continuous improvement
+- Pareto frontier maintenance for diverse strategies
+- 35x efficiency gains in LLM operations
+
+**Macro-Level (Cybernetic.ai)**:
+- System-wide event pattern analysis
+- Causal graph construction for deep understanding
+- Evidence-based policy synthesis
+- Distributed learning with CRDT synchronization
+
+**Unified Intelligence**:
+- Combined micro and macro optimization
+- Self-evolving system without human intervention
+- Emergent behaviors from layered learning
+- True autonomous viable system
+
+Each phase builds toward a **self-optimizing, self-evolving meta-cognitive system** that embodies the deepest principles of second-order cybernetics - a system that not only maintains its viability but continuously improves its own ability to learn and adapt.
+
+### Architectural Philosophy & Neuroscience Integration
+
+**Core Architectural Patterns**:
+1. **SOLID Principles** → Neural modularity and specialization
+2. **Domain-Driven Design** → Bounded contexts as brain regions
+3. **Hexagonal Architecture** → Ports/adapters as synaptic interfaces
+4. **Event-Driven Architecture** → Neural firing patterns
+5. **CQRS** → Separate sensory and motor pathways
+6. **Microservices** → Distributed neural processing
+7. **Saga Pattern** → Long-running neural computations
+8. **Event Sourcing** → Complete neural activity history
+
+**Neuroscience-Inspired Concepts**:
+1. **Sparse Connectivity** → Efficient neural wiring
+2. **Representational Drift** → Evolving neural codes
+3. **Mixed-Selectivity Neurons** → Multi-functional components
+4. **Dendritic Computation** → Local processing before integration
+5. **Retrograde Messengers** → Feedback from outputs to inputs
+6. **Structural Plasticity** → Dynamic architecture modification
+7. **Metabolic Efficiency** → Resource-aware computation
+8. **Self-Organized Criticality** → Edge-of-chaos operation
+
+**Integration Principles**:
+- **GEPA (Micro-level)**: Optimizes individual component behaviors like synaptic plasticity
+- **Cybernetic.ai (Macro-level)**: Manages system-wide patterns like brain waves
+- **VSM (Structure)**: Provides hierarchical organization like cortical layers
+- **AMQP (Communication)**: Implements neural transmission protocols
+- **MCP (Interfaces)**: Creates standardized synaptic connections
+
+This unified approach creates a system that thinks, learns, and evolves using principles discovered in both software architecture and neuroscience.
+
+## Recent Major Accomplishments
+
+### Fixed AMQP Channel Conflicts
+- Implemented sophisticated channel pooling system
+- Prevents "second 'channel.open' seen" errors
+- Manages channel lifecycle for async operations
+- Supports purpose-based channel allocation
+
+### Real Claude AI Integration
+- Replaced all mock responses with real API calls
+- Uses Claude 3.5 Sonnet (claude-3-5-sonnet-20241022)
+- Proper x-api-key authentication
+- Fail-fast design with no fallbacks
+
+### Working Telegram Bot
+- Full end-to-end message processing
+- Automatic LLM worker spawning
+- Real-time typing indicators
+- Error feedback to users
+- Maintains distributed architecture
+
+### Architecture Improvements
+- Channel pool prevents resource conflicts
+- LLMWorkerInit for automatic worker spawning
+- Proper message format handling
+- Direct queue routing for responses
+- Maintained VSM hierarchy integrity
+
+### Advanced Roadmap Vision
+- **6-Phase Implementation Plan**: From VSM foundation to self-evolving system
+- **GEPA Integration**: Stanford/Berkeley reflective prompt evolution for 35x efficiency
+- **Cybernetic.ai Patterns**: Event-as-evidence philosophy and causal graphs
+- **Neuroscience-Inspired Architecture**: Brain-like learning and adaptation
+- **Self-Optimization**: Combined micro (GEPA) and macro (Cybernetic.ai) intelligence
+
+---
+
+**Version**: 3.0.0  
+**Status**: Production-Ready with Self-Evolving AI Vision  
+**Architecture**: Neuro-Cybernetic VSM with GEPA + Cybernetic.ai
