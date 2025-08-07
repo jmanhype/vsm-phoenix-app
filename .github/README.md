@@ -6,25 +6,25 @@ A complete Phoenix application implementing Stafford Beer's Viable Systems Model
 
 ## 📊 Architecture Diagrams
 
-**[📋 Complete Diagram Collection](./docs/diagrams/README.md)** - 40+ available diagrams covering all system aspects
+**[📋 Complete Diagram Collection](../docs/diagrams/README.md)** - 40+ available diagrams covering all system aspects
 
 ### Essential Architecture Diagrams
-- **[🏛️ VSM System Hierarchy](./docs/diagrams/01_vsm_hierarchy.md)** - Complete 5-level VSM with recursive spawning
-- **[🔄 AMQP Exchange Topology](./docs/diagrams/02_amqp_topology.md)** - Messaging infrastructure with 6 exchanges
-- **[🧠 Policy Synthesis Workflow](./docs/diagrams/03_policy_synthesis.md)** - Autonomous LLM-powered governance
-- **[📺 LiveView Dashboard Architecture](./docs/diagrams/04_liveview_dashboard.md)** - Real-time monitoring with 7 PubSub channels
+- **[🏛️ VSM System Hierarchy](../docs/diagrams/01_vsm_hierarchy.md)** - Complete 5-level VSM with recursive spawning
+- **[🔄 AMQP Exchange Topology](../docs/diagrams/02_amqp_topology.md)** - Messaging infrastructure with 6 exchanges
+- **[🧠 Policy Synthesis Workflow](../docs/diagrams/03_policy_synthesis.md)** - Autonomous LLM-powered governance
+- **[📺 LiveView Dashboard Architecture](../docs/diagrams/04_liveview_dashboard.md)** - Real-time monitoring with 7 PubSub channels
 
 ### Business-Critical Diagrams
-- **[⚡ RPC Command Flow](./docs/diagrams/05_rpc_command_flow.md)** - Hierarchical command routing with AMQP RPC
-- **[🔄 Agent Lifecycle](./docs/diagrams/06_agent_lifecycle.md)** - Complete agent management from spawn to termination
-- **[🔌 MCP Integration](./docs/diagrams/07_mcp_integration.md)** - 35+ tools with dynamic discovery and VSMCP protocol
-- **[🔍 S3 Audit Bypass](./docs/diagrams/08_s3_audit_bypass.md)** - Direct System 1 inspection without coordination
+- **[⚡ RPC Command Flow](../docs/diagrams/05_rpc_command_flow.md)** - Hierarchical command routing with AMQP RPC
+- **[🔄 Agent Lifecycle](../docs/diagrams/06_agent_lifecycle.md)** - Complete agent management from spawn to termination
+- **[🔌 MCP Integration](../docs/diagrams/07_mcp_integration.md)** - 35+ tools with dynamic discovery and VSMCP protocol
+- **[🔍 S3 Audit Bypass](../docs/diagrams/08_s3_audit_bypass.md)** - Direct System 1 inspection without coordination
 
 ### Operational Flow Diagrams
-- **[🔄 Adaptation Proposal Lifecycle](./docs/diagrams/09_adaptation_proposal_lifecycle.md)** - Environmental adaptation workflow
-- **[🔍 Environmental Scanning Process](./docs/diagrams/10_environmental_scanning.md)** - Intelligence gathering and variety amplification
-- **[📊 Performance Monitoring Flow](./docs/diagrams/11_performance_monitoring.md)** - Real-time telemetry and health monitoring
-- **[🌐 API Integration Flows](./docs/diagrams/12_api_integration.md)** - REST, MCP, WebSocket, and webhook protocols
+- **[🔄 Adaptation Proposal Lifecycle](../docs/diagrams/09_adaptation_proposal_lifecycle.md)** - Environmental adaptation workflow
+- **[🔍 Environmental Scanning Process](../docs/diagrams/10_environmental_scanning.md)** - Intelligence gathering and variety amplification
+- **[📊 Performance Monitoring Flow](../docs/diagrams/11_performance_monitoring.md)** - Real-time telemetry and health monitoring
+- **[🌐 API Integration Flows](../docs/diagrams/12_api_integration.md)** - REST, MCP, WebSocket, and webhook protocols
 
 ## 🏛️ Architecture Overview
 
@@ -489,7 +489,7 @@ The implementation demonstrates how cybernetic principles can be applied to crea
 
 ---
 
-For detailed technical documentation, see the `/docs` directory. For examples and demonstrations, check the `/examples` and `/scripts` directories.
+For detailed technical documentation, see the `../docs` directory. For examples and demonstrations, check the `../examples` and `../scripts` directories.
 
 ## Detailed Implementation Roadmap
 
