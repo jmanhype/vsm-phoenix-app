@@ -622,8 +622,8 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
     VsmPhoenix.AMQP.ChannelPool.with_channel(:llm_response, fn channel ->
       case AMQP.Basic.publish(
         channel,
-        reply_to,  # Send to reply exchange
-        "",  # Default routing key
+        "",  # Default exchange for direct queue messaging
+        reply_to,  # Queue name as routing key
         Jason.encode!(response),
         content_type: "application/json",
         correlation_id: correlation_id
@@ -646,8 +646,8 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
     VsmPhoenix.AMQP.ChannelPool.with_channel(:llm_error_response, fn channel ->
       case AMQP.Basic.publish(
         channel,
-        reply_to,
-        "",
+        "",  # Default exchange for direct queue messaging
+        reply_to,  # Queue name as routing key
         Jason.encode!(error_data),
         content_type: "application/json",
         correlation_id: correlation_id
