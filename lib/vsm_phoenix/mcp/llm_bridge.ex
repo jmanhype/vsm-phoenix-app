@@ -51,17 +51,19 @@ defmodule VsmPhoenix.MCP.LLMBridge do
   end
   
   defp execute_llm_request(prompt, mcp_client_pid) do
-    # Try to use Claude MCP if available
+    # FAIL FAST - NO FALLBACKS, NO MOCKS
     case System.get_env("ANTHROPIC_API_KEY") do
       nil ->
-        # Fallback to basic analysis
-        {:ok, basic_analysis(prompt)}
+        Logger.error("❌ NO ANTHROPIC_API_KEY - FAILING FAST")
+        {:error, :no_api_key}
         
       api_key ->
-        # REAL LLM CALL - NO MORE FAKE SHIT
+        # REAL LLM CALL - FAIL IF IT DOESN'T WORK
         case make_real_claude_api_call(prompt, api_key) do
           {:ok, response} -> {:ok, response}
-          {:error, _reason} -> {:ok, basic_analysis(prompt)}
+          {:error, reason} -> 
+            Logger.error("❌ Claude API failed: #{inspect(reason)} - FAILING FAST")
+            {:error, reason}
         end
     end
   end
@@ -94,22 +96,19 @@ defmodule VsmPhoenix.MCP.LLMBridge do
   end
   
   def generate_conversation_response(messages, system_prompt, mcp_client_pid) do
-    Logger.info("💬 Generating REAL conversation response")
+    Logger.info("💬 Generating REAL conversation response - NO FALLBACKS")
     
     # Build conversation prompt
     conversation_prompt = build_conversation_prompt(messages, system_prompt)
     
-    # Try to use Claude MCP if available
+    # FAIL FAST - NO FALLBACKS, NO MOCKS, NO BULLSHIT
     case System.get_env("ANTHROPIC_API_KEY") do
       nil ->
-        # Fallback to simple response
-        {:ok, %{
-          content: generate_fallback_response(messages),
-          model: "fallback"
-        }}
+        Logger.error("❌ NO ANTHROPIC_API_KEY - FAILING FAST")
+        {:error, :no_api_key}
         
       api_key ->
-        # REAL CLAUDE API CALL - NO MORE FAKE RESPONSES
+        # REAL CLAUDE API CALL - FAIL IF IT DOESN'T WORK
         case make_real_claude_conversation_call(conversation_prompt, api_key) do
           {:ok, response} -> 
             Logger.info("🎯 Got REAL Claude response")
@@ -118,11 +117,8 @@ defmodule VsmPhoenix.MCP.LLMBridge do
               model: "claude-3-sonnet"
             }}
           {:error, reason} -> 
-            Logger.error("❌ Claude API failed: #{inspect(reason)}")
-            {:ok, %{
-              content: generate_fallback_response(messages),
-              model: "fallback"
-            }}
+            Logger.error("❌ Claude API failed: #{inspect(reason)} - FAILING FAST")
+            {:error, reason}
         end
     end
   end
@@ -145,45 +141,8 @@ defmodule VsmPhoenix.MCP.LLMBridge do
     """
   end
   
-  defp generate_fallback_response(messages) do
-    last_message = List.last(messages)
-    user_text = last_message.content
-    
-    cond do
-      String.contains?(String.downcase(user_text), ["hello", "hi", "hey"]) ->
-        "Hello! I'm your VSM assistant. I can help you monitor system status, manage alerts, and understand your Viable System Model. What would you like to know?"
-      
-      String.contains?(String.downcase(user_text), ["status", "health"]) ->
-        "To check system status, you can use the /status command. I can also help explain what each system (S1-S5) is responsible for in your VSM."
-      
-      String.contains?(String.downcase(user_text), ["help", "what can you"]) ->
-        "I can help you with:\n- System monitoring and status checks\n- Understanding VSM concepts\n- Managing alerts and notifications\n- Analyzing system performance\n- Suggesting adaptations\n\nWhat specific area interests you?"
-      
-      true ->
-        "I understand you're asking about: #{user_text}\n\nWhile I'm operating in limited mode, I can still help with VSM operations. Try asking about system status, alerts, or VSM concepts."
-    end
-  end
-  
-  defp generate_contextual_response(messages, system_prompt) do
-    last_message = List.last(messages)
-    user_text = last_message.content
-    
-    # More sophisticated response generation would happen here
-    # For now, provide contextual responses based on patterns
-    cond do
-      String.contains?(String.downcase(user_text), "pain") ->
-        "I see you're asking about pain signals in the VSM. Pain signals (algedonic signals) are critical feedback mechanisms that indicate when the system is experiencing stress or problems. They flow directly to System 5 for immediate attention. Would you like to know more about how your system processes these signals?"
-      
-      String.contains?(String.downcase(user_text), "adaptation") ->
-        "Adaptation is handled by System 4 (Intelligence) in your VSM. It continuously scans the environment for changes and proposes adaptations to maintain viability. Current adaptation readiness can be checked with /status. Would you like to see recent adaptation proposals?"
-      
-      String.contains?(String.downcase(user_text), ["performance", "metrics"]) ->
-        "Your VSM tracks numerous performance metrics across all systems. Key metrics include:\n- System health\n- Resource efficiency\n- Adaptation capacity\n- Identity coherence\n\nWould you like a detailed performance report?"
-      
-      true ->
-        "Based on your question about #{String.slice(user_text, 0..50)}..., I can help explain how this relates to your VSM operations. #{system_prompt} \n\nWhat specific aspect would you like to explore further?"
-    end
-  end
+  # ALL FALLBACK FUNCTIONS DELETED - NO MOCKS, NO FALLBACKS
+  # FAIL FAST OR REAL API ONLY
   
   # REAL CLAUDE API CALLS - NO FAKE BULLSHIT
   defp make_real_claude_api_call(prompt, api_key) do
@@ -258,35 +217,5 @@ defmodule VsmPhoenix.MCP.LLMBridge do
     end
   end
 
-  defp basic_analysis(prompt) do
-    # Generate tool calls based on prompt - using CORRECT tool names!
-    tool_calls = cond do
-      String.contains?(prompt, "read") && String.contains?(prompt, "/tmp/test_report.txt") ->
-        [%{
-          "name" => "read_text_file",  # Correct tool name!
-          "arguments" => %{"path" => "/tmp/test_report.txt"}
-        }]
-        
-      String.contains?(prompt, ["list", "directory"]) ->
-        [%{
-          "name" => "list_directory",
-          "arguments" => %{"path" => "/tmp"}
-        }]
-        
-      String.contains?(prompt, "write") && String.contains?(prompt, "file") ->
-        [%{
-          "name" => "write_file",
-          "arguments" => %{"path" => "/tmp/output.txt", "content" => "Generated content"}
-        }]
-        
-      true ->
-        []
-    end
-    
-    %{
-      "action" => determine_action(prompt),
-      "reasoning" => "Basic analysis without LLM",
-      "tool_calls" => tool_calls
-    }
-  end
+  # basic_analysis DELETED - NO FALLBACKS, NO MOCKS
 end
