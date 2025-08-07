@@ -270,7 +270,7 @@ defmodule VsmPhoenix.System1.Context do
             
             new_state = case message["type"] do
               "audit_command" ->
-                handle_audit_command(message, meta, state)
+                handle_audit_command(message, meta, causality_info, state)
               _ ->
                 Logger.debug("Unknown message type: #{message["type"]}")
                 state
@@ -467,7 +467,7 @@ defmodule VsmPhoenix.System1.Context do
         end
       end
       
-      defp handle_audit_command(message, meta, state) do
+      defp handle_audit_command(message, meta, causality_info, state) do
         Logger.warning("🔍 #{@context_name}: Received audit command from S3")
         
         # Extract audit details
@@ -624,7 +624,7 @@ defmodule VsmPhoenix.System1.Context do
         end
       end
       
-      defp handle_audit_command(message, meta, state) do
+      defp handle_audit_command(message, meta, causality_info, state) do
         Logger.warning("🔍 #{@context_name}: AUDIT BYPASS - Direct inspection requested")
         
         operation = message["operation"] || :dump_state
