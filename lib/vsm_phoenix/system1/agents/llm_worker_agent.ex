@@ -45,11 +45,29 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
       %{}
     end
     
+    # Set up AMQP for conversation requests
+    {:ok, channel} = VsmPhoenix.AMQP.ConnectionManager.get_channel(:llm_worker)
+    
+    # Declare exchanges
+    :ok = AMQP.Exchange.declare(channel, "vsm.llm.requests", :topic, durable: true)
+    :ok = AMQP.Exchange.declare(channel, "vsm.llm.responses", :topic, durable: true)
+    
+    # Create queue for this worker
+    queue_name = "vsm.llm.worker.#{agent_id}"
+    {:ok, _queue} = AMQP.Queue.declare(channel, queue_name, durable: true)
+    
+    # Bind to conversation requests
+    :ok = AMQP.Queue.bind(channel, queue_name, "vsm.llm.requests", routing_key: "llm.request.conversation")
+    
+    # Start consuming
+    {:ok, _consumer_tag} = AMQP.Basic.consume(channel, queue_name)
+    
     state = %{
       agent_id: agent_id,
       mcp_client: mcp_client,
       connected_servers: connected_servers,
-      config: config
+      config: config,
+      channel: channel
     }
     
     {:ok, state}
@@ -83,6 +101,10 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
       "swarm_task" ->
         # Execute coordinated swarm task
         execute_swarm_task(command["data"], state)
+        
+      "conversation" ->
+        # Handle conversational request
+        process_conversation(command["data"], state)
         
       _ ->
         execute_with_llm(command, state)
@@ -441,6 +463,154 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
   end
   
   defp interpolate_value(value, _context), do: value
+  
+  defp process_conversation(data, state) do
+    Logger.info("💬 Processing conversation request")
+    
+    # Extract conversation data
+    chat_id = data["chat_id"]
+    user_text = data["text"]
+    context = data["context"] || %{}
+    request_id = data["request_id"]
+    
+    # Build system prompt with VSM context
+    system_prompt = build_vsm_system_prompt(context)
+    
+    # Build conversation messages from history
+    messages = build_conversation_messages(context["history"] || [], user_text)
+    
+    # Use LLM to generate response
+    case LLMBridge.generate_conversation_response(messages, system_prompt, state.mcp_client) do
+      {:ok, response} ->
+        Logger.info("✅ Generated conversation response for chat #{chat_id}")
+        
+        # Extract any conversation state updates
+        conversation_state = extract_conversation_state(response, context["conversation_state"])
+        
+        {:ok, %{
+          response: response.content,
+          chat_id: chat_id,
+          request_id: request_id,
+          conversation_state: conversation_state
+        }}
+        
+      error ->
+        Logger.error("❌ Failed to generate conversation response: #{inspect(error)}")
+        {:error, %{
+          chat_id: chat_id,
+          request_id: request_id,
+          error: "Failed to generate response"
+        }}
+    end
+  end
+  
+  defp build_vsm_system_prompt(context) do
+    vsm_context = context["vsm_context"] || %{}
+    capabilities = vsm_context["capabilities"] || []
+    
+    """
+    You are a helpful AI assistant integrated with a Viable System Model (VSM) management platform. 
+    You can help users understand and interact with their VSM systems.
+    
+    Current system status: #{vsm_context["system_status"] || "unknown"}
+    
+    Available capabilities:
+    #{Enum.map_join(capabilities, "\n", fn cap -> "- #{cap}" end)}
+    
+    When users ask about the system, provide helpful, accurate information. If they request actions,
+    suggest appropriate commands or explain how to perform them. Be conversational but informative.
+    """
+  end
+  
+  defp build_conversation_messages(history, current_text) do
+    # Convert history to LLM message format
+    historical_messages = history
+    |> Enum.reverse()  # History is stored newest first
+    |> Enum.take(10)   # Limit context to last 10 messages
+    |> Enum.map(fn msg ->
+      %{
+        role: to_string(msg["role"] || msg[:role]),
+        content: msg["text"] || msg[:text]
+      }
+    end)
+    
+    # Add current user message
+    historical_messages ++ [%{role: "user", content: current_text}]
+  end
+  
+  defp extract_conversation_state(response, current_state) do
+    # Would extract any state updates from the response
+    # For now, just maintain current state
+    current_state || %{
+      topic: nil,
+      context_summary: nil,
+      last_activity: DateTime.utc_now()
+    }
+  end
+  
+  @impl true
+  def handle_info({:basic_deliver, payload, meta}, state) do
+    # Handle AMQP message for conversation request
+    case Jason.decode(payload) do
+      {:ok, request} ->
+        Logger.info("📨 LLM Worker received conversation request: #{request["request_id"]}")
+        
+        # Process the conversation request
+        result = process_conversation(request, state)
+        
+        # Send response back via AMQP
+        send_conversation_response(result, meta, state)
+        
+        # Acknowledge the message
+        AMQP.Basic.ack(state.channel, meta.delivery_tag)
+        
+      {:error, reason} ->
+        Logger.error("Failed to decode conversation request: #{inspect(reason)}")
+        AMQP.Basic.reject(state.channel, meta.delivery_tag, requeue: false)
+    end
+    
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_consume_ok, %{consumer_tag: _consumer_tag}}, state) do
+    Logger.info("LLM Worker #{state.agent_id} subscribed to conversation queue")
+    {:noreply, state}
+  end
+  
+  defp send_conversation_response({:ok, response}, meta, state) do
+    # Send successful response
+    reply_to = meta[:reply_to] || "vsm.telegram.commands"
+    correlation_id = meta[:correlation_id] || response.request_id
+    
+    AMQP.Basic.publish(
+      state.channel,
+      reply_to,  # Send to reply exchange
+      "",  # Default routing key
+      Jason.encode!(response),
+      content_type: "application/json",
+      correlation_id: correlation_id
+    )
+    
+    Logger.info("✅ Sent conversation response for request #{correlation_id}")
+  end
+  
+  defp send_conversation_response({:error, error_data}, meta, state) do
+    # Send error response
+    reply_to = meta[:reply_to] || "vsm.telegram.commands"
+    correlation_id = meta[:correlation_id] || error_data.request_id
+    
+    AMQP.Basic.publish(
+      state.channel,
+      reply_to,
+      "",
+      Jason.encode!(error_data),
+      content_type: "application/json",
+      correlation_id: correlation_id
+    )
+    
+    Logger.error("❌ Sent error response for request #{correlation_id}")
+  end
   
   defp find_agent_by_name(name) do
     # Search through all agents to find one with matching name

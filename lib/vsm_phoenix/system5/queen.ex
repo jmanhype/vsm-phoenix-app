@@ -17,6 +17,7 @@ defmodule VsmPhoenix.System5.Queen do
   alias VsmPhoenix.System2.Coordinator
   alias VsmPhoenix.System5.PolicySynthesizer
   alias AMQP
+  alias VsmPhoenix.Infrastructure.CausalityAMQP
   
   @name __MODULE__
   
@@ -545,10 +546,11 @@ defmodule VsmPhoenix.System5.Queen do
   @impl true
   def handle_info({:basic_deliver, payload, meta}, state) do
     IO.puts("👑👑👑 QUEEN RECEIVED AMQP MESSAGE! Payload: #{inspect(payload)}")
-    # Handle AMQP message from algedonic channel
-    case Jason.decode(payload) do
-      {:ok, message} ->
-        Logger.info("👑 Queen received algedonic signal: #{message["signal_type"]} from #{message["context"]}")
+    # Handle AMQP message from algedonic channel with causality tracking
+    {message, causality_info} = CausalityAMQP.receive_message(payload, meta)
+    
+    if is_map(message) do
+        Logger.info("👑 Queen received algedonic signal: #{message["signal_type"]} from #{message["context"]} (chain depth: #{causality_info.chain_depth})")
         
         # Process the algedonic signal
         IO.puts("🔥 CALLING process_algedonic_signal")
@@ -562,8 +564,8 @@ defmodule VsmPhoenix.System5.Queen do
         
         {:noreply, new_state}
         
-      {:error, _} ->
-        Logger.error("Queen: Failed to decode algedonic message")
+    else
+        Logger.error("Queen: Unexpected message format: #{inspect(message)}")
         {:noreply, state}
     end
   end
@@ -1255,8 +1257,8 @@ defmodule VsmPhoenix.System5.Queen do
       
       payload = Jason.encode!(policy_message)
       
-      # Publish to policy fanout exchange
-      :ok = AMQP.Basic.publish(
+      # Publish to policy fanout exchange with causality tracking
+      :ok = CausalityAMQP.publish(
         state.amqp_channel,
         "vsm.policy",  # fanout exchange for policies
         "",

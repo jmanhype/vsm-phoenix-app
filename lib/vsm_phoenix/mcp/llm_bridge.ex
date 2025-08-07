@@ -94,6 +94,89 @@ defmodule VsmPhoenix.MCP.LLMBridge do
     end
   end
   
+  def generate_conversation_response(messages, system_prompt, mcp_client_pid) do
+    Logger.info("💬 Generating conversation response")
+    
+    # Build conversation prompt
+    conversation_prompt = build_conversation_prompt(messages, system_prompt)
+    
+    # Try to use Claude MCP if available
+    case System.get_env("ANTHROPIC_API_KEY") do
+      nil ->
+        # Fallback to simple response
+        {:ok, %{
+          content: generate_fallback_response(messages),
+          model: "fallback"
+        }}
+        
+      _api_key ->
+        # Real LLM call would happen here through MCP
+        # For now, generate a contextual response
+        {:ok, %{
+          content: generate_contextual_response(messages, system_prompt),
+          model: "simulated-claude"
+        }}
+    end
+  end
+  
+  defp build_conversation_prompt(messages, system_prompt) do
+    # Format messages for LLM
+    formatted_messages = messages
+    |> Enum.map(fn msg ->
+      "#{msg.role}: #{msg.content}"
+    end)
+    |> Enum.join("\n")
+    
+    """
+    #{system_prompt}
+    
+    Conversation History:
+    #{formatted_messages}
+    
+    Please provide a helpful, conversational response to the user's latest message.
+    """
+  end
+  
+  defp generate_fallback_response(messages) do
+    last_message = List.last(messages)
+    user_text = last_message.content
+    
+    cond do
+      String.contains?(String.downcase(user_text), ["hello", "hi", "hey"]) ->
+        "Hello! I'm your VSM assistant. I can help you monitor system status, manage alerts, and understand your Viable System Model. What would you like to know?"
+      
+      String.contains?(String.downcase(user_text), ["status", "health"]) ->
+        "To check system status, you can use the /status command. I can also help explain what each system (S1-S5) is responsible for in your VSM."
+      
+      String.contains?(String.downcase(user_text), ["help", "what can you"]) ->
+        "I can help you with:\n- System monitoring and status checks\n- Understanding VSM concepts\n- Managing alerts and notifications\n- Analyzing system performance\n- Suggesting adaptations\n\nWhat specific area interests you?"
+      
+      true ->
+        "I understand you're asking about: #{user_text}\n\nWhile I'm operating in limited mode, I can still help with VSM operations. Try asking about system status, alerts, or VSM concepts."
+    end
+  end
+  
+  defp generate_contextual_response(messages, system_prompt) do
+    last_message = List.last(messages)
+    user_text = last_message.content
+    
+    # More sophisticated response generation would happen here
+    # For now, provide contextual responses based on patterns
+    cond do
+      String.contains?(String.downcase(user_text), "pain") ->
+        "I see you're asking about pain signals in the VSM. Pain signals (algedonic signals) are critical feedback mechanisms that indicate when the system is experiencing stress or problems. They flow directly to System 5 for immediate attention. Would you like to know more about how your system processes these signals?"
+      
+      String.contains?(String.downcase(user_text), "adaptation") ->
+        "Adaptation is handled by System 4 (Intelligence) in your VSM. It continuously scans the environment for changes and proposes adaptations to maintain viability. Current adaptation readiness can be checked with /status. Would you like to see recent adaptation proposals?"
+      
+      String.contains?(String.downcase(user_text), ["performance", "metrics"]) ->
+        "Your VSM tracks numerous performance metrics across all systems. Key metrics include:\n- System health\n- Resource efficiency\n- Adaptation capacity\n- Identity coherence\n\nWould you like a detailed performance report?"
+      
+      true ->
+        "Based on your question about #{String.slice(user_text, 0..50)}..., I can help explain how this relates to your VSM operations. #{system_prompt} \n\nWhat specific aspect would you like to explore further?"
+    end
+  end
+  
   defp basic_analysis(prompt) do
     # Generate tool calls based on prompt - using CORRECT tool names!
     tool_calls = cond do

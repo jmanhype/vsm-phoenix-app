@@ -92,6 +92,10 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       PubSub.subscribe(VsmPhoenix.PubSub, "vsm:alerts:critical")
       PubSub.subscribe(VsmPhoenix.PubSub, "vsm:telegram:#{agent_id}")
       
+      # Create ETS table for conversation history
+      conversation_table = :"telegram_conversations_#{agent_id}"
+      :ets.new(conversation_table, [:set, :public, :named_table, {:read_concurrency, true}])
+      
       state = %{
         agent_id: agent_id,
         config: config,
@@ -106,6 +110,9 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
         last_update_id: 379100174,  # Skip old messages
         authorized_chats: MapSet.new(config[:authorized_chats] || []),
         admin_chats: MapSet.new(config[:admin_chats] || []),
+        conversation_table: conversation_table,
+        conversation_states: %{},  # Track per-chat conversation state
+        llm_processing: %{},  # Track ongoing LLM requests
         metrics: %{
           messages_received: 0,
           messages_sent: 0,
@@ -181,18 +188,23 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
 
   @impl true
   def handle_info({:basic_deliver, payload, meta}, state) do
-    # Handle AMQP command
-    case Jason.decode(payload) do
-      {:ok, command} ->
-        Logger.debug("Telegram Agent received command: #{inspect(command)}")
-        new_state = process_amqp_command(command, state)
-        AMQP.Basic.ack(state.channel, meta.delivery_tag)
-        {:noreply, new_state}
-        
-      {:error, reason} ->
-        Logger.error("Failed to parse AMQP command: #{inspect(reason)}")
-        AMQP.Basic.reject(state.channel, meta.delivery_tag, requeue: false)
-        {:noreply, state}
+    # Check if this is an LLM response by correlation_id
+    if meta[:correlation_id] && String.starts_with?(meta.correlation_id, "llm_") do
+      handle_llm_response(payload, meta, state)
+    else
+      # Handle regular AMQP command
+      case Jason.decode(payload) do
+        {:ok, command} ->
+          Logger.debug("Telegram Agent received command: #{inspect(command)}")
+          new_state = process_amqp_command(command, state)
+          AMQP.Basic.ack(state.channel, meta.delivery_tag)
+          {:noreply, new_state}
+          
+        {:error, reason} ->
+          Logger.error("Failed to parse AMQP command: #{inspect(reason)}")
+          AMQP.Basic.reject(state.channel, meta.delivery_tag, requeue: false)
+          {:noreply, state}
+      end
     end
   end
 
@@ -275,6 +287,11 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     # Delete webhook if set
     if state.webhook_mode do
       delete_webhook_internal(state)
+    end
+    
+    # Delete conversation table
+    if state.conversation_table do
+      :ets.delete(state.conversation_table)
     end
     
     # Unregister from registry
@@ -503,14 +520,8 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       if String.starts_with?(text, "/") do
         process_command(text, message, state)
       else
-        # Forward as general message
-        publish_telegram_event("message_received", %{
-          chat_id: chat_id,
-          text: text,
-          from: from
-        }, state)
-        
-        update_metrics(state, :message_received)
+        # Process natural language message
+        process_natural_language(text, message, state)
       end
     else
       send_telegram_message(chat_id, "⛔ Unauthorized. This incident has been logged.", state)
@@ -895,6 +906,205 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       end
     else
       0.0
+    end
+  end
+  
+  # Natural Language Processing Functions
+  
+  defp process_natural_language(text, message, state) do
+    chat_id = message["chat"]["id"]
+    message_id = message["message_id"]
+    from = message["from"]
+    
+    Logger.info("🧠 Processing natural language: #{text}")
+    
+    # Store message in conversation history
+    add_to_conversation_history(chat_id, :user, text, message_id, from, state)
+    
+    # Get conversation context
+    context = build_conversation_context(chat_id, state)
+    
+    # Check if already processing for this chat
+    if Map.has_key?(state.llm_processing, chat_id) do
+      Logger.info("Already processing LLM request for chat #{chat_id}")
+      state
+    else
+      # Send typing indicator
+      send_typing_action(chat_id, state)
+      
+      # Request LLM processing via AMQP
+      request_id = generate_request_id()
+      
+      llm_request = %{
+        request_id: request_id,
+        chat_id: chat_id,
+        message_id: message_id,
+        text: text,
+        context: context,
+        user: from,
+        timestamp: DateTime.utc_now()
+      }
+      
+      # Publish to LLM worker via AMQP
+      publish_llm_request(llm_request, state)
+      
+      # Track ongoing request
+      new_llm_processing = Map.put(state.llm_processing, chat_id, request_id)
+      new_state = %{state | llm_processing: new_llm_processing}
+      
+      # Set timeout for LLM response
+      Process.send_after(self(), {:llm_timeout, chat_id, request_id}, 30_000)
+      
+      update_metrics(new_state, :message_received)
+    end
+  end
+  
+  defp add_to_conversation_history(chat_id, role, text, message_id, user_info, state) do
+    history_key = {chat_id, :history}
+    current_history = case :ets.lookup(state.conversation_table, history_key) do
+      [{^history_key, history}] -> history
+      [] -> []
+    end
+    
+    message_entry = %{
+      role: role,
+      text: text,
+      message_id: message_id,
+      user: user_info,
+      timestamp: DateTime.utc_now()
+    }
+    
+    # Keep last 20 messages for context
+    new_history = [message_entry | current_history] |> Enum.take(20)
+    :ets.insert(state.conversation_table, {history_key, new_history})
+  end
+  
+  defp build_conversation_context(chat_id, state) do
+    history_key = {chat_id, :history}
+    history = case :ets.lookup(state.conversation_table, history_key) do
+      [{^history_key, hist}] -> hist
+      [] -> []
+    end
+    
+    # Get conversation state
+    conv_state = Map.get(state.conversation_states, chat_id, %{
+      topic: nil,
+      context_summary: nil,
+      last_activity: DateTime.utc_now()
+    })
+    
+    %{
+      chat_id: chat_id,
+      history: Enum.take(history, 10),  # Last 10 messages for context
+      conversation_state: conv_state,
+      vsm_context: get_vsm_context()
+    }
+  end
+  
+  defp get_vsm_context do
+    # Get current VSM system state for context
+    %{
+      system_status: "operational",  # Would fetch from actual systems
+      capabilities: [
+        "system monitoring",
+        "alert management", 
+        "vsm operations",
+        "performance analysis",
+        "adaptation proposals"
+      ],
+      recent_events: []  # Would fetch recent system events
+    }
+  end
+  
+  defp send_typing_action(chat_id, state) do
+    url = "#{@telegram_api_base}#{state.bot_token}/sendChatAction"
+    params = %{
+      "chat_id" => chat_id,
+      "action" => "typing"
+    }
+    
+    # Fire and forget
+    AsyncRunner.async_http_request(:post, url, Jason.encode!(params), 
+                                  [{"Content-Type", "application/json"}])
+  end
+  
+  defp publish_llm_request(request, state) do
+    routing_key = "llm.request.conversation"
+    
+    # Publish to LLM worker exchange
+    AMQP.Basic.publish(
+      state.channel,
+      "vsm.llm.requests",  # LLM request exchange
+      routing_key,
+      Jason.encode!(request),
+      content_type: "application/json",
+      reply_to: state.commands_exchange,
+      correlation_id: request.request_id
+    )
+    
+    Logger.info("Published LLM request #{request.request_id} for chat #{request.chat_id}")
+  end
+  
+  defp generate_request_id do
+    "llm_#{:erlang.unique_integer([:positive, :monotonic])}_#{:erlang.system_time(:microsecond)}"
+  end
+  
+  # Handle LLM responses
+  defp handle_llm_response(payload, meta, state) do
+    request_id = meta.correlation_id
+    
+    case Jason.decode(payload) do
+      {:ok, %{"response" => response_text, "chat_id" => chat_id} = response} ->
+        Logger.info("Received LLM response for request #{request_id}")
+        
+        # Remove from processing
+        new_llm_processing = Map.delete(state.llm_processing, chat_id)
+        
+        # Send response to user
+        send_telegram_message(chat_id, response_text, state)
+        
+        # Store assistant response in history
+        add_to_conversation_history(chat_id, :assistant, response_text, nil, nil, state)
+        
+        # Update conversation state if provided
+        new_conv_states = if response["conversation_state"] do
+          Map.put(state.conversation_states, chat_id, response["conversation_state"])
+        else
+          state.conversation_states
+        end
+        
+        AMQP.Basic.ack(state.channel, meta.delivery_tag)
+        
+        {:noreply, %{state | 
+          llm_processing: new_llm_processing,
+          conversation_states: new_conv_states
+        }}
+        
+      {:error, reason} ->
+        Logger.error("Failed to parse LLM response: #{inspect(reason)}")
+        AMQP.Basic.reject(state.channel, meta.delivery_tag, requeue: false)
+        {:noreply, state}
+    end
+  end
+  
+  @impl true
+  def handle_info({:llm_timeout, chat_id, request_id}, state) do
+    # Check if this request is still pending
+    if Map.get(state.llm_processing, chat_id) == request_id do
+      Logger.warning("LLM request timeout for chat #{chat_id}")
+      
+      # Remove from processing
+      new_llm_processing = Map.delete(state.llm_processing, chat_id)
+      
+      # Send timeout message
+      send_telegram_message(chat_id, 
+        "⏱️ I'm taking a bit longer to process that. Please try again in a moment.", 
+        state)
+      
+      {:noreply, %{state | llm_processing: new_llm_processing}}
+    else
+      # Request already completed, ignore timeout
+      {:noreply, state}
     end
   end
 end

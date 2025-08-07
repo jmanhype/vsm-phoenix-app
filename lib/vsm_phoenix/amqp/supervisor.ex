@@ -20,6 +20,9 @@ defmodule VsmPhoenix.AMQP.Supervisor do
       # Start command router with RPC support
       {VsmPhoenix.AMQP.CommandRouter, []},
       
+      # Start secure command router with cryptographic protection
+      {VsmPhoenix.AMQP.SecureCommandRouter, []},
+      
       # Start recursive protocol handler
       # {VsmPhoenix.AMQP.RecursiveProtocol, [meta_pid: self(), config: %{identity: "vsm_main"}]}
     ]

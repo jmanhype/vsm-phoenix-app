@@ -45,6 +45,12 @@ defmodule VsmPhoenix.Application do
       # Start Systemic Coordination Metrics (agnostic patterns)
       VsmPhoenix.Infrastructure.SystemicCoordinationMetrics,
       
+      # Start Security Infrastructure
+      VsmPhoenix.Infrastructure.Security,
+      
+      # Start Causality Tracker for event chain tracking
+      VsmPhoenix.Infrastructure.CausalityTracker,
+      
       # Initialize infrastructure components
       %{
         id: :infrastructure_init,

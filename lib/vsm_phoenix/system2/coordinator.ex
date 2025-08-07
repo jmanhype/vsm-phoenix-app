@@ -15,6 +15,7 @@ defmodule VsmPhoenix.System2.Coordinator do
   alias Phoenix.PubSub
   alias VsmPhoenix.System1.{Context, Operations}
   alias AMQP
+  alias VsmPhoenix.Infrastructure.CausalityAMQP
   
   @name __MODULE__
   @pubsub VsmPhoenix.PubSub
@@ -379,10 +380,11 @@ defmodule VsmPhoenix.System2.Coordinator do
   
   @impl true
   def handle_info({:basic_deliver, payload, meta}, state) do
-    # Handle AMQP coordination messages
-    case Jason.decode(payload) do
-      {:ok, message} ->
-        Logger.info("🔄 Coordinator received AMQP message: #{message["type"]}")
+    # Handle AMQP coordination messages with causality tracking
+    {message, causality_info} = CausalityAMQP.receive_message(payload, meta)
+    
+    if is_map(message) do
+        Logger.info("🔄 Coordinator received AMQP message: #{message["type"]} (chain depth: #{causality_info.chain_depth})")
         
         new_state = process_coordination_message(message, state)
         
@@ -393,8 +395,8 @@ defmodule VsmPhoenix.System2.Coordinator do
         
         {:noreply, new_state}
         
-      {:error, _} ->
-        Logger.error("Coordinator: Failed to decode AMQP message")
+    else
+        Logger.error("Coordinator: Unexpected message format: #{inspect(message)}")
         {:noreply, state}
     end
   end
@@ -761,7 +763,7 @@ defmodule VsmPhoenix.System2.Coordinator do
     if state[:amqp_channel] do
       payload = Jason.encode!(message)
       
-      :ok = AMQP.Basic.publish(
+      :ok = CausalityAMQP.publish(
         state.amqp_channel,
         "vsm.coordination",
         "",

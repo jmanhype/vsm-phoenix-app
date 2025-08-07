@@ -19,6 +19,7 @@ defmodule VsmPhoenix.System1.Context do
       alias VsmPhoenix.System3.Control
       alias AMQP
       alias VsmPhoenix.Infrastructure.SafePubSub
+      alias VsmPhoenix.Infrastructure.CausalityAMQP
       
       @context_name unquote(opts[:name]) || __MODULE__
       @context_type unquote(opts[:type]) || :generic
@@ -261,10 +262,11 @@ defmodule VsmPhoenix.System1.Context do
       
       @impl true
       def handle_info({:basic_deliver, payload, meta}, state) do
-        # Handle AMQP messages, including audit commands
-        case Jason.decode(payload) do
-          {:ok, message} ->
-            Logger.info("#{@context_name} received AMQP message: #{message["type"]}")
+        # Handle AMQP messages with causality tracking
+        {message, causality_info} = CausalityAMQP.receive_message(payload, meta)
+        
+        if is_map(message) do
+            Logger.info("#{@context_name} received AMQP message: #{message["type"]} (chain depth: #{causality_info.chain_depth})")
             
             new_state = case message["type"] do
               "audit_command" ->
@@ -281,8 +283,8 @@ defmodule VsmPhoenix.System1.Context do
             
             {:noreply, new_state}
             
-          {:error, reason} ->
-            Logger.error("Failed to decode AMQP message: #{inspect(reason)}")
+        else
+            Logger.error("Unexpected message format: #{inspect(message)}")
             {:noreply, state}
         end
       end
@@ -415,9 +417,9 @@ defmodule VsmPhoenix.System1.Context do
             timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
           })
           
-          # Publish to algedonic exchange
+          # Publish to algedonic exchange with causality tracking
           try do
-            :ok = AMQP.Basic.publish(
+            :ok = CausalityAMQP.publish(
               state.amqp_channel,
               "vsm.algedonic",  # fanout exchange
               "",  # routing key ignored for fanout
@@ -513,8 +515,8 @@ defmodule VsmPhoenix.System1.Context do
             result: audit_result
           })
           
-          # Publish to audit response queue
-          :ok = AMQP.Basic.publish(
+          # Publish to audit response queue with causality tracking
+          :ok = CausalityAMQP.publish(
             state.audit_channel,
             "",  # Default exchange
             "vsm.audit.responses",
@@ -675,13 +677,14 @@ defmodule VsmPhoenix.System1.Context do
         if message["reply_to"] && state.audit_channel do
           response_payload = Jason.encode!(audit_response)
           
-          :ok = AMQP.Basic.publish(
+          :ok = CausalityAMQP.publish(
             state.audit_channel,
             "vsm.audit",
             message["reply_to"],
             response_payload,
             correlation_id: message["correlation_id"] || meta.correlation_id,
-            content_type: "application/json"
+            content_type: "application/json",
+            parent_event_id: causality_info.event_id
           )
           
           Logger.info("🔍 #{@context_name}: Audit response sent to #{message["reply_to"]}")

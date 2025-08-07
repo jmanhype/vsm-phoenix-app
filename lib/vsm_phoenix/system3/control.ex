@@ -14,6 +14,7 @@ defmodule VsmPhoenix.System3.Control do
   
   alias VsmPhoenix.System2.Coordinator
   alias VsmPhoenix.System1.{Context, Operations}
+  alias VsmPhoenix.Infrastructure.CausalityAMQP
   alias AMQP
   
   @name __MODULE__
@@ -887,12 +888,14 @@ defmodule VsmPhoenix.System3.Control do
   
   @impl true
   def handle_info({:basic_deliver, payload, meta}, state) do
-    # Handle AMQP resource control messages
-    case Jason.decode(payload) do
-      {:ok, message} ->
-        Logger.info("📊 Control received AMQP message: #{message["type"]}")
+    # Handle AMQP messages with causality tracking
+    {message, causality_info} = CausalityAMQP.receive_message(payload, meta)
+    
+    case message do
+      %{"type" => _} = valid_message ->
+        Logger.info("📊 Control received AMQP message: #{valid_message["type"]} (depth: #{causality_info.chain_depth})")
         
-        new_state = process_control_message(message, state)
+        new_state = process_control_message(valid_message, state)
         
         # Acknowledge the message
         if state[:amqp_channel] do
@@ -901,8 +904,8 @@ defmodule VsmPhoenix.System3.Control do
         
         {:noreply, new_state}
         
-      {:error, _} ->
-        Logger.error("Control: Failed to decode AMQP message")
+      _ ->
+        Logger.error("Control: Invalid message format")
         {:noreply, state}
     end
   end
@@ -3022,13 +3025,12 @@ defmodule VsmPhoenix.System3.Control do
 
   defp publish_flow_event(event, state) do
     if state[:amqp_channel] do
-      payload = Jason.encode!(event)
-      
-      :ok = AMQP.Basic.publish(
+      # Use CausalityAMQP for automatic event tracking
+      :ok = CausalityAMQP.publish(
         state.amqp_channel,
         "vsm.control",
         "",
-        payload,
+        event,
         content_type: "application/json"
       )
       

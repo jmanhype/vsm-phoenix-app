@@ -16,6 +16,7 @@ defmodule VsmPhoenix.System4.Intelligence do
   alias VsmPhoenix.System3.Control
   alias VsmPhoenix.System4.LLMVarietySource
   alias AMQP
+  alias VsmPhoenix.Infrastructure.CausalityAMQP
   
   @name __MODULE__
   
@@ -1330,7 +1331,7 @@ defmodule VsmPhoenix.System4.Intelligence do
       try do
         payload = Jason.encode!(alert)
         
-        :ok = AMQP.Basic.publish(
+        :ok = CausalityAMQP.publish(
           state.amqp_channel,
           "vsm.intelligence",
           "",
@@ -1350,10 +1351,11 @@ defmodule VsmPhoenix.System4.Intelligence do
   
   @impl true
   def handle_info({:basic_deliver, payload, meta}, state) do
-    # Handle AMQP intelligence messages
-    case Jason.decode(payload) do
-      {:ok, message} ->
-        Logger.info("🔍 Intelligence received AMQP message: #{message["type"]}")
+    # Handle AMQP intelligence messages with causality tracking
+    {message, causality_info} = CausalityAMQP.receive_message(payload, meta)
+    
+    if is_map(message) do
+        Logger.info("🔍 Intelligence received AMQP message: #{message["type"]} (chain depth: #{causality_info.chain_depth})")
         
         new_state = process_intelligence_message(message, state)
         
@@ -1364,8 +1366,8 @@ defmodule VsmPhoenix.System4.Intelligence do
         
         {:noreply, new_state}
         
-      {:error, _} ->
-        Logger.error("Intelligence: Failed to decode AMQP message")
+    else
+        Logger.error("Intelligence: Unexpected message format: #{inspect(message)}")
         {:noreply, state}
     end
   end
