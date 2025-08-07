@@ -497,41 +497,107 @@ For detailed technical documentation, see the `/docs` directory. For examples an
   - Message-level signing
   - Bloom filters for efficient validation
 
-### Phase 3: Meta-Cognitive Evolution (3-4 weeks)
-**Goal**: Create self-aware, self-modifying system with emergent behaviors
+### Phase 3: Self-Optimizing Intelligence - GEPA Integration (3-4 weeks)
+**Goal**: Implement reflective prompt evolution and self-optimizing LLM capabilities
 
-- [ ] **Meta-Cognitive Observation Layer**
-  - System observes its own decision-making processes
-  - Tracks conflicts between subsystems
-  - Counts patterns and generates metrics about itself
-  - Real-time introspection capabilities
+- [ ] **GEPA Core Integration**
+  - Reflective prompt mutation for System 4 environmental scanning
+  - Execution trace collection for all LLM interactions
+  - Pareto frontier optimization for prompt strategies
+  - Natural language reflection on system performance
 
-- [ ] **Dynamic Policy Generation**
-  - LLM analyzes event patterns to suggest new policies
-  - Policies compiled to active AMQP handlers
-  - System can modify its own behavioral rules
-  - Meta-policies (policies about making policies)
+- [ ] **System 4 GEPA Intelligence**
+  - Self-optimizing environmental scan prompts (35x efficiency)
+  - Learning anomaly detection patterns from traces
+  - Adaptive variety analysis that improves over time
+  - Context-aware scanning strategies per environment type
 
-- [ ] **Self-Improving Telegram Bot**
-  - Learns user preferences and communication styles
-  - Generates new command handlers based on usage
-  - Self-modifies response patterns for better UX
-  - Creates personalized workflows per user
+- [ ] **System 5 GEPA Policy Synthesis**
+  - Self-evolving policy generation prompts
+  - Reflection on policy implementation outcomes
+  - Learning from algedonic signal patterns
+  - Adaptive decision-making that improves with feedback
 
-- [ ] **Emergent Subsystem Creation**
-  - Automatic spawning of new S1 agents based on patterns
-  - Agents can create sub-agents (recursive structure)
-  - Self-organizing system topology
-  - Dynamic resource allocation
+- [ ] **LLM Worker Agent GEPA Reasoning**
+  - Self-optimizing task execution prompts
+  - Learning tool usage patterns from successful executions
+  - Adaptive MCP integration strategies
+  - Context-aware agent spawning optimization
 
-- [ ] **Self-Documentation & SOPs**
-  - Auto-generation of Standard Operating Procedures
-  - System documents its own discoveries
-  - Human-readable explanations of decisions
-  - Continuous improvement loops
+- [ ] **GEPA Performance Monitoring**
+  - Trace collection infrastructure across all systems
+  - Prompt performance metrics and analytics
+  - A/B testing framework for prompt strategies
+  - Continuous improvement dashboard
 
-### Phase 4: Advanced Features (Future)
-**Goal**: Production-ready distributed cognitive system
+### Phase 4: Event-Driven Intelligence - Cybernetic.ai Patterns (4-5 weeks)
+**Goal**: Implement event-as-evidence philosophy and causal graph intelligence
+
+- [ ] **Events as Evidence Architecture**
+  - Event stream → Evidence analysis → Policy synthesis pipeline
+  - Causal graph construction from system events
+  - Meaning graphs across time and relationships
+  - Evidence-based learning framework
+
+- [ ] **Contextual Fusion Engine**
+  - Build meaning graphs from event chains
+  - Temporal relationship tracking across systems
+  - Context preservation using CRDTs
+  - Distributed knowledge synchronization
+
+- [ ] **AI Immune System**
+  - Proactive anomaly detection from event patterns
+  - Auto-synthesis of protective policies
+  - Self-healing mechanism injection
+  - Threat pattern learning and evolution
+
+- [ ] **Distributed Agent Learning**
+  - CRDT-based conflict-free knowledge sharing
+  - Collective intelligence emergence
+  - Cross-agent learning synchronization
+  - Swarm-level optimization strategies
+
+- [ ] **Causal Intelligence Integration**
+  - Causal graph analysis for meta-system spawning
+  - Event provenance tracking and analysis
+  - Future projection from causal patterns
+  - System-wide intelligence synthesis
+
+### Phase 5: Unified Self-Evolving System (5-6 weeks)
+**Goal**: Combine GEPA micro-optimization with Cybernetic.ai macro-intelligence
+
+- [ ] **Hybrid Intelligence Layer**
+  - GEPA prompt optimization + Event-driven policy synthesis
+  - Micro-level execution improvement + Macro-level system evolution
+  - Unified learning infrastructure across all VSM levels
+  - Emergent intelligence from combined approaches
+
+- [ ] **Meta-Cognitive Evolution**
+  - System observes its own optimization processes
+  - Self-modifying GEPA strategies
+  - Evolution of evolution mechanisms
+  - Meta-learning from learning patterns
+
+- [ ] **Autonomous VSM Evolution**
+  - Self-directed system improvements without human intervention
+  - Automatic discovery of new optimization opportunities
+  - Emergent behavioral patterns from combined learning
+  - Continuous adaptation to changing environments
+
+- [ ] **Advanced Recursive Capabilities**
+  - GEPA-optimized meta-system spawning decisions
+  - Event-driven recursive VSM creation
+  - Cross-VSM collective intelligence
+  - Hierarchical learning propagation
+
+- [ ] **Production-Ready Self-Optimization**
+  - Scalable learning infrastructure
+  - Performance guarantees with continuous improvement
+  - Human-in-the-loop validation when needed
+  - Comprehensive observability and control
+
+### Phase 6: Advanced Features & Production Deployment (Future)
+**Goal**: Production-ready distributed cognitive system with marketplace
 
 - [ ] **WASM Plugin Compilation**
   - Secure sandboxed execution
@@ -557,7 +623,32 @@ For detailed technical documentation, see the `/docs` directory. For examples an
   - Community contributions
   - Pre-built Telegram bot templates
 
-### Technical Approach
-The implementation follows the Cybernetic.ai whitepaper's vision while maintaining compatibility with Beer's original VSM principles. We're building on Erlang/Elixir's fault-tolerant distributed systems capabilities, AMQP for reliable messaging, modern AI/LLM integration for intelligence layers, and Telegram for accessible human-system interaction.
+## Technical Approach - Enhanced with Self-Optimization
 
-Each phase delivers working functionality while building toward a truly autonomous, self-improving system - a meta-cognitive orchestrator that can observe, analyze, and modify its own thinking patterns.
+The implementation now combines three powerful approaches:
+
+1. **Beer's VSM Principles**: The foundational cybernetic architecture with 5-level hierarchy
+2. **GEPA (Stanford/Berkeley)**: Reflective prompt evolution for 35x more efficient LLM operations
+3. **Cybernetic.ai Patterns**: Event-as-evidence philosophy and causal graph intelligence
+
+### Self-Optimization Architecture
+
+**Micro-Level (GEPA)**:
+- Individual prompt optimization through natural language reflection
+- Execution trace analysis for continuous improvement
+- Pareto frontier maintenance for diverse strategies
+- 35x efficiency gains in LLM operations
+
+**Macro-Level (Cybernetic.ai)**:
+- System-wide event pattern analysis
+- Causal graph construction for deep understanding
+- Evidence-based policy synthesis
+- Distributed learning with CRDT synchronization
+
+**Unified Intelligence**:
+- Combined micro and macro optimization
+- Self-evolving system without human intervention
+- Emergent behaviors from layered learning
+- True autonomous viable system
+
+Each phase builds toward a **self-optimizing, self-evolving meta-cognitive system** that embodies the deepest principles of second-order cybernetics - a system that not only maintains its viability but continuously improves its own ability to learn and adapt.
