@@ -1,0 +1,77 @@
+VSM Phoenix App - Phase 3: Recursive System Spawning & Meta-Learning
+
+OVERVIEW:
+Build on the existing distributed AMQP-based VSM implementation to add recursive system spawning capabilities. Each VSM subsystem should be able to spawn child VSMs, creating a fractal organizational structure. Implement meta-learning where systems learn from each other's patterns.
+
+CURRENT STATE:
+- Phase 2 is 60% complete with:
+  - Working AMQP message distribution
+  - Channel pooling to prevent conflicts
+  - Real Claude API integration
+  - Basic System 1 (Operational) agents
+  - Telegram bot interface
+  - System 2 (Coordination) in progress
+
+REQUIREMENTS:
+
+1. Recursive VSM Spawning
+- Implement RecursiveProtocol module (already scaffolded in lib/vsm_phoenix/amqp/recursive_protocol.ex)
+- Each VSM can spawn child VSMs with their own S1-S5 subsystems
+- Parent-child communication via dedicated AMQP exchanges
+- Automatic variety amplification through recursive depth
+- Support infinite nesting levels (practical limit: 5-7 levels)
+
+2. Meta-Learning Infrastructure
+- Systems share learned patterns via AMQP messages
+- Knowledge propagation across VSM tree structure
+- Pattern recognition and abstraction at each level
+- Emergent behavior from collective learning
+
+3. Dynamic Agent Types
+- Extend beyond basic worker agents to specialized types:
+  - ResearchAgent: Gathers information and context
+  - PlannerAgent: Creates execution strategies
+  - ValidatorAgent: Ensures quality and correctness
+  - MetaAgent: Observes and optimizes other agents
+
+4. Variety Engineering
+- Implement Ashby's Law of Requisite Variety
+- Automatic variety amplification when facing complex tasks
+- Variety attenuation for routine operations
+- Measurable variety metrics at each system level
+
+5. System 3-4-5 Implementation
+- System 3: Operational management and resource allocation
+- System 4: Environmental scanning and adaptation
+- System 5: Identity, purpose, and policy setting
+- Full VSM recursive structure at each level
+
+6. Advanced AMQP Patterns
+- Topic-based routing for cross-system communication
+- Priority queues for time-sensitive operations
+- Dead letter exchanges for failed operations
+- Message persistence and replay capabilities
+
+7. Observability & Metrics
+- Real-time variety measurements
+- Learning rate tracking
+- Recursive depth visualization
+- System health at each level
+- Performance metrics aggregation
+
+TECHNICAL CONSTRAINTS:
+- Maintain AMQP as primary communication backbone
+- No fallbacks - fail fast on errors
+- Use existing Elixir/Phoenix architecture
+- Preserve channel pooling implementation
+- Keep Telegram bot as primary interface
+
+SUCCESS CRITERIA:
+- Systems can spawn child systems autonomously
+- Cross-system learning demonstrably improves performance
+- Variety metrics show appropriate amplification/attenuation
+- Full S1-S5 implementation at multiple recursive levels
+- System remains stable under recursive load
+
+PHASE 3 COMPLETION:
+This phase is complete when the system can recursively spawn VSMs that learn from each other, with measurable improvements in task handling through collective intelligence.
