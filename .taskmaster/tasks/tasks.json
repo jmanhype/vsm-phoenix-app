@@ -11,11 +11,24 @@
         "dependencies": [],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Implement Meta-Learning Infrastructure for Inter-VSM Pattern Sharing",
+        "description": "Develop a meta-learning infrastructure that enables Virtual State Machines (VSMs) to learn from each other's patterns through AMQP message passing.",
+        "details": "This task involves implementing a meta-learning system that allows VSMs to share learned patterns and insights with each other:\n\n1. Create a new `MetaLearningManager` class that will:\n   - Define a standardized message format for sharing learned patterns between VSMs\n   - Implement AMQP publishers and subscribers for pattern exchange\n   - Develop pattern serialization/deserialization mechanisms for transmission\n\n2. Implement core meta-learning components:\n   - Pattern extraction module to identify valuable patterns from VSM operations\n   - Pattern validation to ensure quality of shared insights\n   - Pattern integration mechanism to incorporate external patterns into a VSM's knowledge base\n   - Conflict resolution for contradictory patterns from different sources\n\n3. Add configuration options to control meta-learning behavior:\n   - Enable/disable pattern sharing for specific VSMs\n   - Set trust levels for different pattern sources\n   - Configure pattern acceptance thresholds\n   - Set up pattern sharing frequency and bandwidth limits\n\n4. Implement security measures:\n   - Authenticate pattern sources\n   - Validate pattern integrity\n   - Prevent malicious pattern injection\n   - Implement rate limiting for pattern sharing\n\n5. Create monitoring and analytics for the meta-learning process:\n   - Track pattern sharing statistics\n   - Measure pattern adoption rates\n   - Evaluate pattern effectiveness\n   - Generate reports on knowledge transfer between VSMs\n\n6. Integrate with the existing RecursiveProtocol module:\n   - Ensure meta-learning works with parent-child VSM relationships\n   - Enable pattern inheritance from parent to child VSMs\n   - Allow pattern promotion from child to parent VSMs",
+        "testStrategy": "1. Unit Tests:\n   - Test pattern extraction from VSM operational data\n   - Verify pattern serialization/deserialization\n   - Test AMQP message publishing and subscription\n   - Validate pattern integration mechanisms\n   - Test security measures including authentication and validation\n   - Verify conflict resolution logic\n\n2. Integration Tests:\n   - Set up a network of test VSMs and verify pattern sharing\n   - Test pattern sharing between parent and child VSMs\n   - Measure performance impact of meta-learning on VSM operations\n   - Verify system behavior under high message volume\n   - Test recovery from communication failures\n\n3. Functional Tests:\n   - Verify that VSMs actually improve performance after incorporating patterns\n   - Test with different types of patterns (algorithmic, behavioral, resource management)\n   - Validate that pattern sharing respects configured limits and thresholds\n   - Test the system's ability to identify and reject invalid patterns\n\n4. Performance Tests:\n   - Measure throughput of pattern sharing under various loads\n   - Test scalability with increasing numbers of VSMs\n   - Benchmark memory usage during pattern processing\n   - Evaluate network bandwidth consumption\n\n5. Security Tests:\n   - Attempt to inject malicious patterns\n   - Test authentication bypass scenarios\n   - Verify rate limiting effectiveness\n   - Test pattern validation robustness",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-08-07T20:24:20.117Z",
-      "updated": "2025-08-07T20:27:06.520Z",
+      "updated": "2025-08-07T20:33:15.241Z",
       "description": "Phase 3: Recursive System Spawning & Meta-Learning"
     }
   },
@@ -64,6 +77,79 @@
       "created": "2025-08-07T20:29:31.090Z",
       "updated": "2025-08-07T20:31:19.298Z",
       "description": "Phase 2: Complete System 2 Coordination (remaining 40%)"
+    }
+  },
+  "vsm-phase4-gepa": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Integrate GEPA Core for Reflective Prompt Evolution",
+        "description": "Implement the GEPA (Generative Evolutionary Prompt Adaptation) Core framework to enable reflective prompt evolution, targeting a 35x efficiency improvement in LLM operations through automated prompt optimization.",
+        "details": "1. Set up the GEPA Core library:\n   - Install the GEPA Core package via npm/pip depending on the project stack\n   - Configure API keys and environment variables for LLM access\n\n2. Implement the Reflective Prompt Evolution pipeline:\n   - Create a PromptEvolutionManager class that handles the lifecycle of prompts\n   - Implement the core evolutionary algorithms:\n     - Mutation: Modify prompts based on performance metrics\n     - Crossover: Combine high-performing prompt segments\n     - Selection: Evaluate and rank prompt variations\n   - Build a feedback loop mechanism that captures LLM response quality metrics\n\n3. Develop the efficiency optimization components:\n   - Implement token usage tracking and analytics\n   - Create caching mechanisms for similar prompt patterns\n   - Build prompt compression algorithms that maintain semantic integrity\n   - Develop context window optimization techniques\n\n4. Create an abstraction layer for existing LLM calls:\n   - Refactor current direct LLM calls to use the GEPA middleware\n   - Implement adapters for different LLM providers (OpenAI, Anthropic, etc.)\n   - Ensure backward compatibility with existing code\n\n5. Implement the monitoring dashboard:\n   - Create metrics collection for prompt performance\n   - Build visualization components for efficiency gains\n   - Implement A/B testing framework for prompt variations\n\n6. Documentation and integration:\n   - Document the GEPA Core API for other developers\n   - Create examples of optimized prompts vs. original prompts\n   - Provide guidelines for writing \"evolution-friendly\" prompts",
+        "testStrategy": "1. Benchmark Testing:\n   - Establish baseline metrics for current LLM usage (tokens per task, cost, latency)\n   - Run identical workloads through both original and GEPA-optimized systems\n   - Verify the 35x efficiency improvement claim with quantitative metrics\n\n2. Unit Testing:\n   - Create unit tests for each evolutionary algorithm component\n   - Test the PromptEvolutionManager with mock LLM responses\n   - Verify proper functioning of the caching and compression mechanisms\n\n3. Integration Testing:\n   - Test the GEPA Core with actual LLM providers\n   - Verify that all adapters work correctly with their respective LLM services\n   - Ensure the abstraction layer correctly handles all existing use cases\n\n4. Performance Testing:\n   - Conduct load testing to ensure the system can handle production volumes\n   - Measure memory usage and CPU utilization during peak loads\n   - Test recovery mechanisms for API failures or timeouts\n\n5. Quality Assurance:\n   - Compare output quality between original and optimized prompts\n   - Ensure semantic equivalence is maintained after optimization\n   - Verify that edge cases are handled correctly\n\n6. User Acceptance Testing:\n   - Have team members use the new system for typical tasks\n   - Collect feedback on any differences in output quality\n   - Verify that the integration is seamless from a user perspective\n\n7. Monitoring Validation:\n   - Verify that all metrics are correctly captured and displayed\n   - Test alerting mechanisms for performance degradation\n   - Ensure the dashboard accurately reflects real-time efficiency gains",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-07T20:33:30.012Z",
+      "updated": "2025-08-07T20:34:12.799Z",
+      "description": "Phase 4: Self-Optimizing Intelligence with GEPA Integration"
+    }
+  },
+  "vsm-phase5-cybernetic": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Implement Event-as-Evidence Architecture with Causal Graph Construction",
+        "description": "Design and implement an event-as-evidence architecture that captures system events and constructs causal graphs to support decision-making in the Value Stream Management (VSM) system.",
+        "details": "This task involves creating a robust architecture that treats events as evidence for decision-making processes:\n\n1. Define an event model schema:\n   - Create a standardized event structure with fields for timestamp, source, type, payload, and metadata\n   - Implement serialization/deserialization for event objects\n   - Design event categorization taxonomy relevant to VSM contexts\n\n2. Implement event collection mechanisms:\n   - Create event listeners for various system components\n   - Develop an event buffer to handle high-volume event streams\n   - Implement event filtering and preprocessing capabilities\n\n3. Design the causal graph construction engine:\n   - Define graph node and edge structures to represent causal relationships\n   - Implement algorithms to infer causality between events\n   - Create temporal reasoning capabilities to establish event sequences\n   - Develop confidence scoring for causal relationships\n\n4. Build the evidence evaluation system:\n   - Implement Bayesian inference for probability calculations\n   - Create weighting mechanisms for different evidence types\n   - Design an evidence aggregation framework\n\n5. Integrate with decision-making components:\n   - Create APIs for querying the causal graph\n   - Implement visualization helpers for graph exploration\n   - Develop decision recommendation algorithms based on causal analysis\n\nTechnical considerations:\n- Use a graph database (e.g., Neo4j) for storing causal relationships\n- Implement event streaming with Kafka or similar technology\n- Ensure the system can handle retroactive updates to the causal model\n- Design for scalability to process thousands of events per second\n- Consider using probabilistic programming libraries for causal inference",
+        "testStrategy": "1. Unit Testing:\n   - Create unit tests for event model serialization/deserialization\n   - Test causal inference algorithms with known cause-effect scenarios\n   - Verify Bayesian calculation accuracy against expected probabilities\n   - Test event filtering logic with various input patterns\n\n2. Integration Testing:\n   - Verify end-to-end event flow from collection to causal graph construction\n   - Test integration with event sources using mock producers\n   - Validate graph database persistence and retrieval operations\n   - Ensure proper API responses for causal queries\n\n3. Performance Testing:\n   - Benchmark event processing throughput under various loads\n   - Measure graph construction time for different event volumes\n   - Test system behavior under sustained high event rates\n   - Verify memory usage remains within acceptable bounds\n\n4. Validation Testing:\n   - Create test scenarios with known causal relationships\n   - Compare system-inferred causality with expected outcomes\n   - Validate confidence scores against expert-defined benchmarks\n   - Test with real-world VSM decision scenarios and verify results\n\n5. Acceptance Criteria:\n   - System correctly identifies causal relationships with >85% accuracy\n   - Causal graph construction completes within 5 seconds for 1000 events\n   - Decision recommendations based on causal analysis match expert expectations\n   - Visualization correctly represents complex causal chains\n   - System handles retroactive updates to the causal model without errors",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-07T20:34:26.553Z",
+      "updated": "2025-08-07T20:35:06.461Z",
+      "description": "Phase 5: Event-Driven Intelligence with Cybernetic.ai Patterns"
+    }
+  },
+  "vsm-phase6-unified": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Create Hybrid Intelligence Layer for GEPA and Cybernetic.ai Integration",
+        "description": "Develop a hybrid intelligence layer that integrates GEPA and Cybernetic.ai technologies to create a unified platform for VSM (Viable System Model) evolution and management.",
+        "details": "The implementation should follow these steps:\n\n1. Analyze the core APIs and data structures of both GEPA and Cybernetic.ai systems to identify integration points.\n2. Design an abstraction layer that normalizes data formats between the two systems.\n3. Implement adapter patterns for each system to ensure seamless communication:\n   - Create a GEPAAdapter class that transforms GEPA outputs into the hybrid layer format\n   - Create a CyberneticAdapter class that transforms Cybernetic.ai outputs into the hybrid layer format\n4. Develop a unified data model that preserves the strengths of both systems:\n   ```python\n   class HybridIntelligenceModel:\n       def __init__(self, gepa_client, cybernetic_client):\n           self.gepa = GEPAAdapter(gepa_client)\n           self.cybernetic = CyberneticAdapter(cybernetic_client)\n           self.unified_state = {}\n       \n       def process_input(self, input_data):\n           # Process through both systems and merge results\n           gepa_result = self.gepa.process(input_data)\n           cybernetic_result = self.cybernetic.process(input_data)\n           return self.merge_intelligence(gepa_result, cybernetic_result)\n   ```\n5. Implement conflict resolution strategies when the two systems provide contradictory outputs.\n6. Create a feedback mechanism that allows each system to learn from the other's strengths.\n7. Build a unified API that exposes the combined capabilities while hiding the complexity of the integration.\n8. Implement caching and performance optimizations to minimize latency.\n9. Document the integration architecture and provide examples of how to leverage the hybrid capabilities.\n\nThe hybrid layer should maintain backward compatibility with existing systems while enabling new capabilities that neither system could provide independently.",
+        "testStrategy": "1. Unit Testing:\n   - Create unit tests for each adapter to verify correct transformation of data\n   - Test the conflict resolution mechanisms with various edge cases\n   - Verify that the hybrid model correctly processes inputs and produces expected outputs\n\n2. Integration Testing:\n   - Set up test environments with both GEPA and Cybernetic.ai systems\n   - Verify bidirectional data flow between systems through the hybrid layer\n   - Test scenarios where one system is unavailable to ensure graceful degradation\n\n3. Performance Testing:\n   - Measure latency compared to using each system independently\n   - Test with increasing load to identify bottlenecks\n   - Verify caching mechanisms are working correctly\n\n4. Functional Testing:\n   - Create test cases that verify the hybrid layer provides all capabilities of both original systems\n   - Test new capabilities enabled by the integration\n   - Verify that VSM evolution processes work correctly with the hybrid approach\n\n5. Acceptance Testing:\n   - Develop a demonstration that shows the unified VSM evolution capabilities\n   - Create benchmarks comparing the hybrid system against each individual system\n   - Document improvements in accuracy, performance, or capabilities\n\n6. Regression Testing:\n   - Ensure existing functionality from both systems continues to work correctly\n   - Verify that updates to either system don't break the hybrid layer",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Implement WASM Plugin Compilation System with Hot-Loading Support",
+        "description": "Create a WebAssembly (WASM) plugin compilation system that enables dynamic loading and unloading of compiled plugins to extend agent capabilities at runtime without requiring system restarts.",
+        "details": "Implementation should follow these steps:\n\n1. Set up a WASM compilation pipeline:\n   - Integrate with emscripten or similar toolchain for C/C++ to WASM compilation\n   - Configure webpack or rollup plugins for JavaScript/TypeScript to WASM compilation\n   - Create a standardized build process that outputs WASM modules with consistent interfaces\n\n2. Design the plugin interface specification:\n   - Define a standard API contract that all plugins must implement\n   - Create type definitions for plugin capabilities and extension points\n   - Implement versioning support for backward compatibility\n\n3. Develop the plugin registry and management system:\n   - Create a PluginRegistry class to track loaded plugins and their capabilities\n   - Implement methods for plugin registration, deregistration, and discovery\n   - Add support for dependency resolution between plugins\n\n4. Implement the hot-loading mechanism:\n   - Create a PluginLoader class that can dynamically load WASM modules at runtime\n   - Implement memory management to prevent leaks during plugin unloading\n   - Add support for graceful plugin state transfer during updates\n   - Implement error handling for failed plugin loads\n\n5. Create integration points with the Hybrid Intelligence Layer:\n   - Design extension points in the core system where plugins can hook in\n   - Implement capability advertisement so the system knows what functionality each plugin provides\n   - Create a secure sandbox environment for plugin execution\n\n6. Add plugin lifecycle management:\n   - Implement events for plugin initialization, activation, deactivation, and disposal\n   - Create a health monitoring system for active plugins\n   - Add support for plugin configuration and state persistence\n\n7. Document the plugin development process:\n   - Create templates and examples for plugin developers\n   - Document the API and extension points\n   - Provide debugging tools for plugin development",
+        "testStrategy": "1. Unit Testing:\n   - Test the WASM compilation pipeline with various input languages and configurations\n   - Verify the PluginRegistry correctly tracks plugin registration and deregistration\n   - Test the PluginLoader with valid and invalid WASM modules\n   - Verify memory management during repeated loading/unloading cycles\n\n2. Integration Testing:\n   - Create test plugins that extend different system capabilities\n   - Verify hot-loading works while the system is under load\n   - Test concurrent loading of multiple plugins\n   - Verify system stability when plugins fail or crash\n   - Test plugin dependency resolution with complex dependency graphs\n\n3. Performance Testing:\n   - Measure load time for plugins of various sizes\n   - Benchmark memory usage during plugin lifecycle\n   - Test system performance with many plugins loaded simultaneously\n   - Measure overhead of the plugin sandbox environment\n\n4. Security Testing:\n   - Verify plugins cannot access unauthorized system resources\n   - Test the sandbox containment with malicious plugin attempts\n   - Verify plugin signature verification prevents unauthorized plugins\n\n5. Acceptance Testing:\n   - Demonstrate hot-loading capabilities with real-world plugin scenarios\n   - Verify plugins can be updated without disrupting system operation\n   - Test the developer experience using the plugin templates and documentation",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "medium",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-07T20:35:21.971Z",
+      "updated": "2025-08-07T20:36:31.817Z",
+      "description": "Phase 6: Unified Self-Evolving System & Production Features"
     }
   }
 }
