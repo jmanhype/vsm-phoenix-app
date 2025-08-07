@@ -710,6 +710,164 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     end
   end
 
+  # Natural Language Processing
+  
+  defp process_natural_language(text, message, state) do
+    chat_id = message["chat"]["id"]
+    message_id = message["message_id"]
+    from = message["from"]
+    
+    Logger.info("🧠 Processing natural language message from #{chat_id}")
+    
+    # Send typing indicator
+    send_chat_action(chat_id, "typing", state)
+    
+    # Check if we have conversation state for this chat
+    conversation_state = get_conversation_state(chat_id, state)
+    
+    # Start or continue LLM conversation
+    Task.start(fn ->
+      try do
+        # Send to LLM worker via AMQP
+        response = request_llm_response(text, message, conversation_state, state)
+        
+        case response do
+          {:ok, llm_response} ->
+            # Send the response back to user
+            send_telegram_message(chat_id, llm_response, state, reply_to_message_id: message_id)
+            
+            # Update conversation state
+            update_conversation_state(chat_id, text, llm_response, state)
+            
+          {:error, reason} ->
+            Logger.error("Failed to get LLM response: #{inspect(reason)}")
+            send_telegram_message(chat_id, "🤖 Sorry, I'm having trouble processing your message. Please try again.", state, reply_to_message_id: message_id)
+        end
+      rescue
+        e ->
+          Logger.error("Error in LLM processing: #{inspect(e)}")
+          send_telegram_message(chat_id, "🤖 An error occurred while processing your message.", state, reply_to_message_id: message_id)
+      end
+    end)
+    
+    update_metrics(state, :message_received)
+  end
+  
+  defp send_chat_action(chat_id, action, state) do
+    url = "https://api.telegram.org/bot#{state.bot_token}/sendChatAction"
+    params = %{
+      "chat_id" => chat_id,
+      "action" => action
+    }
+    
+    case HTTPoison.post(url, Jason.encode!(params), [{"Content-Type", "application/json"}]) do
+      {:ok, _response} -> :ok
+      {:error, reason} -> 
+        Logger.error("Failed to send chat action: #{inspect(reason)}")
+        :error
+    end
+  end
+  
+  defp get_conversation_state(chat_id, state) do
+    case :ets.lookup(state.conversation_table, chat_id) do
+      [{^chat_id, conversation_state}] -> conversation_state
+      [] -> %{messages: [], context: %{}}
+    end
+  end
+  
+  defp update_conversation_state(chat_id, user_message, bot_response, state) do
+    current_state = get_conversation_state(chat_id, state)
+    
+    new_messages = current_state.messages ++ [
+      %{role: "user", content: user_message, timestamp: DateTime.utc_now()},
+      %{role: "assistant", content: bot_response, timestamp: DateTime.utc_now()}
+    ]
+    
+    # Keep only last 20 messages for context
+    trimmed_messages = Enum.take(new_messages, -20)
+    
+    new_state = %{current_state | messages: trimmed_messages}
+    :ets.insert(state.conversation_table, {chat_id, new_state})
+  end
+  
+  defp request_llm_response(text, message, conversation_state, state) do
+    chat_id = message["chat"]["id"]
+    from = message["from"]
+    
+    # Create LLM request
+    llm_request = %{
+      type: "conversation",
+      chat_id: chat_id,
+      user_id: from["id"],
+      username: from["username"],
+      message: text,
+      conversation_history: conversation_state.messages,
+      context: Map.merge(conversation_state.context, %{
+        platform: "telegram",
+        agent_id: state.agent_id
+      })
+    }
+    
+    # Send request to LLM worker via AMQP
+    case publish_to_llm_workers(llm_request, state) do
+      {:ok, response} -> {:ok, response}
+      {:error, :timeout} -> {:error, :llm_timeout}
+      error -> error
+    end
+  end
+  
+  defp publish_to_llm_workers(request, state) do
+    correlation_id = :erlang.unique_integer() |> Integer.to_string()
+    reply_queue = "telegram.#{state.agent_id}.replies.#{correlation_id}"
+    
+    # Declare temporary reply queue
+    case AMQP.Queue.declare(state.channel, reply_queue, exclusive: true, auto_delete: true) do
+      {:ok, _} ->
+        # Subscribe to reply queue
+        AMQP.Basic.consume(state.channel, reply_queue, nil, no_ack: true)
+        
+        # Publish request to LLM workers
+        message = %{
+          request: request,
+          reply_to: reply_queue,
+          correlation_id: correlation_id,
+          timestamp: DateTime.utc_now()
+        }
+        
+        case AMQP.Basic.publish(
+          state.channel,
+          "vsm.llm.requests",  # LLM workers listen on this exchange
+          "llm.request.conversation",
+          Jason.encode!(message),
+          reply_to: reply_queue,
+          correlation_id: correlation_id
+        ) do
+          :ok ->
+            # Wait for response
+            receive do
+              {:basic_deliver, payload, _meta} ->
+                case Jason.decode(payload) do
+                  {:ok, %{"response" => response}} -> {:ok, response}
+                  {:ok, %{"error" => error}} -> {:error, error}
+                  _ -> {:error, :invalid_response}
+                end
+            after
+              30_000 -> # 30 second timeout
+                Logger.warning("LLM request timeout for chat #{request.chat_id}")
+                {:error, :timeout}
+            end
+            
+          error ->
+            Logger.error("Failed to publish LLM request: #{inspect(error)}")
+            {:error, :publish_failed}
+        end
+        
+      error ->
+        Logger.error("Failed to declare reply queue: #{inspect(error)}")
+        {:error, :queue_failed}
+    end
+  end
+
   # AMQP Command Processing
 
   defp process_amqp_command(%{"command" => "send_message"} = cmd, state) do

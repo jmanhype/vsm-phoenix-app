@@ -46,7 +46,20 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
     end
     
     # Set up AMQP for conversation requests
-    {:ok, channel} = VsmPhoenix.AMQP.ConnectionManager.get_channel(:llm_worker)
+    channel = case VsmPhoenix.AMQP.ConnectionManager.get_channel(agent_id) do
+      {:ok, ch} -> ch
+      {:error, reason} ->
+        Logger.error("Failed to get AMQP channel: #{inspect(reason)}")
+        # Try with unique ID
+        case VsmPhoenix.AMQP.ConnectionManager.get_channel("llm_#{agent_id}") do
+          {:ok, ch} -> ch
+          _ -> 
+            # Last resort - create direct connection
+            {:ok, conn} = AMQP.Connection.open()
+            {:ok, ch} = AMQP.Channel.open(conn)
+            ch
+        end
+    end
     
     # Declare exchanges
     :ok = AMQP.Exchange.declare(channel, "vsm.llm.requests", :topic, durable: true)
