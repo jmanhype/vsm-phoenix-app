@@ -271,11 +271,25 @@
         ],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Neuro-Inspired Observability with Emergent Pattern Monitoring",
+        "description": "Shift from node-level to emergent-pattern monitoring by implementing Miller's representational drift detection through AMQP bus taps, entropy metrics, and EEG-style analytics for System 3 resilience monitoring",
+        "details": "This task implements neuro-inspired observability that treats the AMQP message bus as a neural network, monitoring emergent patterns rather than individual agent metrics:\n\n1. **Create VsmPhoenix.Telemetry.BusTap GenStage**:\n   - Subscribe to all AMQP exchanges (`vsm.#`) with fanout pattern\n   - Bucket messages per exchange per 1-second window\n   - Compute Shannon entropy and inter-queue cross-correlation\n   - Emit `{:bus_stats, exchange, entropy, msg_rate}` events\n\n2. **Implement Brain Wave Mapping**:\n   - **Gamma waves** (sensory flood): Monitor S1→S2/S3 data flows via `vsm.s1.<id>.results` and `vsm.intelligence`\n   - **Beta waves** (top-down control): Track S5 policy broadcasts via `vsm.policy` and `vsm.control`\n   - **Coherence test**: Measure message entropy changes after policy updates\n\n3. **Enhance ResilienceDashboardLive**:\n   - Extend existing dashboard with coherence vs. policy epochs visualization\n   - Add rolling heat-map with beta-gamma overlay\n   - Implement waveform displays for entropy patterns\n   - Only elevate alerts when coherence drops below threshold\n\n4. **Create VsmPhoenix.Observability.CohortAnomalyDetector**:\n   - Integrate with GoldRush PatternEngine\n   - Implement rule language: `if failure_rate(capability, Δt) > X ...`\n   - Trigger only when ≥N% agents in same capability cohort fail within Δt\n   - Generate population-level anomaly alerts\n\n5. **Implement ViabilityEvaluator 2.0**:\n   - Replace boolean `agent_health` with coherence score (0-1)\n   - Integrate with entropy metrics from BusTap\n   - Align with existing algedonic ratios\n   - Feed coherence data to VarietyCalculator\n\n6. **Build Log-EEG Pipeline**:\n   - Ship logs → Beats → Kafka topic `vsm.eeg`\n   - Stream into GoldRush for spectral analysis\n   - Run FFT on timestamp density for EEG visualization\n   - Correlate log patterns with AMQP coherence metrics\n\nTechnical Integration:\n- Leverage existing GoldRush.EventProcessor pattern subscriptions\n- Extend VsmPhoenixWeb.Telemetry module\n- Use ETS tables for real-time entropy/correlation storage\n- Integrate with existing Infrastructure.CausalityAMQP",
+        "testStrategy": "1. **Unit Tests**:\n   - Test BusTap GenStage with mock AMQP message streams\n   - Verify Shannon entropy calculations with known data patterns\n   - Test inter-queue correlation algorithms\n   - Validate CohortAnomalyDetector rule engine\n\n2. **Integration Tests**:\n   - Test end-to-end flow from AMQP bus to dashboard visualization\n   - Verify GoldRush PatternEngine integration\n   - Test ResilienceDashboardLive coherence displays\n   - Validate ViabilityEvaluator 2.0 coherence scoring\n\n3. **Performance Tests**:\n   - Benchmark BusTap overhead on AMQP message throughput\n   - Test dashboard responsiveness with high entropy data volumes\n   - Measure ETS table performance for real-time metrics storage\n   - Profile Log-EEG pipeline latency\n\n4. **Simulation Tests**:\n   - Create synthetic policy update bursts to test coherence detection\n   - Simulate agent failure cohorts to validate anomaly detection\n   - Test entropy pattern recognition with known failure scenarios\n   - Verify gamma/beta wave correlation with system state changes\n\n5. **Validation Tests**:\n   - Compare coherence metrics against manual system health assessments\n   - Validate that representational drift detection accurately identifies real issues\n   - Test that emergent pattern alerts reduce false positives vs. node-level monitoring\n   - Verify alignment with Miller's emergent reliability principles",
+        "status": "pending",
+        "dependencies": [
+          2,
+          3
+        ],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-08-07T20:24:20.117Z",
-      "updated": "2025-08-07T21:16:31.374Z",
+      "updated": "2025-08-07T21:21:22.499Z",
       "description": "Phase 3: Recursive System Spawning & Meta-Learning"
     }
   },
