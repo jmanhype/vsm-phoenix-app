@@ -396,7 +396,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Policy Coherence</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@queen_metrics, :policy_coherence, 0.95)) %>
+                  <%= format_percentage(Map.get(@queen_metrics, :coherence, 0.95)) %>
                 </span>
               </div>
               
@@ -414,10 +414,17 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
                 </span>
               </div>
               
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Decision Consistency</span>
+                <span class="font-mono text-blue-400">
+                  <%= format_percentage(Map.get(@queen_metrics, :decision_consistency, 0.90)) %>
+                </span>
+              </div>
+              
               <div class="mt-4 p-3 bg-gray-700 rounded">
                 <div class="text-sm text-gray-400 mb-1">Active Policies</div>
                 <div class="text-sm">
-                  <%= for policy <- Map.get(@queen_metrics, :active_policies, ["governance", "adaptation", "resource"]) do %>
+                  <%= for policy <- Map.get(@queen_metrics, :policies, ["governance", "adaptation", "resource"]) do %>
                     <span class="inline-block bg-purple-600 rounded px-2 py-1 text-xs mr-1 mb-1">
                       <%= policy %>
                     </span>
@@ -492,18 +499,18 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Active Allocations</span>
                 <span class="font-mono text-blue-400">
-                  <%= get_in(@control_metrics, [:active_allocations, :count]) || 0 %>
+                  <%= map_size(Map.get(@control_metrics, :allocations, %{})) %>
                 </span>
               </div>
               
               <!-- Resource bars -->
               <div class="mt-4 space-y-2">
-                <% pools = Map.get(@control_metrics, :pools, %{}) %>
+                <% pools = Map.get(@control_metrics, :flow_pools, %{}) %>
               <%= for {resource, usage} <- [
-                {"CPU", get_in(pools, [:compute, :actual_utilization]) || 0.0}, 
-                {"Memory", get_in(pools, [:memory, :actual_utilization]) || 0.0}, 
-                {"Network", get_in(pools, [:network, :actual_utilization]) || 0.0}, 
-                {"Storage", get_in(pools, [:storage, :actual_utilization]) || 0.0}
+                {"CPU", get_in(pools, [:compute, :allocated_capacity]) || 0.0}, 
+                {"Memory", get_in(pools, [:memory, :allocated_capacity]) || 0.0}, 
+                {"Network", get_in(pools, [:network, :allocated_capacity]) || 0.0}, 
+                {"Storage", get_in(pools, [:storage, :allocated_capacity]) || 0.0}
               ] do %>
                   <div>
                     <div class="flex justify-between text-sm mb-1">
@@ -531,33 +538,40 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
             
             <div class="space-y-4">
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Coordination Effectiveness</span>
-                <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@coordination_status, :effectiveness, 0.94)) %>
-                </span>
-              </div>
-              
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Message Flows</span>
+                <span class="text-gray-400">Message Volume</span>
                 <span class="font-mono text-blue-400">
-                  <%= Map.get(@coordination_status, :active_flows, 8) %>
+                  <%= Float.round(Map.get(@coordination_status, :message_rate, 0.0), 2) %>/s
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Synchronization Level</span>
+                <span class="text-gray-400">Routing Efficiency</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@coordination_status, :synchronization_level, 0.96)) %>
+                  <%= format_percentage(Map.get(@coordination_status, :routing_efficiency, 1.0)) %>
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Oscillation Risks</span>
+                <span class="text-gray-400">Sync Events</span>
+                <span class="font-mono text-blue-400">
+                  <%= Map.get(@coordination_status, :sync_events_per_minute, 0) %>/min
+                </span>
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Conflict Resolution Rate</span>
+                <span class="font-mono text-green-400">
+                  <%= format_percentage(Map.get(@coordination_status, :conflict_resolution_rate, 1.0)) %>
+                </span>
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Flow Balance</span>
                 <span class={[
                   "font-mono",
-                  if(length(Map.get(@coordination_status, :oscillation_risks, [])) > 0, do: "text-red-400", else: "text-green-400")
+                  if(abs(Map.get(@coordination_status, :flow_balance_ratio, 1.0) - 1.0) > 0.2, do: "text-yellow-400", else: "text-green-400")
                 ]}>
-                  <%= length(Map.get(@coordination_status, :oscillation_risks, [])) %>
+                  <%= Float.round(Map.get(@coordination_status, :flow_balance_ratio, 1.0), 2) %>
                 </span>
               </div>
             </div>
@@ -572,30 +586,37 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
             
             <div class="space-y-4">
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Success Rate</span>
+                <span class="text-gray-400">Activity Rate</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@operations_metrics, :success_rate, 0.97)) %>
+                  <%= Float.round(Map.get(@operations_metrics, :activity_rate, 0.0), 2) %>/s
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Orders Processed</span>
+                <span class="text-gray-400">Success Ratio</span>
+                <span class="font-mono text-green-400">
+                  <%= format_percentage(Map.get(@operations_metrics, :success_ratio, 1.0)) %>
+                </span>
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Processing Latency</span>
                 <span class="font-mono text-blue-400">
-                  <%= Map.get(@operations_metrics, :orders_processed, 1247) %>
+                  <%= Map.get(@operations_metrics, :avg_latency, 0) %>ms
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Customer Satisfaction</span>
-                <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@operations_metrics, :customer_satisfaction, 0.93)) %>
+                <span class="text-gray-400">Throughput</span>
+                <span class="font-mono text-blue-400">
+                  <%= Map.get(@operations_metrics, :throughput, 0) %> ops/min
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Inventory Accuracy</span>
-                <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@operations_metrics, :inventory_accuracy, 0.98)) %>
+                <span class="text-gray-400">Error Rate</span>
+                <span class="font-mono text-yellow-400">
+                  <%= format_percentage(Map.get(@operations_metrics, :error_rate, 0.0)) %>
                 </span>
               </div>
             </div>
@@ -660,14 +681,14 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               </div>
               
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Efficiency</span>
+                <span class="text-gray-400">Resource Allocation Efficiency</span>
                 <span class="font-mono text-green-400">
                   <%= format_percentage(Map.get(@audit_results, :efficiency, 0.85)) %>
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
-                <span class="text-gray-400">Waste Detected</span>
+                <span class="text-gray-400">Resource Waste Ratio</span>
                 <span class={[
                   "font-mono",
                   if(Map.get(@audit_results, :waste, 0.05) > 0.1, do: "text-red-400", else: "text-green-400")
@@ -1006,36 +1027,81 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
   end
   
   defp update_system_metrics(socket) do
-    # Get static system metrics
-    queen_metrics = Queen.get_identity_metrics()
-    intelligence_status = Intelligence.get_system_health()
-    {:ok, control_metrics} = Control.get_resource_metrics()
-    coordination_status = Coordinator.get_coordination_status()
-    operations_metrics = GenServer.call(:operations_context, :get_metrics)
+    # Get static system metrics with error handling
+    queen_metrics = try do
+      Queen.get_identity_metrics()
+    rescue
+      e ->
+        Logger.error("Failed to get Queen metrics: #{inspect(e)}")
+        %{}
+    end
+    
+    intelligence_status = try do
+      Intelligence.get_system_health()
+    rescue
+      e ->
+        Logger.error("Failed to get Intelligence status: #{inspect(e)}")
+        %{}
+    end
+    
+    control_metrics = try do
+      case Control.get_resource_metrics() do
+        {:ok, metrics} -> metrics
+        _ -> %{}
+      end
+    rescue
+      e ->
+        Logger.error("Failed to get Control metrics: #{inspect(e)}")
+        %{}
+    end
+    
+    coordination_status = try do
+      VsmPhoenix.Infrastructure.SystemicCoordinationMetrics.get_metrics()
+    rescue
+      e ->
+        Logger.error("Failed to get Coordinator status: #{inspect(e)}")
+        %{}
+    end
+    
+    operations_metrics = try do
+      VsmPhoenix.Infrastructure.SystemicOperationsMetrics.get_metrics()
+    rescue
+      e ->
+        Logger.error("Failed to get Operations metrics: #{inspect(e)}")
+        %{error_rate: 0.0, success_rate: 1.0, average_processing_time: 0.0}
+    end
     
     # Get dynamic metrics from our new components
     variety_metrics = try do
       VsmPhoenix.VarietyEngineering.Metrics.VarietyCalculator.get_all_metrics()
     rescue
-      _ -> %{variety_metrics: %{}, overall_diversity: 0.0}
+      e ->
+        Logger.error("Failed to get Variety metrics: #{inspect(e)}")
+        %{variety_metrics: %{}, overall_diversity: 0.0}
     end
     
     balance_status = try do
       VsmPhoenix.VarietyEngineering.Metrics.BalanceMonitor.get_balance_status()
     rescue
-      _ -> %{balance_status: %{}, overall_balance: :unknown}
+      e ->
+        Logger.error("Failed to get Balance status: #{inspect(e)}")
+        %{balance_status: %{}, overall_balance: :unknown}
     end
     
     performance_metrics = try do
       GenServer.call(VsmPhoenix.PerformanceMonitor, :get_current_metrics)
     rescue
-      _ -> %{performance_score: 1.0, trends: %{}}
+      e ->
+        Logger.error("Failed to get Performance metrics: #{inspect(e)}")
+        %{performance_score: 1.0, trends: %{}}
     end
     
     health_status = try do
       VsmPhoenix.HealthChecker.get_health_status()
     rescue
-      _ -> %{overall_health: 1.0, system_health: %{}}
+      e ->
+        Logger.error("Failed to get Health status: #{inspect(e)}")
+        %{overall_health: 1.0, system_health: %{}}
     end
     
     socket
@@ -1051,9 +1117,16 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
   end
   
   defp update_viability_score(socket) do
-    # Direct call - fail fast
-    viability = Queen.evaluate_viability()
-    assign(socket, :viability_score, viability.system_health)
+    viability_score = try do
+      viability = Queen.evaluate_viability()
+      viability.system_health
+    rescue
+      e ->
+        Logger.error("Failed to evaluate viability: #{inspect(e)}")
+        0.0
+    end
+    
+    assign(socket, :viability_score, viability_score)
   end
   
   defp check_system_alerts(socket) do
@@ -1180,15 +1253,29 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
   end
   
   defp update_audit_results(socket) do
-    # Get latest audit results from S3
-    audit = Control.audit_resource_usage()
-    
-    audit_summary = %{
-      timestamp: DateTime.utc_now(),
-      efficiency: Map.get(audit.efficiency_analysis || %{}, :current, 0.85),
-      waste: Map.get(audit.waste_analysis || %{}, :resource_waste, 0.05),
-      recommendations: audit.recommendations || []
-    }
+    audit_summary = try do
+      # Get latest audit results from S3
+      audit = Control.audit_resource_usage()
+      
+      # Get the actual pattern metrics which includes last_calculated
+      pattern_metrics = Control.get_pattern_metrics()
+      
+      %{
+        timestamp: Map.get(pattern_metrics, :last_calculated, DateTime.utc_now()),
+        efficiency: Map.get(audit, :efficiency, 0.85),
+        waste: Map.get(audit, :waste_ratio, Map.get(audit, :waste, 0.05)),
+        recommendations: Map.get(audit, :recommendations, [])
+      }
+    rescue
+      e ->
+        Logger.error("Failed to get audit results: #{inspect(e)}")
+        %{
+          timestamp: DateTime.utc_now(),
+          efficiency: 0.85,
+          waste: 0.05,
+          recommendations: []
+        }
+    end
     
     assign(socket, :audit_results, audit_summary)
   end

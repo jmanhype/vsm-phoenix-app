@@ -56,9 +56,17 @@ defmodule VsmPhoenix.System3.Control do
   def get_resource_metrics do
     GenServer.call(@name, :get_resource_metrics)
   end
+
+  def audit_resource_usage do
+    GenServer.call(@name, :audit_resource_usage)
+  end
   
   def audit_flow_patterns do
     GenServer.call(@name, :audit_flow_patterns)
+  end
+  
+  def get_pattern_metrics do
+    GenServer.call(@name, :get_pattern_metrics)
   end
   
   @doc """
@@ -295,6 +303,21 @@ defmodule VsmPhoenix.System3.Control do
   end
   
   @impl true
+  def handle_call(:audit_resource_usage, _from, state) do
+    audit_report = %{
+      total_allocated: calculate_total_allocated(state),
+      total_available: calculate_total_available(state),
+      efficiency: state.pattern_metrics.allocation_efficiency,
+      waste_ratio: state.pattern_metrics.waste_ratio,
+      optimizations_performed: length(state.pattern_metrics.optimization_actions),
+      violations: state.pattern_metrics.constraint_violations,
+      flow_patterns: analyze_flow_patterns(state)
+    }
+    
+    {:reply, audit_report, state}
+  end
+
+  @impl true
   def handle_call(:audit_flow_patterns, _from, state) do
     audit_report = %{
       current_allocations: state.allocations,
@@ -305,6 +328,11 @@ defmodule VsmPhoenix.System3.Control do
     }
     
     {:reply, audit_report, state}
+  end
+  
+  @impl true
+  def handle_call(:get_pattern_metrics, _from, state) do
+    {:reply, state.pattern_metrics, state}
   end
   
   @impl true
@@ -1419,14 +1447,21 @@ defmodule VsmPhoenix.System3.Control do
     allocations
     |> Map.values()
     |> Enum.reduce(%{compute: 0, memory: 0, network: 0, storage: 0}, fn allocation, acc ->
-      resources = allocation[:resources] || %{}
-      
-      %{
-        compute: acc.compute + (resources[:compute] || 0),
-        memory: acc.memory + (resources[:memory] || 0),
-        network: acc.network + (resources[:network] || 0),
-        storage: acc.storage + (resources[:storage] || 0)
-      }
+      case allocation do
+        %{resources: resources} when is_map(resources) ->
+          %{
+            compute: acc.compute + (resources[:compute] || 0),
+            memory: acc.memory + (resources[:memory] || 0),
+            network: acc.network + (resources[:network] || 0),
+            storage: acc.storage + (resources[:storage] || 0)
+          }
+        %AMQP.Channel{} ->
+          Logger.warning("Control: AMQP.Channel found in allocations - this is a bug!")
+          acc
+        other ->
+          Logger.warning("Control: Unexpected allocation type: #{inspect(other)}")
+          acc
+      end
     end)
   end
   
@@ -3298,6 +3333,69 @@ defmodule VsmPhoenix.System3.Control do
     |> Map.update(:regulatory_flow, %{}, fn pool ->
       Map.put(pool, :actual_usage, flow_patterns.constraints.regulatory_usage)
     end)
+  end
+
+  defp generate_allocation_id, do: Ecto.UUID.generate()
+
+  defp calculate_total_allocated(state) do
+    state.allocations
+    |> Map.values()
+    |> Enum.reduce(0, fn allocation, acc ->
+      case allocation do
+        %{flows: flows} when is_map(flows) ->
+          total = flows |> Map.values() |> Enum.sum()
+          acc + total
+        %{resources: resources} when is_map(resources) ->
+          total = resources |> Map.values() |> Enum.sum()
+          acc + total
+        %AMQP.Channel{} ->
+          Logger.warning("Control: AMQP.Channel found in allocations - this is a bug!")
+          acc
+        other ->
+          Logger.warning("Control: Unexpected allocation type: #{inspect(other)}")
+          acc
+      end
+    end)
+  end
+
+  defp calculate_total_available(state) do
+    state.flow_pools
+    |> Map.values()
+    |> Enum.reduce(0, fn pool, acc ->
+      if is_map(pool) and Map.has_key?(pool, :total_capacity) do
+        total = Map.get(pool, :total_capacity, 0)
+        allocated = Map.get(pool, :allocated_capacity, 0)
+        reserved = Map.get(pool, :reserved_capacity, 0)
+        available = total - allocated - reserved
+        acc + available
+      else
+        acc
+      end
+    end)
+  end
+
+  defp analyze_flow_patterns(state) do
+    current_patterns = state.flow_patterns || collect_systemic_patterns()
+    
+    %{
+      utilization: calculate_flow_utilization(current_patterns),
+      balance: calculate_flow_balance(current_patterns),
+      efficiency: calculate_allocation_efficiency(state, current_patterns),
+      health: calculate_systemic_health(current_patterns, state)
+    }
+  end
+
+  defp calculate_baseline_value(patterns, path) do
+    values = patterns
+    |> Enum.map(fn pattern ->
+      get_in(pattern, path) || 0
+    end)
+    
+    if Enum.empty?(values) do
+      0.0
+    else
+      Enum.sum(values) / length(values)
+    end
   end
 
 end

@@ -243,82 +243,74 @@ defmodule VsmPhoenix.VarietyEngineering.Metrics.VarietyCalculator do
   end
   
   defp calculate_summary(metrics) do
-    avg_ratio = metrics
+    # Ensure metrics is a map and filter out non-map values
+    valid_metrics = metrics
+                    |> Enum.filter(fn {_k, v} -> is_map(v) end)
+                    |> Enum.into(%{})
+    
+    avg_ratio = valid_metrics
                 |> Map.values()
                 |> Enum.map(fn metric ->
-                  if is_map(metric) do
-                    Map.get(metric, :ratio, 0)
-                  else
-                    0
-                  end
+                  Map.get(metric, :ratio, 0)
                 end)
                 |> Enum.sum()
                 |> Kernel./(5)
     
-    avg_entropy_ratio = metrics
+    avg_entropy_ratio = valid_metrics
                         |> Map.values()
                         |> Enum.map(fn metric ->
-                          if is_map(metric) do
-                            get_in(metric, [:entropy, :ratio]) || 0
-                          else
-                            0
+                          case metric do
+                            %{entropy: %{ratio: ratio}} when is_number(ratio) -> ratio
+                            %{entropy: entropy} when is_map(entropy) -> 
+                              Map.get(entropy, :ratio, 0)
+                            _ -> 0
                           end
                         end)
                         |> Enum.sum()
                         |> Kernel./(5)
     
-    total_input = metrics
+    total_input = valid_metrics
                   |> Map.values()
                   |> Enum.map(fn metric ->
-                    if is_map(metric) do
-                      Map.get(metric, :input_variety, 0)
-                    else
-                      0
-                    end
+                    Map.get(metric, :input_variety, 0)
                   end)
                   |> Enum.sum()
     
-    total_output = metrics
+    total_output = valid_metrics
                    |> Map.values()
                    |> Enum.map(fn metric ->
-                     if is_map(metric) do
-                       Map.get(metric, :output_variety, 0)
-                     else
-                       0
-                     end
+                     Map.get(metric, :output_variety, 0)
                    end)
                    |> Enum.sum()
     
-    total_input_entropy = metrics
+    total_input_entropy = valid_metrics
                           |> Map.values()
                           |> Enum.map(fn metric ->
-                            if is_map(metric) do
-                              get_in(metric, [:entropy, :input]) || 0
-                            else
-                              0
+                            case metric do
+                              %{entropy: %{input: input}} when is_number(input) -> input
+                              %{entropy: entropy} when is_map(entropy) -> 
+                                Map.get(entropy, :input, 0)
+                              _ -> 0
                             end
                           end)
                           |> Enum.sum()
     
-    total_output_entropy = metrics
+    total_output_entropy = valid_metrics
                            |> Map.values()
                            |> Enum.map(fn metric ->
-                             if is_map(metric) do
-                               get_in(metric, [:entropy, :output]) || 0
-                             else
-                               0
+                             case metric do
+                               %{entropy: %{output: output}} when is_number(output) -> output
+                               %{entropy: entropy} when is_map(entropy) -> 
+                                 Map.get(entropy, :output, 0)
+                               _ -> 0
                              end
                            end)
                            |> Enum.sum()
     
-    avg_velocity = metrics
+    avg_velocity = valid_metrics
                    |> Map.values()
                    |> Enum.map(fn metric ->
-                     if is_map(metric) do
-                       Map.get(metric, :velocity, 0)
-                     else
-                       0
-                     end
+                     Map.get(metric, :velocity, 0)
                    end)
                    |> Enum.sum()
                    |> Kernel./(5)
@@ -340,7 +332,14 @@ defmodule VsmPhoenix.VarietyEngineering.Metrics.VarietyCalculator do
     # Perfect balance = 1.0 ratio at each level
     deviations = metrics
                  |> Map.values()
-                 |> Enum.map(& abs(&1.ratio - 1.0))
+                 |> Enum.map(fn metric ->
+                   if is_map(metric) do
+                     ratio = Map.get(metric, :ratio, 0)
+                     abs(ratio - 1.0)
+                   else
+                     1.0  # Maximum deviation for non-map values
+                   end
+                 end)
                  |> Enum.sum()
     
     1.0 - (deviations / 5.0)  # Normalize to 0-1 scale

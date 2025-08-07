@@ -329,6 +329,12 @@ defmodule VsmPhoenix.PerformanceMonitor do
     {:noreply, new_state}
   end
   
+  @impl true
+  def handle_info(msg, state) do
+    Logger.debug("PerformanceMonitor received unexpected message: #{inspect(msg)}")
+    {:noreply, state}
+  end
+  
   defp generate_performance_report(state) do
     %{
       current: state.current_metrics,

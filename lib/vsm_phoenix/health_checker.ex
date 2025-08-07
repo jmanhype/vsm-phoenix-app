@@ -173,7 +173,14 @@ defmodule VsmPhoenix.HealthChecker do
     
     case Process.whereis(process_name) do
       nil ->
-        %{status: :down, score: 0.0, message: "Process not running"}
+        %{
+          status: :down, 
+          score: 0.0, 
+          message: "Process not running",
+          memory_mb: 0,
+          queue_len: 0,
+          reductions: 0
+        }
         
       pid ->
         info = Process.info(pid, [:memory, :message_queue_len, :reductions])
