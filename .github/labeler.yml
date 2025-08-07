@@ -1,0 +1,90 @@
+# Auto-labeling configuration for PRs
+
+# VSM Systems
+"vsm:system1":
+  - "lib/vsm_phoenix/system1/**/*"
+  - "test/vsm_phoenix/system1/**/*"
+
+"vsm:system2":
+  - "lib/vsm_phoenix/system2/**/*"
+  - "test/vsm_phoenix/system2/**/*"
+
+"vsm:system3":
+  - "lib/vsm_phoenix/system3/**/*"
+  - "test/vsm_phoenix/system3/**/*"
+
+"vsm:system4":
+  - "lib/vsm_phoenix/system4/**/*"
+  - "test/vsm_phoenix/system4/**/*"
+
+"vsm:system5":
+  - "lib/vsm_phoenix/system5/**/*"
+  - "test/vsm_phoenix/system5/**/*"
+
+# Infrastructure
+"infrastructure":
+  - "lib/vsm_phoenix/infrastructure/**/*"
+  - "test/vsm_phoenix/infrastructure/**/*"
+  - "config/infrastructure.exs"
+
+# Resilience
+"resilience":
+  - "lib/vsm_phoenix/resilience/**/*"
+  - "test/vsm_phoenix/resilience/**/*"
+  - "config/resilience.exs"
+
+# Security
+"security":
+  - "lib/vsm_phoenix/infrastructure/security*"
+  - "test/vsm_phoenix/infrastructure/security*"
+  - "config/security.exs"
+
+# Telegram
+"telegram":
+  - "lib/vsm_phoenix/system1/agents/telegram_agent.ex"
+  - "lib/vsm_phoenix/infrastructure/telegram_service.ex"
+  - "lib/vsm_phoenix/resilience/telegram_resilient_client.ex"
+
+# AMQP/Messaging
+"amqp":
+  - "lib/vsm_phoenix/amqp/**/*"
+  - "test/vsm_phoenix/amqp/**/*"
+  - "lib/vsm_phoenix/infrastructure/causality_amqp.ex"
+
+# MCP Integration
+"mcp":
+  - "lib/vsm_phoenix/mcp/**/*"
+  - "test/vsm_mcp_integration_test.exs"
+
+# Variety Engineering
+"variety-engineering":
+  - "lib/vsm_phoenix/variety_engineering/**/*"
+  - "docs/variety_engineering/**/*"
+
+# Documentation
+"documentation":
+  - "docs/**/*"
+  - "*.md"
+
+# Configuration
+"config":
+  - "config/**/*"
+
+# Tests
+"tests":
+  - "test/**/*"
+
+# Performance
+"performance":
+  - "**/*performance*"
+  - "**/*metrics*"
+
+# Breaking Changes
+"breaking-change":
+  - "lib/vsm_phoenix/application.ex"
+  - "config/config.exs"
+
+# UI/Web
+"ui":
+  - "lib/vsm_phoenix_web/**/*"
+  - "assets/**/*"

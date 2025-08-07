@@ -1,18 +1,10 @@
 [
   {
-    "id": "cmd-hooks-1754069045981",
+    "id": "cmd-hooks-1754538619387",
     "type": "hooks",
     "success": true,
-    "duration": 4.920501000000002,
-    "timestamp": 1754069045986,
-    "metadata": {}
-  },
-  {
-    "id": "cmd-github-1754538334092",
-    "type": "github",
-    "success": true,
-    "duration": 29404.237208,
-    "timestamp": 1754538363484,
+    "duration": 7.483666999999997,
+    "timestamp": 1754538619395,
     "metadata": {}
   }
 ]
