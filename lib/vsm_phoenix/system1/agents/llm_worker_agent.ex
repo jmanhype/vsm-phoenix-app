@@ -68,12 +68,20 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
     # Create queue for this worker
     queue_name = "vsm.llm.worker.#{agent_id}"
     {:ok, _queue} = AMQP.Queue.declare(channel, queue_name, durable: true)
+    Logger.info("📮 Created queue: #{queue_name}")
     
     # Bind to conversation requests
     :ok = AMQP.Queue.bind(channel, queue_name, "vsm.llm.requests", routing_key: "llm.request.conversation")
+    Logger.info("🔗 Bound queue to vsm.llm.requests with routing key: llm.request.conversation")
     
     # Start consuming
-    {:ok, _consumer_tag} = AMQP.Basic.consume(channel, queue_name)
+    case AMQP.Basic.consume(channel, queue_name) do
+      {:ok, consumer_tag} ->
+        Logger.info("✅ LLM Worker #{agent_id} consuming from #{queue_name} with tag: #{consumer_tag}")
+      {:error, reason} ->
+        Logger.error("❌ Failed to start consuming: #{inspect(reason)}")
+        raise "Cannot start AMQP consumer"
+    end
     
     state = %{
       agent_id: agent_id,
@@ -478,13 +486,16 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
   defp interpolate_value(value, _context), do: value
   
   defp process_conversation(data, state) do
-    Logger.info("💬 Processing conversation request")
+    Logger.info("💬 Processing conversation request: #{inspect(data)}")
+    
+    # Handle wrapped message format from Telegram agent
+    actual_data = data["request"] || data
     
     # Extract conversation data
-    chat_id = data["chat_id"]
-    user_text = data["text"]
-    context = data["context"] || %{}
-    request_id = data["request_id"]
+    chat_id = actual_data["chat_id"]
+    user_text = actual_data["text"] || actual_data["message"]  # Handle both formats
+    context = actual_data["context"] || %{}
+    request_id = actual_data["request_id"] || data["correlation_id"]
     
     # Build system prompt with VSM context
     system_prompt = build_vsm_system_prompt(context)
@@ -586,8 +597,20 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
   end
   
   @impl true
-  def handle_info({:basic_consume_ok, %{consumer_tag: _consumer_tag}}, state) do
-    Logger.info("LLM Worker #{state.agent_id} subscribed to conversation queue")
+  def handle_info({:basic_consume_ok, %{consumer_tag: consumer_tag}}, state) do
+    Logger.info("✅ LLM Worker #{state.agent_id} confirmed subscription with tag: #{consumer_tag}")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_cancel, %{consumer_tag: consumer_tag}}, state) do
+    Logger.error("❌ LLM Worker #{state.agent_id} consumer cancelled: #{consumer_tag}")
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_info({:basic_cancel_ok, %{consumer_tag: consumer_tag}}, state) do
+    Logger.info("Consumer cancelled OK: #{consumer_tag}")
     {:noreply, state}
   end
   
