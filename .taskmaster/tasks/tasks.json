@@ -18,13 +18,5 @@
       "updated": "2025-08-07T20:27:06.520Z",
       "description": "Phase 3: Recursive System Spawning & Meta-Learning"
     }
-  },
-  "vsm-phase1-remaining": {
-    "tasks": [],
-    "metadata": {
-      "created": "2025-08-07T20:28:13.078Z",
-      "updated": "2025-08-07T20:28:13.078Z",
-      "description": "Phase 1: Complete System 1 Operations (remaining 40%)"
-    }
   }
 }
