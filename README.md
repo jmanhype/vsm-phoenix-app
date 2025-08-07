@@ -564,101 +564,136 @@ For detailed technical documentation, see the `/docs` directory. For examples an
 ### Phase 3: Self-Optimizing Intelligence - GEPA Integration (3-4 weeks)
 **Goal**: Implement reflective prompt evolution and self-optimizing LLM capabilities
 
+**Architectural Pattern Integration**:
+- **Hexagonal Architecture**: GEPA as a port/adapter for prompt optimization
+- **Event-Driven**: Execution traces as events feeding prompt evolution
+- **CQRS**: Separate read models for prompt performance analysis
+
+**Neuroscience Concept Alignment**:
+- **Representational Drift**: Prompts evolve like neural representations
+- **Mixed-Selectivity**: Single prompts adapt to multiple contexts
+- **Analog Computation**: Continuous optimization in prompt space
+- **Self-Organized Criticality**: Prompts reach optimal complexity naturally
+
 - [ ] **GEPA Core Integration**
-  - Reflective prompt mutation for System 4 environmental scanning
-  - Execution trace collection for all LLM interactions
-  - Pareto frontier optimization for prompt strategies
-  - Natural language reflection on system performance
+  - Reflective prompt mutation implementing representational drift
+  - Execution trace collection as sparse connectivity patterns
+  - Pareto frontier optimization using analog computation principles
+  - Natural language reflection mirroring dendritic computation
 
 - [ ] **System 4 GEPA Intelligence**
   - Self-optimizing environmental scan prompts (35x efficiency)
-  - Learning anomaly detection patterns from traces
-  - Adaptive variety analysis that improves over time
-  - Context-aware scanning strategies per environment type
+  - Learning anomaly detection via mixed-selectivity neurons
+  - Adaptive variety analysis using brain wave oscillations
+  - Context-aware scanning with hierarchical processing
 
 - [ ] **System 5 GEPA Policy Synthesis**
-  - Self-evolving policy generation prompts
-  - Reflection on policy implementation outcomes
-  - Learning from algedonic signal patterns
-  - Adaptive decision-making that improves with feedback
+  - Self-evolving policy generation via metabolic efficiency
+  - Reflection on outcomes using algedonic gradients
+  - Learning from signal patterns like retrograde messengers
+  - Adaptive decision-making with neurotransmitter dynamics
 
 - [ ] **LLM Worker Agent GEPA Reasoning**
-  - Self-optimizing task execution prompts
-  - Learning tool usage patterns from successful executions
-  - Adaptive MCP integration strategies
-  - Context-aware agent spawning optimization
+  - Self-optimizing task execution via structural plasticity
+  - Learning tool patterns from successful activations
+  - Adaptive MCP strategies using cross-level coordination
+  - Context-aware spawning with parallel pathways
 
 - [ ] **GEPA Performance Monitoring**
-  - Trace collection infrastructure across all systems
-  - Prompt performance metrics and analytics
-  - A/B testing framework for prompt strategies
-  - Continuous improvement dashboard
+  - Trace collection as neural recording infrastructure
+  - Prompt metrics using information-theoretic measures
+  - A/B testing framework with stochastic optimization
+  - Continuous improvement via synaptic plasticity
 
 ### Phase 4: Event-Driven Intelligence - Cybernetic.ai Patterns (4-5 weeks)
 **Goal**: Implement event-as-evidence philosophy and causal graph intelligence
 
+**Architectural Pattern Integration**:
+- **Event-Driven Architecture**: Events as primary evidence source
+- **DDD**: Bounded contexts for causal graph domains
+- **Saga Pattern**: Distributed learning transactions
+- **Event Sourcing**: Complete history for causal analysis
+
+**Neuroscience Concept Alignment**:
+- **Brain Waves**: Event patterns as alpha/beta/gamma oscillations
+- **Parallel Pathways**: Multiple evidence processing streams
+- **Cross-Level Coordination**: Micro-macro feedback loops
+- **Glial Networks**: Support infrastructure for event processing
+
 - [ ] **Events as Evidence Architecture**
-  - Event stream → Evidence analysis → Policy synthesis pipeline
-  - Causal graph construction from system events
-  - Meaning graphs across time and relationships
-  - Evidence-based learning framework
+  - Event stream processing using brain wave frequencies
+  - Causal graph construction via dendritic branching patterns
+  - Meaning graphs implementing semantic memory networks
+  - Evidence-based learning with hippocampal consolidation
 
 - [ ] **Contextual Fusion Engine**
-  - Build meaning graphs from event chains
-  - Temporal relationship tracking across systems
-  - Context preservation using CRDTs
-  - Distributed knowledge synchronization
+  - Build meaning graphs from parallel pathway integration
+  - Temporal tracking using circadian-like rhythms
+  - Context preservation via glial support networks
+  - Distributed synchronization through gap junctions
 
 - [ ] **AI Immune System**
-  - Proactive anomaly detection from event patterns
-  - Auto-synthesis of protective policies
-  - Self-healing mechanism injection
-  - Threat pattern learning and evolution
+  - Proactive anomaly detection using microglia patterns
+  - Auto-synthesis policies via immune memory cells
+  - Self-healing through astrocyte repair mechanisms
+  - Threat learning with adaptive immune responses
 
 - [ ] **Distributed Agent Learning**
-  - CRDT-based conflict-free knowledge sharing
-  - Collective intelligence emergence
-  - Cross-agent learning synchronization
-  - Swarm-level optimization strategies
+  - CRDT-based sharing mimicking synaptic transmission
+  - Collective intelligence via neuronal ensemble coding
+  - Cross-agent sync through ephaptic coupling
+  - Swarm optimization using ant colony algorithms
 
 - [ ] **Causal Intelligence Integration**
-  - Causal graph analysis for meta-system spawning
-  - Event provenance tracking and analysis
-  - Future projection from causal patterns
-  - System-wide intelligence synthesis
+  - Causal analysis through predictive coding frameworks
+  - Event provenance via retrograde signaling paths
+  - Future projection using forward models
+  - System-wide synthesis through global workspace
 
 ### Phase 5: Unified Self-Evolving System (5-6 weeks)
 **Goal**: Combine GEPA micro-optimization with Cybernetic.ai macro-intelligence
 
+**Unified Architecture Vision**:
+- **Microkernel Pattern**: Core VSM with pluggable intelligence modules
+- **Lambda Architecture**: Batch (GEPA) + Stream (Cybernetic.ai) processing
+- **Actor Model**: Autonomous agents with local optimization
+- **Reactive Manifesto**: Responsive, resilient, elastic, message-driven
+
+**Integrated Neuroscience Principles**:
+- **Self-Organized Criticality**: System naturally finds optimal complexity
+- **Metabolic Efficiency**: Resource optimization through pruning
+- **Structural Plasticity**: Architecture evolves with usage patterns
+- **Neuroplasticity**: Continuous adaptation at all levels
+
 - [ ] **Hybrid Intelligence Layer**
-  - GEPA prompt optimization + Event-driven policy synthesis
-  - Micro-level execution improvement + Macro-level system evolution
-  - Unified learning infrastructure across all VSM levels
-  - Emergent intelligence from combined approaches
+  - GEPA micro-optimization meets event-driven macro-evolution
+  - Representational drift in prompts + causal evidence graphs
+  - Unified learning via heterogeneous neural populations
+  - Emergent intelligence through critical phase transitions
 
 - [ ] **Meta-Cognitive Evolution**
-  - System observes its own optimization processes
-  - Self-modifying GEPA strategies
-  - Evolution of evolution mechanisms
-  - Meta-learning from learning patterns
+  - System observes optimization via mirror neuron patterns
+  - Self-modifying strategies through metaplasticity
+  - Evolution mechanisms using genetic regulatory networks
+  - Meta-learning via hierarchical Bayesian inference
 
 - [ ] **Autonomous VSM Evolution**
-  - Self-directed system improvements without human intervention
-  - Automatic discovery of new optimization opportunities
-  - Emergent behavioral patterns from combined learning
-  - Continuous adaptation to changing environments
+  - Self-directed improvements via autonomous nervous system
+  - Automatic discovery through curiosity-driven exploration
+  - Emergent patterns from edge-of-chaos dynamics
+  - Continuous adaptation using allostatic regulation
 
 - [ ] **Advanced Recursive Capabilities**
-  - GEPA-optimized meta-system spawning decisions
-  - Event-driven recursive VSM creation
-  - Cross-VSM collective intelligence
-  - Hierarchical learning propagation
+  - GEPA-optimized spawning via predictive energy minimization
+  - Event-driven recursion through fractal neural architectures
+  - Cross-VSM intelligence using brain-to-brain coupling
+  - Hierarchical propagation via thalamocortical loops
 
 - [ ] **Production-Ready Self-Optimization**
-  - Scalable learning infrastructure
-  - Performance guarantees with continuous improvement
-  - Human-in-the-loop validation when needed
-  - Comprehensive observability and control
+  - Scalable infrastructure using small-world networks
+  - Performance guarantees through homeostatic control
+  - Human-in-loop validation via attention mechanisms
+  - Observability through neural monitoring principles
 
 ### Phase 6: Advanced Features & Production Deployment (Future)
 **Goal**: Production-ready distributed cognitive system with marketplace
@@ -716,3 +751,34 @@ The implementation now combines three powerful approaches:
 - True autonomous viable system
 
 Each phase builds toward a **self-optimizing, self-evolving meta-cognitive system** that embodies the deepest principles of second-order cybernetics - a system that not only maintains its viability but continuously improves its own ability to learn and adapt.
+
+### Architectural Philosophy & Neuroscience Integration
+
+**Core Architectural Patterns**:
+1. **SOLID Principles** → Neural modularity and specialization
+2. **Domain-Driven Design** → Bounded contexts as brain regions
+3. **Hexagonal Architecture** → Ports/adapters as synaptic interfaces
+4. **Event-Driven Architecture** → Neural firing patterns
+5. **CQRS** → Separate sensory and motor pathways
+6. **Microservices** → Distributed neural processing
+7. **Saga Pattern** → Long-running neural computations
+8. **Event Sourcing** → Complete neural activity history
+
+**Neuroscience-Inspired Concepts**:
+1. **Sparse Connectivity** → Efficient neural wiring
+2. **Representational Drift** → Evolving neural codes
+3. **Mixed-Selectivity Neurons** → Multi-functional components
+4. **Dendritic Computation** → Local processing before integration
+5. **Retrograde Messengers** → Feedback from outputs to inputs
+6. **Structural Plasticity** → Dynamic architecture modification
+7. **Metabolic Efficiency** → Resource-aware computation
+8. **Self-Organized Criticality** → Edge-of-chaos operation
+
+**Integration Principles**:
+- **GEPA (Micro-level)**: Optimizes individual component behaviors like synaptic plasticity
+- **Cybernetic.ai (Macro-level)**: Manages system-wide patterns like brain waves
+- **VSM (Structure)**: Provides hierarchical organization like cortical layers
+- **AMQP (Communication)**: Implements neural transmission protocols
+- **MCP (Interfaces)**: Creates standardized synaptic connections
+
+This unified approach creates a system that thinks, learns, and evolves using principles discovered in both software architecture and neuroscience.
