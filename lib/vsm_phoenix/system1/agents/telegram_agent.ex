@@ -741,7 +741,14 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
             
           {:error, reason} ->
             Logger.error("Failed to get LLM response: #{inspect(reason)}")
-            send_telegram_message(chat_id, "🤖 Sorry, I'm having trouble processing your message. Please try again.", state, reply_to_message_id: message_id)
+            # FAIL FAST - Send error message but don't hide the issue
+            error_msg = case reason do
+              :llm_timeout -> "⚠️ LLM timeout - no workers available to process your message"
+              :channel_failed -> "⚠️ AMQP channel error - message queue connection failed"
+              :publish_failed -> "⚠️ Failed to publish message to LLM workers"
+              _ -> "⚠️ LLM processing failed: #{inspect(reason)}"
+            end
+            send_telegram_message(chat_id, error_msg, state, reply_to_message_id: message_id)
         end
       rescue
         e ->
@@ -794,53 +801,32 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     chat_id = message["chat"]["id"]
     from = message["from"]
     
-    # Build conversation messages
-    messages = conversation_state.messages ++ [
-      %{role: "user", content: text, timestamp: DateTime.utc_now()}
-    ]
+    # Create LLM request
+    llm_request = %{
+      type: "conversation",
+      chat_id: chat_id,
+      user_id: from["id"],
+      username: from["username"],
+      message: text,
+      conversation_history: conversation_state.messages,
+      context: Map.merge(conversation_state.context, %{
+        platform: "telegram",
+        agent_id: state.agent_id
+      })
+    }
     
-    # System prompt for VSM context
-    system_prompt = """
-    You are a helpful assistant for the Viable Systems Model (VSM) monitoring system.
-    You can help users understand system status, explain VSM concepts, and guide them through operations.
-    Be conversational and friendly while being accurate about system information.
-    Current systems status: All 5 VSM systems operational.
-    """
-    
-    # Try direct LLM bridge call
-    case VsmPhoenix.MCP.LLMBridge.generate_conversation_response(messages, system_prompt, nil) do
-      {:ok, %{content: response_text}} ->
-        Logger.info("✅ Generated direct LLM response for chat #{chat_id}")
-        {:ok, response_text}
+    # Send request to LLM worker via AMQP - NO FALLBACKS, FAIL FAST
+    case publish_to_llm_workers(llm_request, state) do
+      {:ok, response} -> 
+        {:ok, response}
       
-      {:error, reason} ->
-        Logger.warning("LLM Bridge failed: #{inspect(reason)}, using fallback")
-        # Use fallback response
-        {:ok, generate_fallback_response(text, messages)}
-    end
-  end
-  
-  defp generate_fallback_response(text, _messages) do
-    lower_text = String.downcase(text)
-    
-    cond do
-      String.contains?(lower_text, ["hi", "hello", "hey"]) ->
-        "Hello! I'm your VSM assistant. I can help you monitor system status and understand the Viable Systems Model. Try asking about system health or use /status to see current metrics."
-      
-      String.contains?(lower_text, ["how are you", "how's it going"]) ->
-        "I'm functioning well! All VSM systems are operational. How can I assist you today?"
-      
-      String.contains?(lower_text, ["status"]) ->
-        "All 5 VSM systems are operational:\n• S1: Operations ✅\n• S2: Coordination ✅\n• S3: Control ✅\n• S4: Intelligence ✅\n• S5: Policy ✅\n\nUse /status for detailed metrics."
-      
-      String.contains?(lower_text, ["help", "what can you do"]) ->
-        "I can help you with:\n• System status monitoring (/status)\n• Understanding VSM concepts\n• Checking alerts and health metrics\n• Managing system operations\n\nWhat would you like to know?"
-      
-      String.contains?(lower_text, ["vsm", "viable system"]) ->
-        "The Viable Systems Model has 5 key systems:\n• S1: Operations (doing the work)\n• S2: Coordination (preventing conflicts)\n• S3: Control (resource management)\n• S4: Intelligence (future planning)\n• S5: Policy (identity & direction)\n\nWhich system would you like to learn more about?"
-      
-      true ->
-        "I understand you said: \"#{text}\". I'm here to help with VSM monitoring and operations. You can ask about system status, VSM concepts, or use /help to see available commands."
+      {:error, :timeout} -> 
+        Logger.error("LLM request timeout for chat #{chat_id}")
+        {:error, :llm_timeout}
+        
+      {:error, reason} = error ->
+        Logger.error("LLM request failed: #{inspect(reason)}")
+        error
     end
   end
   

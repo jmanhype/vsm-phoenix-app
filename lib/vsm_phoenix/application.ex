@@ -141,6 +141,9 @@ defmodule VsmPhoenix.Application do
       # Auto-spawn Telegram bot if configured
       {VsmPhoenix.System1.TelegramInit, []},
       
+      # Auto-spawn LLM workers for conversation processing
+      {VsmPhoenix.System1.LLMWorkerInit, []},
+      
       # Variety Engineering - Implements Ashby's Law across VSM hierarchy
       VsmPhoenix.VarietyEngineering.Supervisor,
       

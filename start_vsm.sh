@@ -47,7 +47,7 @@ check_dependencies() {
     fi
     
     # Check for RabbitMQ
-    if ! pgrep -f rabbitmq-server > /dev/null; then
+    if ! pgrep -f "beam.*rabbitmq" > /dev/null; then
         log_warning "RabbitMQ is not running. Some features may not work."
     fi
 }

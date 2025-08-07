@@ -185,26 +185,16 @@ defmodule VsmPhoenix.AMQP.ConnectionManager do
         {:error, :not_connected}
         
       :connected ->
-        # Check if we have a channel for this purpose and if it's still open
-        case Map.get(state.channels, purpose) do
-          nil ->
-            create_new_channel(state, purpose)
+        # ALWAYS create a new channel - don't reuse
+        # This prevents the "second 'channel.open' seen" error
+        case AMQP.Channel.open(state.connection) do
+          {:ok, channel} ->
+            # Don't store it - let each caller manage their own channel
+            {:ok, channel, state}
             
-          %AMQP.Channel{pid: pid} = channel when is_pid(pid) ->
-            # Check if channel is still alive
-            if Process.alive?(pid) do
-              {:ok, channel, state}
-            else
-              # Channel died, remove it and create new one
-              Logger.warning("Channel for #{purpose} died, creating new one")
-              new_channels = Map.delete(state.channels, purpose)
-              create_new_channel(%{state | channels: new_channels}, purpose)
-            end
-            
-          _invalid ->
-            # Invalid channel, remove and create new
-            new_channels = Map.delete(state.channels, purpose)
-            create_new_channel(%{state | channels: new_channels}, purpose)
+          {:error, reason} = error ->
+            Logger.error("Failed to create channel for #{purpose}: #{inspect(reason)}")
+            error
         end
     end
   end
