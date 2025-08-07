@@ -50,7 +50,7 @@ COPY lib lib
 RUN mix do compile, release
 
 # Runtime stage
-FROM alpine:3.18.4 AS runtime
+FROM alpine:3.22.1 AS runtime
 
 # Install runtime dependencies
 RUN apk add --no-cache openssl ncurses-libs libstdc++ ca-certificates
