@@ -1,0 +1,379 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main, phase-2-resilience-infrastructure]
+    paths:
+      - 'docs/**'
+      - '**.md'
+      - 'lib/**/*.ex'
+      - '.github/workflows/documentation.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '**.md'
+      - 'lib/**/*.ex'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: 1.14.5
+        otp-version: 27.0
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+    
+    - name: Install dependencies
+      run: |
+        mix deps.get
+        mix compile
+    
+    - name: Generate ExDoc documentation
+      run: |
+        mix docs
+    
+    - name: Generate module dependency graph
+      run: |
+        # Install graphviz for diagram generation
+        sudo apt-get update
+        sudo apt-get install -y graphviz
+        
+        # Generate module dependency graph
+        mix compile.xref graph --format dot
+        dot -Tpng xref_graph.dot -o doc/assets/module-dependencies.png || true
+    
+    - name: Generate API documentation
+      run: |
+        # Extract API endpoints from router
+        mix phx.routes > doc/api-routes.txt || true
+        
+        # Generate OpenAPI/Swagger spec if available
+        if mix help openapi.spec.json >/dev/null 2>&1; then
+          mix openapi.spec.json --spec VSMPhoenixWeb.ApiSpec doc/openapi.json
+        fi
+    
+    - name: Build documentation site
+      run: |
+        # Create documentation index
+        cat > doc/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>VSM Phoenix Documentation</title>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; margin: 40px; }
+            h1 { color: #4B5563; }
+            .section { margin: 20px 0; }
+            .link-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+            .link-card { 
+              border: 1px solid #E5E7EB; 
+              padding: 20px; 
+              border-radius: 8px;
+              transition: box-shadow 0.2s;
+            }
+            .link-card:hover { box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            a { color: #3B82F6; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+          </style>
+        </head>
+        <body>
+          <h1>VSM Phoenix Documentation</h1>
+          
+          <div class="section">
+            <h2>📚 Documentation Sections</h2>
+            <div class="link-grid">
+              <div class="link-card">
+                <h3>🚀 Getting Started</h3>
+                <p>Quick start guide and project overview</p>
+                <a href="https://github.com/${{ github.repository }}/tree/main/docs/01_start_here">View Guide →</a>
+              </div>
+              
+              <div class="link-card">
+                <h3>🏗️ Architecture</h3>
+                <p>System design and architectural patterns</p>
+                <a href="https://github.com/${{ github.repository }}/tree/main/docs/02_architecture">View Architecture →</a>
+              </div>
+              
+              <div class="link-card">
+                <h3>📡 API Reference</h3>
+                <p>Complete API documentation and examples</p>
+                <a href="api_reference.html">View API Docs →</a>
+              </div>
+              
+              <div class="link-card">
+                <h3>🧪 ExDoc</h3>
+                <p>Generated Elixir module documentation</p>
+                <a href="VsmPhoenix.html">View ExDoc →</a>
+              </div>
+            </div>
+          </div>
+          
+          <div class="section">
+            <h2>🔧 Developer Resources</h2>
+            <div class="link-grid">
+              <div class="link-card">
+                <h3>💻 Development Guide</h3>
+                <p>Setup, testing, and contribution guidelines</p>
+                <a href="https://github.com/${{ github.repository }}/tree/main/docs/04_development">View Guide →</a>
+              </div>
+              
+              <div class="link-card">
+                <h3>🚀 Operations</h3>
+                <p>Deployment and operational procedures</p>
+                <a href="https://github.com/${{ github.repository }}/tree/main/docs/05_operations">View Ops Guide →</a>
+              </div>
+              
+              <div class="link-card">
+                <h3>📊 Module Dependencies</h3>
+                <p>Visual representation of module relationships</p>
+                <a href="assets/module-dependencies.png">View Diagram →</a>
+              </div>
+              
+              <div class="link-card">
+                <h3>🔄 API Routes</h3>
+                <p>Complete list of available API endpoints</p>
+                <a href="api-routes.txt">View Routes →</a>
+              </div>
+            </div>
+          </div>
+          
+          <div class="section">
+            <h2>📈 Phase 2 Features</h2>
+            <ul>
+              <li>🧠 Intelligent conversation management</li>
+              <li>🔒 Enhanced security implementation</li>
+              <li>🔗 Causality tracking system</li>
+              <li>🛡️ Resilience patterns and infrastructure</li>
+              <li>📊 Real-time monitoring and metrics</li>
+            </ul>
+          </div>
+          
+          <footer style="margin-top: 60px; padding-top: 20px; border-top: 1px solid #E5E7EB; color: #6B7280;">
+            <p>Generated on: <time datetime="${new Date().toISOString()}">${new Date().toLocaleString()}</time></p>
+            <p>VSM Phoenix v2.0.0 | <a href="https://github.com/${{ github.repository }}">GitHub</a></p>
+          </footer>
+        </body>
+        </html>
+        EOF
+    
+    - name: Upload documentation artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation
+        path: doc/
+
+  validate-markdown:
+    name: Validate Markdown
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+    
+    - name: Install markdown linter
+      run: npm install -g markdownlint-cli
+    
+    - name: Lint markdown files
+      run: |
+        markdownlint '**/*.md' --ignore node_modules --ignore deps --ignore _build || true
+    
+    - name: Check for broken links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        use-verbose-mode: 'no'
+        check-modified-files-only: 'no'
+        base-branch: main
+        config-file: '.markdown-link-check.json'
+      continue-on-error: true
+
+  generate-architecture-diagrams:
+    name: Generate Architecture Diagrams
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install diagram tools
+      run: |
+        pip install diagrams
+        sudo apt-get update
+        sudo apt-get install -y graphviz
+    
+    - name: Generate architecture diagrams
+      run: |
+        mkdir -p docs/generated-diagrams
+        
+        # Create Python script to generate diagrams
+        cat > generate_diagrams.py << 'EOF'
+        from diagrams import Diagram, Cluster, Edge
+        from diagrams.onprem.client import Users
+        from diagrams.onprem.compute import Server
+        from diagrams.onprem.database import PostgreSQL
+        from diagrams.onprem.inmemory import Redis
+        from diagrams.onprem.queue import RabbitMQ
+        from diagrams.programming.framework import Phoenix
+        from diagrams.programming.language import Elixir
+        
+        # VSM Architecture Diagram
+        with Diagram("VSM Phoenix Architecture", filename="docs/generated-diagrams/vsm-architecture", show=False):
+            users = Users("Users")
+            
+            with Cluster("VSM Phoenix Application"):
+                with Cluster("System 5 - Policy"):
+                    s5 = Server("Queen")
+                
+                with Cluster("System 4 - Intelligence"):
+                    s4 = Server("Intelligence")
+                
+                with Cluster("System 3 - Control"):
+                    s3 = Server("Audit & Control")
+                
+                with Cluster("System 2 - Coordination"):
+                    s2 = Server("Coordinator")
+                
+                with Cluster("System 1 - Operations"):
+                    agents = [
+                        Server("API Agent"),
+                        Server("Telegram Agent"),
+                        Server("Worker Agents")
+                    ]
+            
+            with Cluster("Infrastructure"):
+                db = PostgreSQL("Database")
+                queue = RabbitMQ("Message Queue")
+                cache = Redis("Cache")
+            
+            users >> agents[0]
+            agents >> s2 >> s3 >> s4 >> s5
+            agents >> queue
+            [s2, s3, s4, s5] >> db
+            agents >> cache
+        
+        # MCP Integration Diagram
+        with Diagram("MCP Integration", filename="docs/generated-diagrams/mcp-integration", show=False):
+            with Cluster("VSM Core"):
+                vsm = Phoenix("VSM Phoenix")
+            
+            with Cluster("MCP Servers"):
+                mcp_servers = [
+                    Server("Hermes MCP"),
+                    Server("Claude Flow"),
+                    Server("Custom Tools")
+                ]
+            
+            with Cluster("External Services"):
+                llm = Server("LLM Service")
+                telegram = Server("Telegram API")
+            
+            vsm >> Edge(label="stdio") >> mcp_servers
+            mcp_servers >> llm
+            vsm >> telegram
+        
+        print("Diagrams generated successfully!")
+        EOF
+        
+        python generate_diagrams.py
+    
+    - name: Upload diagram artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: architecture-diagrams
+        path: docs/generated-diagrams/
+
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: [build-docs, generate-architecture-diagrams]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download documentation artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+    
+    - name: Prepare GitHub Pages
+      run: |
+        mkdir -p public
+        cp -r artifacts/documentation/* public/ || true
+        cp -r artifacts/architecture-diagrams/* public/ || true
+        
+        # Create .nojekyll file to disable Jekyll processing
+        touch public/.nojekyll
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+    
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: public
+    
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
+
+  update-readme:
+    name: Update README Badges
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Update documentation badge
+      run: |
+        # Add or update documentation badge in README
+        if ! grep -q "docs-badge" README.md; then
+          sed -i '1a\
+          \
+          [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)' README.md
+        fi
+    
+    - name: Commit badge updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add README.md
+        git diff --staged --quiet || git commit -m "docs: update documentation badge"
+        git push || true

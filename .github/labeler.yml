@@ -1,90 +1,98 @@
-# Auto-labeling configuration for PRs
+# Configuration for auto-labeling PRs based on file changes
+# Used by .github/workflows/pr-automation.yml
 
-# VSM Systems
-"vsm:system1":
-  - "lib/vsm_phoenix/system1/**/*"
-  - "test/vsm_phoenix/system1/**/*"
+# Frontend changes
+frontend:
+  - assets/**/*
+  - lib/vsm_phoenix_web/**/*
+  - priv/static/**/*
 
-"vsm:system2":
-  - "lib/vsm_phoenix/system2/**/*"
-  - "test/vsm_phoenix/system2/**/*"
+# Backend changes
+backend:
+  - lib/vsm_phoenix/**/*
+  - '!lib/vsm_phoenix_web/**/*'
 
-"vsm:system3":
-  - "lib/vsm_phoenix/system3/**/*"
-  - "test/vsm_phoenix/system3/**/*"
+# VSM System-specific labels
+system-1:
+  - lib/vsm_phoenix/system1/**/*
 
-"vsm:system4":
-  - "lib/vsm_phoenix/system4/**/*"
-  - "test/vsm_phoenix/system4/**/*"
+system-2:
+  - lib/vsm_phoenix/system2/**/*
 
-"vsm:system5":
-  - "lib/vsm_phoenix/system5/**/*"
-  - "test/vsm_phoenix/system5/**/*"
+system-3:
+  - lib/vsm_phoenix/system3/**/*
 
-# Infrastructure
-"infrastructure":
-  - "lib/vsm_phoenix/infrastructure/**/*"
-  - "test/vsm_phoenix/infrastructure/**/*"
-  - "config/infrastructure.exs"
+system-4:
+  - lib/vsm_phoenix/system4/**/*
 
-# Resilience
-"resilience":
-  - "lib/vsm_phoenix/resilience/**/*"
-  - "test/vsm_phoenix/resilience/**/*"
-  - "config/resilience.exs"
+system-5:
+  - lib/vsm_phoenix/system5/**/*
 
-# Security
-"security":
-  - "lib/vsm_phoenix/infrastructure/security*"
-  - "test/vsm_phoenix/infrastructure/security*"
-  - "config/security.exs"
-
-# Telegram
-"telegram":
-  - "lib/vsm_phoenix/system1/agents/telegram_agent.ex"
-  - "lib/vsm_phoenix/infrastructure/telegram_service.ex"
-  - "lib/vsm_phoenix/resilience/telegram_resilient_client.ex"
-
-# AMQP/Messaging
-"amqp":
-  - "lib/vsm_phoenix/amqp/**/*"
-  - "test/vsm_phoenix/amqp/**/*"
-  - "lib/vsm_phoenix/infrastructure/causality_amqp.ex"
+# Infrastructure and resilience
+infrastructure:
+  - lib/vsm_phoenix/infrastructure/**/*
+  - lib/vsm_phoenix/resilience/**/*
+  - config/**/*
 
 # MCP Integration
-"mcp":
-  - "lib/vsm_phoenix/mcp/**/*"
-  - "test/vsm_mcp_integration_test.exs"
+mcp:
+  - lib/vsm_phoenix/mcp/**/*
+  - scripts/mcp_*.exs
 
-# Variety Engineering
-"variety-engineering":
-  - "lib/vsm_phoenix/variety_engineering/**/*"
-  - "docs/variety_engineering/**/*"
+# Testing
+test:
+  - test/**/*
+  - scripts/tests/**/*
 
 # Documentation
-"documentation":
-  - "docs/**/*"
-  - "*.md"
+documentation:
+  - '**/*.md'
+  - docs/**/*
 
-# Configuration
-"config":
-  - "config/**/*"
+# CI/CD and GitHub Actions
+ci/cd:
+  - .github/**/*
 
-# Tests
-"tests":
-  - "test/**/*"
+# Dependencies
+dependencies:
+  - mix.exs
+  - mix.lock
+  - package.json
+  - package-lock.json
 
-# Performance
-"performance":
-  - "**/*performance*"
-  - "**/*metrics*"
+# Security-related changes
+security:
+  - lib/vsm_phoenix/infrastructure/security.ex
+  - lib/vsm_phoenix/infrastructure/security_integration.ex
+  - lib/vsm_phoenix/resilience/**/*
 
-# Breaking Changes
-"breaking-change":
-  - "lib/vsm_phoenix/application.ex"
-  - "config/config.exs"
+# Telegram integration
+telegram:
+  - lib/vsm_phoenix/infrastructure/telegram_service.ex
+  - lib/vsm_phoenix/system1/agents/telegram_agent.ex
+  - lib/vsm_phoenix/resilience/telegram_resilient_client.ex
 
-# UI/Web
-"ui":
-  - "lib/vsm_phoenix_web/**/*"
-  - "assets/**/*"
+# Database and migrations
+database:
+  - priv/repo/**/*
+  - lib/vsm_phoenix/repo.ex
+
+# Variety Engineering
+variety-engineering:
+  - lib/vsm_phoenix/variety_engineering/**/*
+
+# AMQP/RabbitMQ
+amqp:
+  - lib/vsm_phoenix/amqp/**/*
+  - lib/vsm_phoenix/infrastructure/amqp_*.ex
+
+# Performance-related
+performance:
+  - lib/vsm_phoenix/performance_monitor.ex
+  - lib/vsm_phoenix/telemetry_collector.ex
+
+# Docker and deployment
+deployment:
+  - Dockerfile
+  - docker-compose.yml
+  - .dockerignore

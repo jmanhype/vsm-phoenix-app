@@ -1,0 +1,294 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, phase-2-resilience-infrastructure, develop]
+  pull_request:
+    branches: [main, phase-2-resilience-infrastructure, develop]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  dependency-audit:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: 1.14.5
+        otp-version: 27.0
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          deps
+          _build
+          node_modules
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}-${{ hashFiles('**/package-lock.json') }}
+    
+    - name: Install dependencies
+      run: |
+        mix deps.get
+        npm ci
+    
+    - name: Check for vulnerable Elixir dependencies
+      run: |
+        mix hex.audit || true
+        mix deps.audit || true
+    
+    - name: Run npm audit
+      run: |
+        npm audit --production || true
+        npm audit fix --dry-run || true
+    
+    - name: Check for outdated dependencies
+      run: |
+        mix hex.outdated || true
+        npm outdated || true
+
+  static-analysis:
+    name: Static Code Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: 1.14.5
+        otp-version: 27.0
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+    
+    - name: Install dependencies
+      run: mix deps.get
+    
+    - name: Run Sobelow security scanner
+      run: |
+        mix archive.install hex sobelow --force
+        mix sobelow --config || true
+    
+    - name: Check for hardcoded secrets
+      run: |
+        # Check for potential secrets in code
+        grep -r -E "(password|secret|key|token|api_key)\s*=\s*['\"][^'\"]+['\"]" lib/ test/ || true
+        
+        # Check for AWS credentials
+        grep -r -E "AKIA[0-9A-Z]{16}" . || true
+        
+        # Check for private keys
+        grep -r -E "-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----" . || true
+
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-and-quality
+    
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{ matrix.language }}"
+
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Docker image for scanning
+      run: |
+        docker build -t vsm-phoenix:scan .
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'vsm-phoenix:scan'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        vuln-type: 'os,library'
+    
+    - name: Upload Trivy scan results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+    
+    - name: Run Grype vulnerability scanner
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+        grype vsm-phoenix:scan -o json > grype-results.json || true
+        
+        # Check for critical vulnerabilities
+        CRITICAL_COUNT=$(jq '.matches | map(select(.vulnerability.severity == "Critical")) | length' grype-results.json)
+        if [ "$CRITICAL_COUNT" -gt "0" ]; then
+          echo "❌ Found $CRITICAL_COUNT critical vulnerabilities!"
+          jq '.matches | map(select(.vulnerability.severity == "Critical"))' grype-results.json
+        fi
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: 1.14.5
+        otp-version: 27.0
+    
+    - name: Check Elixir licenses
+      run: |
+        mix deps.get
+        mix licenses || true
+    
+    - name: Check npm licenses
+      run: |
+        npm ci
+        npx license-checker --production --summary || true
+        
+        # Check for problematic licenses
+        npx license-checker --production --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC' || true
+
+  security-best-practices:
+    name: Security Best Practices
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check for insecure configurations
+      run: |
+        # Check for debug mode in production configs
+        grep -r "debug.*true" config/prod.exs config/runtime.exs || echo "✅ No debug mode in production"
+        
+        # Check for weak crypto
+        grep -r -E "md5|sha1" lib/ || echo "✅ No weak crypto algorithms found"
+        
+        # Check for SQL injection vulnerabilities
+        grep -r -E "Ecto.Query.API.fragment\(|Repo\.(query|query!)\(" lib/ || echo "✅ No raw SQL queries found"
+        
+        # Check for XSS vulnerabilities
+        grep -r -E "raw\(" lib/vsm_phoenix_web/templates/ lib/vsm_phoenix_web/live/ || echo "✅ No raw HTML rendering found"
+    
+    - name: Check security headers configuration
+      run: |
+        # Check for security headers in endpoint.ex
+        grep -E "(x_frame_options|x_content_type_options|x_xss_protection|strict_transport_security)" lib/vsm_phoenix_web/endpoint.ex || echo "⚠️  Security headers may be missing"
+    
+    - name: Check CORS configuration
+      run: |
+        # Check for overly permissive CORS
+        grep -r -E "origin:.*\*" lib/ || echo "✅ No wildcard CORS origins found"
+
+  create-security-report:
+    name: Create Security Report
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, static-analysis, codeql-analysis, container-scan, license-check, security-best-practices]
+    if: always()
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Generate security report
+      run: |
+        cat > security-report.md << EOF
+        # Security Scan Report
+        
+        **Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        **Branch**: ${{ github.ref_name }}
+        **Commit**: ${{ github.sha }}
+        
+        ## Scan Results Summary
+        
+        | Check | Status |
+        |-------|--------|
+        | Dependency Audit | ${{ needs.dependency-audit.result }} |
+        | Static Analysis | ${{ needs.static-analysis.result }} |
+        | CodeQL Analysis | ${{ needs.codeql-analysis.result }} |
+        | Container Scan | ${{ needs.container-scan.result }} |
+        | License Check | ${{ needs.license-check.result }} |
+        | Security Best Practices | ${{ needs.security-best-practices.result }} |
+        
+        ## Recommendations
+        
+        1. Regularly update dependencies to patch known vulnerabilities
+        2. Review and fix any static analysis findings
+        3. Ensure all containers are built from secure base images
+        4. Maintain license compliance for all dependencies
+        5. Follow security best practices in code and configuration
+        
+        ## Next Steps
+        
+        - Review detailed logs for each failed check
+        - Create issues for any critical findings
+        - Schedule remediation for non-critical issues
+        
+        ---
+        
+        Generated by VSM Phoenix Security Workflow
+        EOF
+    
+    - name: Upload security report
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-report
+        path: security-report.md
+    
+    - name: Comment on PR with security summary
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('security-report.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: report
+          });
