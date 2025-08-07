@@ -17,6 +17,9 @@ defmodule VsmPhoenix.AMQP.Supervisor do
       # Start AMQP connection manager
       {VsmPhoenix.AMQP.ConnectionManager, []},
       
+      # Start AMQP client for infrastructure
+      {VsmPhoenix.Infrastructure.AMQPClient, []},
+      
       # Start command router with RPC support
       {VsmPhoenix.AMQP.CommandRouter, []},
       
