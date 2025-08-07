@@ -46,18 +46,17 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
     end
     
     # Set up AMQP for conversation requests
-    channel = case VsmPhoenix.AMQP.ConnectionManager.get_channel(agent_id) do
-      {:ok, ch} -> ch
+    # Use agent_id as channel purpose to ensure uniqueness
+    channel = case VsmPhoenix.AMQP.ConnectionManager.get_channel(String.to_atom(agent_id)) do
+      {:ok, ch} -> 
+        Logger.info("✅ Got AMQP channel for #{agent_id}")
+        ch
       {:error, reason} ->
         Logger.error("Failed to get AMQP channel: #{inspect(reason)}")
-        # Try with unique ID
-        case VsmPhoenix.AMQP.ConnectionManager.get_channel("llm_#{agent_id}") do
+        # Create a fallback connection
+        case establish_fallback_channel() do
           {:ok, ch} -> ch
-          _ -> 
-            # Last resort - create direct connection
-            {:ok, conn} = AMQP.Connection.open()
-            {:ok, ch} = AMQP.Channel.open(conn)
-            ch
+          _ -> raise "Cannot establish AMQP connection"
         end
     end
     
@@ -634,6 +633,18 @@ defmodule VsmPhoenix.System1.Agents.LLMWorkerAgent do
     end) do
       nil -> {:error, :not_found}
       agent -> {:ok, agent.agent_id}
+    end
+  end
+  
+  defp establish_fallback_channel do
+    try do
+      {:ok, conn} = AMQP.Connection.open()
+      {:ok, channel} = AMQP.Channel.open(conn)
+      {:ok, channel}
+    rescue
+      e -> 
+        Logger.error("Failed to create fallback channel: #{inspect(e)}")
+        {:error, e}
     end
   end
   

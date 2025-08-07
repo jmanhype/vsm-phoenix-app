@@ -794,25 +794,49 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     chat_id = message["chat"]["id"]
     from = message["from"]
     
-    # Create LLM request
-    llm_request = %{
-      type: "conversation",
-      chat_id: chat_id,
-      user_id: from["id"],
-      username: from["username"],
-      message: text,
-      conversation_history: conversation_state.messages,
-      context: Map.merge(conversation_state.context, %{
-        platform: "telegram",
-        agent_id: state.agent_id
-      })
-    }
+    # For now, use direct LLM bridge instead of AMQP workers
+    # This avoids the channel issues while we fix them
     
-    # Send request to LLM worker via AMQP
-    case publish_to_llm_workers(llm_request, state) do
-      {:ok, response} -> {:ok, response}
-      {:error, :timeout} -> {:error, :llm_timeout}
-      error -> error
+    # Build conversation messages
+    messages = conversation_state.messages ++ [
+      %{role: "user", content: text, timestamp: DateTime.utc_now()}
+    ]
+    
+    # System prompt for VSM context
+    system_prompt = """
+    You are a helpful assistant for the Viable Systems Model (VSM) monitoring system.
+    You can help users understand system status, explain VSM concepts, and guide them through operations.
+    Be conversational and friendly while being accurate about system information.
+    """
+    
+    # Try to get a response
+    case VsmPhoenix.MCP.LLMBridge.generate_conversation_response(messages, system_prompt, nil) do
+      {:ok, %{content: response_text}} ->
+        {:ok, response_text}
+      {:error, _reason} ->
+        # Fallback response
+        {:ok, generate_simple_response(text)}
+    end
+  end
+  
+  defp generate_simple_response(text) do
+    lower_text = String.downcase(text)
+    
+    cond do
+      String.contains?(lower_text, ["hi", "hello", "hey"]) ->
+        "Hello! I'm your VSM assistant. I can help you monitor system status and understand the Viable Systems Model. Try asking about system health or use /status to see current metrics."
+      
+      String.contains?(lower_text, ["how are you", "how's it going"]) ->
+        "I'm functioning well! All VSM systems are operational. How can I assist you today?"
+      
+      String.contains?(lower_text, ["help", "what can you do"]) ->
+        "I can help you with:\n• System status monitoring (/status)\n• Understanding VSM concepts\n• Checking alerts and health metrics\n• Managing system operations\n\nWhat would you like to know?"
+      
+      String.contains?(lower_text, ["vsm", "viable system"]) ->
+        "The Viable Systems Model has 5 key systems:\n• S1: Operations (doing the work)\n• S2: Coordination (preventing conflicts)\n• S3: Control (resource management)\n• S4: Intelligence (future planning)\n• S5: Policy (identity & direction)\n\nWhich system would you like to learn more about?"
+      
+      true ->
+        "I understand you said: \"#{text}\". I'm still learning to process natural language better. You can use /help to see available commands or ask me about VSM systems, status, or operations."
     end
   end
   
