@@ -16,6 +16,7 @@ defmodule VsmPhoenix.System2.Coordinator do
   alias VsmPhoenix.System1.{Context, Operations}
   alias AMQP
   alias VsmPhoenix.Infrastructure.CausalityAMQP
+  alias VsmPhoenix.System2.CorticalAttentionEngine
   
   @name __MODULE__
   @pubsub VsmPhoenix.PubSub
@@ -91,8 +92,23 @@ defmodule VsmPhoenix.System2.Coordinator do
     start_time = :erlang.system_time(:millisecond)
     Logger.debug("Coordinator: Message from #{from_context} to #{to_context}")
     
-    # Check if coordination is needed
-    coordination_result = apply_coordination_rules(from_context, to_context, message, state)
+    # Apply cortical attention scoring
+    context = %{source: from_context, target: to_context, state: state}
+    {:ok, attention_score, score_components} = CorticalAttentionEngine.score_attention(message, context)
+    
+    # Log high-attention messages
+    if attention_score > 0.7 do
+      Logger.info("🧠 High attention message (score: #{Float.round(attention_score, 2)}): #{inspect(message[:type])}")
+    end
+    
+    # Add attention score to message for downstream processing
+    attention_enriched_message = Map.merge(message, %{
+      attention_score: attention_score,
+      attention_components: score_components
+    })
+    
+    # Check if coordination is needed (now with attention awareness)
+    coordination_result = apply_coordination_rules(from_context, to_context, attention_enriched_message, state)
     
     new_state = case coordination_result do
       {:allow, processed_message} ->
@@ -449,40 +465,59 @@ defmodule VsmPhoenix.System2.Coordinator do
   
   defp apply_coordination_rules(from_context, to_context, message, state) do
     rules = state.coordination_rules.message_rules
+    attention_score = Map.get(message, :attention_score, 0.5)
     
-    # Check for conflicts
-    conflict_check = check_for_conflicts(from_context, to_context, message, state)
-    case conflict_check do
-      {:conflict, conflict_type} ->
-        # Record conflict in systemic metrics
-        resolution_start = :erlang.system_time(:millisecond)
-        
-        # Simple conflict resolution: delay the message
-        resolution_time = 50  # 50ms delay for conflict resolution
-        
-        VsmPhoenix.Infrastructure.SystemicCoordinationMetrics.record_conflict(
-          from_context,
-          to_context,
-          conflict_type,
-          resolution_time,
-          true  # Resolved by delaying
-        )
-        
-        {:delay, resolution_time, message}
-        
-      :no_conflict ->
-        # Check message frequency
-        if message_frequency_exceeded?(from_context, to_context, state) do
-          {:delay, calculate_delay(state), message}
-        else
-          # Check if synchronization is required
-          if requires_synchronization?(message, rules) do
-            synchronized_message = ensure_synchronized(message, from_context, to_context, state)
-            {:allow, synchronized_message}
+    # Low attention messages can be filtered or delayed
+    if attention_score < 0.2 do
+      Logger.debug("🧠 Low attention message filtered (score: #{Float.round(attention_score, 2)})")
+      {:block, :low_attention}
+    else
+      # Check for conflicts
+      conflict_check = check_for_conflicts(from_context, to_context, message, state)
+      case conflict_check do
+        {:conflict, conflict_type} ->
+          # Record conflict in systemic metrics
+          resolution_start = :erlang.system_time(:millisecond)
+          
+          # Attention-aware conflict resolution: high attention messages get priority
+          resolution_time = if attention_score > 0.7 do
+            20  # Fast resolution for high attention
           else
-            {:allow, message}
+            50  # Standard delay
           end
-        end
+          
+          VsmPhoenix.Infrastructure.SystemicCoordinationMetrics.record_conflict(
+            from_context,
+            to_context,
+            conflict_type,
+            resolution_time,
+            true  # Resolved by delaying
+          )
+          
+          {:delay, resolution_time, message}
+          
+        :no_conflict ->
+          # Check message frequency with attention modulation
+          frequency_limit = rules.max_frequency * (1 + attention_score)
+          
+          if message_frequency_exceeded?(from_context, to_context, state, frequency_limit) do
+            # High attention messages can bypass frequency limits
+            if attention_score > 0.8 do
+              Logger.info("🧠 High attention message bypassing frequency limit")
+              {:allow, message}
+            else
+              {:delay, calculate_delay(state, attention_score), message}
+            end
+          else
+            # Check if synchronization is required
+            if requires_synchronization?(message, rules) or attention_score > 0.9 do
+              synchronized_message = ensure_synchronized(message, from_context, to_context, state)
+              {:allow, synchronized_message}
+            else
+              {:allow, message}
+            end
+          end
+      end
     end
   end
   
@@ -641,14 +676,17 @@ defmodule VsmPhoenix.System2.Coordinator do
     end
   end
   
-  defp message_frequency_exceeded?(_from, _to, _state) do
+  defp message_frequency_exceeded?(_from, _to, _state, _frequency_limit \\ 100) do
     # Check if message frequency limit is exceeded
     false  # Simplified
   end
   
-  defp calculate_delay(_state) do
-    # Calculate appropriate delay
-    100  # milliseconds
+  defp calculate_delay(_state, attention_score \\ 0.5) do
+    # Calculate appropriate delay with attention modulation
+    # Lower attention = longer delay
+    base_delay = 100  # milliseconds
+    attention_factor = 1.0 - attention_score
+    round(base_delay * (1 + attention_factor))
   end
   
   defp requires_synchronization?(message, rules) do

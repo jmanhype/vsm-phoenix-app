@@ -70,6 +70,9 @@ defmodule VsmPhoenix.Application do
       # Start AMQP/RabbitMQ Supervisor
       VsmPhoenix.AMQP.Supervisor,
       
+      # Start CRDT-based Context Persistence
+      VsmPhoenix.CRDT.Supervisor,
+      
       # Start Hermes Server Registry first
       Hermes.Server.Registry,
       
