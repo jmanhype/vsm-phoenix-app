@@ -496,7 +496,7 @@ defmodule VsmPhoenix.Telemetry.AnalogArchitect do
             %{
               timestamp: sample.timestamp,
               value: sample.value,
-              deviation: if std_dev > 0, do: (sample.value - mean) / std_dev, else: 0,
+              deviation: (if std_dev > 0, do: (sample.value - mean) / std_dev, else: 0),
               severity: calculate_anomaly_severity(sample.value, mean, std_dev)
             }
           end)
