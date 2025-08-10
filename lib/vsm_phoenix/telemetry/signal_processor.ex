@@ -424,27 +424,46 @@ defmodule VsmPhoenix.Telemetry.SignalProcessor do
     a_samples = extract_samples(signal_a)
     b_samples = extract_samples(signal_b)
     
-    # Normalize signals
-    a_values = normalize_signal(Enum.map(a_samples, & &1.value))
-    b_values = normalize_signal(Enum.map(b_samples, & &1.value))
+    # Normalize signals - handle case where samples might be empty
+    a_values = if length(a_samples) > 0 do
+      normalize_signal(Enum.map(a_samples, & &1.value))
+    else
+      []
+    end
     
-    # Compute correlation at different lags
-    max_lag = min(length(a_values), length(b_values)) - 1
+    b_values = if length(b_samples) > 0 do
+      normalize_signal(Enum.map(b_samples, & &1.value))
+    else
+      []
+    end
     
-    correlation_values = Enum.map(-max_lag..max_lag, fn lag ->
+    # Return early if either signal is empty
+    if length(a_values) == 0 or length(b_values) == 0 do
+      %{
+        correlation_values: [],
+        peak_lag: 0,
+        peak_correlation: 0.0,
+        correlation_coefficient: 0.0
+      }
+    else
+      # Compute correlation at different lags
+      max_lag = min(length(a_values), length(b_values)) - 1
+      
+      correlation_values = Enum.map(-max_lag..max_lag, fn lag ->
       correlation = compute_correlation_at_lag(a_values, b_values, lag)
       {lag, correlation}
     end)
     
-    # Find peak correlation
-    {peak_lag, peak_correlation} = Enum.max_by(correlation_values, fn {_, corr} -> abs(corr) end)
-    
-    %{
-      correlation_values: correlation_values,
-      peak_lag: peak_lag,
-      peak_correlation: peak_correlation,
-      correlation_coefficient: compute_pearson_correlation(a_values, b_values)
-    }
+      # Find peak correlation
+      {peak_lag, peak_correlation} = Enum.max_by(correlation_values, fn {_, corr} -> abs(corr) end)
+      
+      %{
+        correlation_values: correlation_values,
+        peak_lag: peak_lag,
+        peak_correlation: peak_correlation,
+        correlation_coefficient: compute_pearson_correlation(a_values, b_values)
+      }
+    end
   end
   
   defp compute_wavelet_transform(signal_data, wavelet_type) do

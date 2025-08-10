@@ -3060,7 +3060,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       :claude ->
         # Optimize for Claude's reasoning capabilities
         %{
-          conversation_history: Enum.take(user_context.conversation.messages, -15),  # Claude handles more context well
+          conversation_history: Enum.take(user_context.conversation.history, -15),  # Claude handles more context well
           context_compression: false,  # Let Claude use full context
           reasoning_prompt: true,
           nuanced_response: true
@@ -3069,7 +3069,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       :gpt4 ->
         # Optimize for GPT-4's structured capabilities
         %{
-          conversation_history: Enum.take(user_context.conversation.messages, -10),
+          conversation_history: Enum.take(user_context.conversation.history, -10),
           structured_output: true,
           function_calling_available: true,
           context_compression: true
@@ -3078,7 +3078,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       :gemini ->
         # Optimize for Gemini's speed and efficiency
         %{
-          conversation_history: Enum.take(user_context.conversation.messages, -8),
+          conversation_history: Enum.take(user_context.conversation.history, -8),
           fast_response: true,
           context_compression: true,
           factual_focus: true
