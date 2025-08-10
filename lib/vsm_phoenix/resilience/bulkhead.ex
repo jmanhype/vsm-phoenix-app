@@ -22,6 +22,10 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
             available: [],
             busy: %{},
             waiting_queue: :queue.new(),
+            # Claude-inspired workflow reliability patterns
+            workflow_contexts: %{},
+            multi_section_operations: %{},
+            reliability_checkpoints: [],
             metrics: %{
               total_checkouts: 0,
               successful_checkouts: 0,
@@ -30,7 +34,11 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
               current_usage: 0,
               peak_usage: 0,
               queue_size: 0,
-              peak_queue_size: 0
+              peak_queue_size: 0,
+              # Claude-inspired reliability metrics
+              workflow_success_rate: 1.0,
+              checkpoint_rollbacks: 0,
+              section_completion_rate: 1.0
             }
 
   # Client API
@@ -70,6 +78,40 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
       error ->
         error
     end
+  end
+
+  @doc """
+  Execute a multi-section workflow with Claude-inspired reliability patterns
+  """
+  def with_workflow(bulkhead, workflow_id, sections, opts \\ []) do
+    timeout = Keyword.get(opts, :timeout, 30_000)
+    checkpoint_interval = Keyword.get(opts, :checkpoint_interval, 3)
+    
+    case checkout(bulkhead, timeout) do
+      {:ok, resource} ->
+        try do
+          execute_workflow_sections(bulkhead, resource, workflow_id, sections, checkpoint_interval)
+        after
+          checkin(bulkhead, resource)
+        end
+      
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Create a reliability checkpoint for workflow rollback
+  """
+  def create_checkpoint(bulkhead, workflow_id, section_index, state) do
+    GenServer.cast(bulkhead, {:create_checkpoint, workflow_id, section_index, state})
+  end
+
+  @doc """
+  Rollback to a previous checkpoint
+  """
+  def rollback_to_checkpoint(bulkhead, workflow_id, checkpoint_index) do
+    GenServer.call(bulkhead, {:rollback_to_checkpoint, workflow_id, checkpoint_index})
   end
 
   @doc """
@@ -316,5 +358,217 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
     new_metrics = %{state.metrics | queue_size: queue_size, peak_queue_size: peak_queue_size}
 
     %{state | metrics: new_metrics}
+  end
+
+  # Claude-inspired workflow reliability functions
+
+  @impl true
+  def handle_cast({:create_checkpoint, workflow_id, section_index, state_data}, state) do
+    checkpoint = %{
+      workflow_id: workflow_id,
+      section_index: section_index,
+      state_data: state_data,
+      timestamp: System.monotonic_time(:millisecond)
+    }
+    
+    new_checkpoints = [checkpoint | state.reliability_checkpoints] |> Enum.take(10)  # Keep last 10
+    
+    Logger.info("📍 Created reliability checkpoint for workflow #{workflow_id} at section #{section_index}")
+    
+    {:noreply, %{state | reliability_checkpoints: new_checkpoints}}
+  end
+
+  @impl true  
+  def handle_call({:rollback_to_checkpoint, workflow_id, checkpoint_index}, _from, state) do
+    case find_checkpoint(state.reliability_checkpoints, workflow_id, checkpoint_index) do
+      nil ->
+        {:reply, {:error, :checkpoint_not_found}, state}
+      
+      checkpoint ->
+        Logger.warning("⏪ Rolling back workflow #{workflow_id} to checkpoint #{checkpoint_index}")
+        
+        # Update rollback metrics
+        new_metrics = Map.update!(state.metrics, :checkpoint_rollbacks, &(&1 + 1))
+        new_state = %{state | metrics: new_metrics}
+        
+        {:reply, {:ok, checkpoint.state_data}, new_state}
+    end
+  end
+
+  defp execute_workflow_sections(bulkhead, resource, workflow_id, sections, checkpoint_interval) do
+    # Initialize workflow context
+    GenServer.cast(bulkhead, {:init_workflow, workflow_id, length(sections)})
+    
+    # Execute sections with Claude's multi-section reliability approach
+    {result, final_state} = sections
+                           |> Enum.with_index(1)
+                           |> Enum.reduce_while({:ok, nil}, fn {section, index}, {_acc, state} ->
+                               # Create checkpoint periodically (Claude's systematic approach)
+                               if rem(index, checkpoint_interval) == 0 do
+                                 create_checkpoint(bulkhead, workflow_id, index, state)
+                               end
+                               
+                               # Execute section with error handling
+                               case execute_section_safely(section, resource, state) do
+                                 {:ok, new_state} ->
+                                   # Update section completion rate
+                                   GenServer.cast(bulkhead, {:section_completed, workflow_id, index, true})
+                                   {:cont, {:ok, new_state}}
+                                 
+                                 {:error, reason} = error ->
+                                   Logger.error("❌ Workflow #{workflow_id} section #{index} failed: #{inspect(reason)}")
+                                   GenServer.cast(bulkhead, {:section_completed, workflow_id, index, false})
+                                   
+                                   # Try rollback to last checkpoint (Claude's self-correction approach)
+                                   case attempt_workflow_recovery(bulkhead, workflow_id, index) do
+                                     {:ok, recovered_state} ->
+                                       Logger.info("🔧 Workflow #{workflow_id} recovered from checkpoint")
+                                       {:cont, {:ok, recovered_state}}
+                                     
+                                     {:error, _} ->
+                                       {:halt, error}
+                                   end
+                               end
+                             end)
+    
+    # Finalize workflow
+    GenServer.cast(bulkhead, {:finalize_workflow, workflow_id, result})
+    
+    case result do
+      {:ok, _} -> {:ok, final_state}
+      error -> error
+    end
+  end
+
+  defp execute_section_safely(section, resource, previous_state) do
+    try do
+      case section do
+        {module, function, args} ->
+          apply(module, function, [resource, previous_state | args])
+        
+        fun when is_function(fun, 2) ->
+          fun.(resource, previous_state)
+        
+        fun when is_function(fun, 1) ->
+          fun.(resource)
+        
+        _ ->
+          {:error, :invalid_section_format}
+      end
+    rescue
+      error ->
+        {:error, {:section_execution_failed, error}}
+    catch
+      :exit, reason ->
+        {:error, {:section_exit, reason}}
+    end
+  end
+
+  defp attempt_workflow_recovery(bulkhead, workflow_id, failed_section_index) do
+    # Find the most recent checkpoint before the failed section
+    case GenServer.call(bulkhead, {:find_recovery_checkpoint, workflow_id, failed_section_index}) do
+      {:ok, checkpoint_state} ->
+        {:ok, checkpoint_state}
+      
+      {:error, :no_checkpoint} ->
+        Logger.warning("⚠️ No recovery checkpoint available for workflow #{workflow_id}")
+        {:error, :no_recovery_possible}
+    end
+  end
+
+  @impl true
+  def handle_call({:find_recovery_checkpoint, workflow_id, failed_section}, _from, state) do
+    case find_latest_checkpoint_before(state.reliability_checkpoints, workflow_id, failed_section) do
+      nil ->
+        {:reply, {:error, :no_checkpoint}, state}
+      
+      checkpoint ->
+        {:reply, {:ok, checkpoint.state_data}, state}
+    end
+  end
+
+  @impl true
+  def handle_cast({:init_workflow, workflow_id, total_sections}, state) do
+    workflow_context = %{
+      id: workflow_id,
+      total_sections: total_sections,
+      completed_sections: 0,
+      failed_sections: 0,
+      started_at: System.monotonic_time(:millisecond)
+    }
+    
+    new_workflows = Map.put(state.workflow_contexts, workflow_id, workflow_context)
+    
+    {:noreply, %{state | workflow_contexts: new_workflows}}
+  end
+
+  @impl true
+  def handle_cast({:section_completed, workflow_id, _section_index, success}, state) do
+    case Map.get(state.workflow_contexts, workflow_id) do
+      nil ->
+        {:noreply, state}
+      
+      context ->
+        updated_context = if success do
+          %{context | completed_sections: context.completed_sections + 1}
+        else
+          %{context | failed_sections: context.failed_sections + 1}
+        end
+        
+        new_workflows = Map.put(state.workflow_contexts, workflow_id, updated_context)
+        
+        # Update section completion rate metric
+        total_attempts = updated_context.completed_sections + updated_context.failed_sections
+        success_rate = if total_attempts > 0 do
+          updated_context.completed_sections / total_attempts
+        else
+          1.0
+        end
+        
+        new_metrics = %{state.metrics | section_completion_rate: success_rate}
+        
+        {:noreply, %{state | workflow_contexts: new_workflows, metrics: new_metrics}}
+    end
+  end
+
+  @impl true
+  def handle_cast({:finalize_workflow, workflow_id, result}, state) do
+    case Map.get(state.workflow_contexts, workflow_id) do
+      nil ->
+        {:noreply, state}
+      
+      context ->
+        duration = System.monotonic_time(:millisecond) - context.started_at
+        success = match?({:ok, _}, result)
+        
+        Logger.info("🏁 Workflow #{workflow_id} completed in #{duration}ms, success: #{success}")
+        
+        # Update workflow success rate
+        current_rate = state.metrics.workflow_success_rate
+        new_rate = if success do
+          min(1.0, current_rate * 0.95 + 0.05)  # Weighted average favoring recent success
+        else
+          current_rate * 0.95  # Decay on failure
+        end
+        
+        new_metrics = %{state.metrics | workflow_success_rate: new_rate}
+        new_workflows = Map.delete(state.workflow_contexts, workflow_id)
+        
+        {:noreply, %{state | workflow_contexts: new_workflows, metrics: new_metrics}}
+    end
+  end
+
+  defp find_checkpoint(checkpoints, workflow_id, section_index) do
+    Enum.find(checkpoints, fn checkpoint ->
+      checkpoint.workflow_id == workflow_id and checkpoint.section_index == section_index
+    end)
+  end
+
+  defp find_latest_checkpoint_before(checkpoints, workflow_id, section_index) do
+    checkpoints
+    |> Enum.filter(fn checkpoint ->
+         checkpoint.workflow_id == workflow_id and checkpoint.section_index < section_index
+       end)
+    |> Enum.max_by(fn checkpoint -> checkpoint.section_index end, fn -> nil end)
   end
 end

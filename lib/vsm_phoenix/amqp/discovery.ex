@@ -35,7 +35,12 @@ defmodule VsmPhoenix.AMQP.Discovery do
   @msg_goodbye "GOODBYE"
   
   defmodule AgentInfo do
-    @moduledoc "Agent information structure"
+    @moduledoc """
+    Agent information structure for Claude-style discovery with rich metadata
+    
+    Enhanced with comprehensive capability descriptions and usage patterns
+    inspired by Claude Code's tool documentation approach.
+    """
     defstruct [
       :id,
       :node,
@@ -43,8 +48,136 @@ defmodule VsmPhoenix.AMQP.Discovery do
       :metadata,
       :last_seen,
       :status,
-      :version
+      :version,
+      :tool_definitions,  # Claude-style tool descriptions
+      :usage_patterns,    # When/how to use this agent
+      :performance_hints  # Optimization suggestions
     ]
+  end
+  
+  # Claude-style capability definitions with abundant examples
+  def define_capability_catalog do
+    %{
+      "data_processing" => %{
+        description: "Processes and analyzes various data formats with specialized algorithms",
+        input_types: ["json", "csv", "xml", "binary", "stream"],
+        output_types: ["analysis_report", "processed_data", "insights", "metrics"],
+        when_to_use: [
+          "Large dataset analysis requiring specialized algorithms",
+          "Real-time data stream processing",
+          "Complex data transformation tasks",
+          "Pattern recognition in structured/unstructured data"
+        ],
+        examples: [
+          %{
+            description: "Process financial market data for trend analysis",
+            input: %{type: "market_data_stream", format: "json", volume: "high"},
+            expected_output: %{type: "trend_analysis", confidence: "high", timeframe: "real-time"},
+            performance: %{latency: "< 100ms", throughput: "10k events/sec"}
+          },
+          %{
+            description: "Analyze customer behavior patterns from logs",
+            input: %{type: "log_data", format: "csv", timeframe: "30_days"},
+            expected_output: %{type: "behavior_patterns", segments: "user_cohorts", insights: "actionable"},
+            performance: %{latency: "< 5 minutes", accuracy: "> 90%"}
+          }
+        ],
+        resource_requirements: %{
+          min_memory_mb: 512,
+          recommended_memory_mb: 2048,
+          cpu_intensive: true,
+          network_bandwidth: "medium"
+        }
+      },
+      "environmental_scanning" => %{
+        description: "Monitors and analyzes environmental changes, trends, and patterns using LLM integration",
+        input_types: ["news_feeds", "social_media", "sensor_data", "api_data", "documents"],
+        output_types: ["environment_report", "trend_alerts", "risk_assessments", "opportunities"],
+        when_to_use: [
+          "Continuous monitoring of market conditions",
+          "Early warning system for environmental changes",
+          "Competitive intelligence gathering",
+          "Regulatory compliance monitoring"
+        ],
+        examples: [
+          %{
+            description: "Monitor regulatory changes affecting business operations",
+            input: %{sources: ["gov_websites", "legal_feeds"], domain: "fintech", frequency: "daily"},
+            expected_output: %{alerts: "regulatory_changes", risk_level: "assessed", compliance_actions: "recommended"},
+            integration: %{llm_provider: "anthropic", model: "claude-3-opus", cost_per_scan: "$0.05"}
+          },
+          %{
+            description: "Track competitor product launches and market positioning",
+            input: %{sources: ["press_releases", "social_media", "product_pages"], competitors: ["list"]},
+            expected_output: %{competitive_landscape: "updated", threat_assessment: "scored", response_recommendations: "prioritized"}
+          }
+        ]
+      },
+      "consensus_coordination" => %{
+        description: "Coordinates distributed decision-making using advanced consensus protocols",
+        input_types: ["proposal", "vote_request", "decision_context", "stakeholder_input"],
+        output_types: ["consensus_decision", "voting_results", "coordination_plan", "conflict_resolution"],
+        when_to_use: [
+          "Multi-agent systems requiring coordinated decisions",
+          "Distributed resource allocation",
+          "Conflict resolution between competing priorities",
+          "Democratic decision-making in agent networks"
+        ],
+        examples: [
+          %{
+            description: "Coordinate resource allocation across multiple VSM instances",
+            input: %{
+              proposal: %{type: "resource_request", amount: 1000, priority: "high"}, 
+              participants: ["vsm_1", "vsm_2", "vsm_3"],
+              constraints: %{total_budget: 5000, min_consensus: "majority"}
+            },
+            expected_output: %{
+              decision: "approved/rejected",
+              allocation: %{vsm_1: 400, vsm_2: 300, vsm_3: 300},
+              consensus_strength: 0.85,
+              execution_plan: "step_by_step"
+            }
+          }
+        ],
+        protocol_details: %{
+          consensus_algorithm: "multi_phase_commit_with_attention_scoring",
+          voting_threshold: "configurable_quorum",
+          timeout_handling: "graceful_degradation",
+          byzantine_tolerance: "up_to_33_percent"
+        }
+      },
+      "variety_management" => %{
+        description: "Implements Ashby's Law by managing system variety to match environmental complexity",
+        input_types: ["complexity_assessment", "variety_request", "adaptation_signal", "environment_change"],
+        output_types: ["variety_amplification", "capability_spawn", "adaptation_strategy", "complexity_match"],
+        when_to_use: [
+          "System complexity insufficient for environmental demands",
+          "Need to amplify problem-solving capabilities",
+          "Adaptive response to changing conditions required",
+          "Scaling system variety to match external variety"
+        ],
+        examples: [
+          %{
+            description: "Amplify variety for complex multi-domain problem solving",
+            input: %{
+              problem_complexity: %{domains: ["technical", "business", "regulatory"], interactions: "high"},
+              current_variety: %{capabilities: 5, specializations: 2},
+              target_variety: %{min_capabilities: 12, optimal_specializations: 6}
+            },
+            expected_output: %{
+              spawned_agents: [
+                %{id: "tech_specialist_1", capability: "technical_analysis", specialization: "cloud_architecture"},
+                %{id: "business_analyst_1", capability: "business_analysis", specialization: "market_strategy"},
+                %{id: "regulatory_expert_1", capability: "compliance_analysis", specialization: "data_privacy"}
+              ],
+              variety_score: 4.2,
+              ashby_compliance: true,
+              coordination_structure: "hierarchical_with_cross_links"
+            }
+          }
+        ]
+      }
+    }
   end
   
   # Client API
