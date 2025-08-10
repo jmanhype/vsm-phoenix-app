@@ -2687,7 +2687,14 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       "consider", "implications", "pros", "cons"
     ]
     
-    message_lower = String.downcase(message)
+    # Extract text from message if it's a map
+    text = if is_map(message) do
+      Map.get(message, "text", "")
+    else
+      message
+    end
+    
+    message_lower = String.downcase(text || "")
     Enum.any?(reasoning_keywords, &String.contains?(message_lower, &1))
   end
 
@@ -2698,7 +2705,14 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       "API", "database", "query", "script"
     ]
     
-    message_lower = String.downcase(message)
+    # Extract text from message if it's a map
+    text = if is_map(message) do
+      Map.get(message, "text", "")
+    else
+      message
+    end
+    
+    message_lower = String.downcase(text || "")
     Enum.any?(code_keywords, &String.contains?(message_lower, &1))
   end
 
@@ -2709,7 +2723,14 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       "information", "details", "quick"
     ]
     
-    message_lower = String.downcase(message)
+    # Extract text from message if it's a map
+    text = if is_map(message) do
+      Map.get(message, "text", "")
+    else
+      message
+    end
+    
+    message_lower = String.downcase(text || "")
     Enum.any?(factual_keywords, &String.contains?(message_lower, &1))
   end
 

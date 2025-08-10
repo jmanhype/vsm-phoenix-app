@@ -92,6 +92,19 @@ defmodule VsmPhoenix.PerformanceMonitor do
   end
   
   @impl true
+  def handle_cast({:update_load_metrics, _metrics}, state) do
+    # Handle load metrics update from TelegramAgent
+    # For now, just log it - can expand later to track these metrics
+    {:noreply, state}
+  end
+  
+  @impl true
+  def handle_cast(_msg, state) do
+    # Catch-all for unknown cast messages
+    {:noreply, state}
+  end
+  
+  @impl true
   def handle_info(:collect_metrics, state) do
     # Collect metrics directly without calling handle_call
     metrics = collect_system_metrics()
