@@ -415,10 +415,18 @@ defmodule VsmPhoenix.Telemetry.SignalProcessor do
     end)
   end
   
+  defp extract_samples({:samples, samples}), do: samples
+  defp extract_samples(samples) when is_list(samples), do: samples
+  defp extract_samples(_), do: []
+
   defp compute_cross_correlation(signal_a, signal_b) do
+    # Extract actual samples from signal data
+    a_samples = extract_samples(signal_a)
+    b_samples = extract_samples(signal_b)
+    
     # Normalize signals
-    a_values = normalize_signal(Enum.map(signal_a, & &1.value))
-    b_values = normalize_signal(Enum.map(signal_b, & &1.value))
+    a_values = normalize_signal(Enum.map(a_samples, & &1.value))
+    b_values = normalize_signal(Enum.map(b_samples, & &1.value))
     
     # Compute correlation at different lags
     max_lag = min(length(a_values), length(b_values)) - 1

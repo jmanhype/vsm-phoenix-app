@@ -2929,7 +2929,9 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     enhanced_state = add_message_to_context(chat_id, message, from, enhanced_state)
     
     # Step 2: Build comprehensive user context with neural intelligence
-    user_context = TelegramContextManager.build_conversation_context(chat_id, enhanced_state)
+    conversation_context = TelegramContextManager.build_conversation_context(chat_id, enhanced_state)
+    user_context = build_comprehensive_user_context(chat_id, from, enhanced_state)
+    |> Map.put(:conversation, conversation_context)
     
     # Step 3: Route message intelligently using enhanced aMCP routing
     case route_message_intelligently(message, user_context, enhanced_state) do
