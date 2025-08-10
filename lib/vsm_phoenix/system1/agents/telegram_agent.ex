@@ -2160,7 +2160,13 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     end
   end
 
-  defp analyze_input_complexity(text) do
+  defp analyze_input_complexity(message) when is_map(message) do
+    # Extract text from message map
+    text = Map.get(message, "text", "")
+    analyze_input_complexity(text)
+  end
+  
+  defp analyze_input_complexity(text) when is_binary(text) do
     # Analyze input complexity for GEPA optimization
     word_count = length(String.split(text))
     char_count = String.length(text)
@@ -2171,6 +2177,11 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       word_count > 10 -> :low
       true -> :minimal
     end
+  end
+  
+  defp analyze_input_complexity(_) do
+    # Fallback for any other type
+    :minimal
   end
 
   defp calculate_recent_success_rate(state) do
