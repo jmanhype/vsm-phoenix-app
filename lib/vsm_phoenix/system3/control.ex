@@ -552,7 +552,12 @@ defmodule VsmPhoenix.System3.Control do
   # Private Functions
   
   defp attempt_allocation(request, pools) do
-    required = request.resources
+    # Handle both map formats - direct resources or wrapped in .resources
+    required = if is_map(request) and Map.has_key?(request, :resources) do
+      request.resources
+    else
+      request
+    end
     
     if can_allocate?(required, pools) do
       updated_pools = deduct_resources(pools, required)

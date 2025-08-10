@@ -116,9 +116,15 @@ defmodule VsmPhoenix.Telemetry.SignalProcessor do
   end
   
   @impl true
-  def handle_call({:correlate, signal_a, signal_b}, _from, state) do
-    correlation = compute_cross_correlation(signal_a, signal_b)
-    {:reply, {:ok, correlation}, state}
+  def handle_call({:correlate, signal_a_name, signal_b_name}, _from, state) do
+    # Fetch actual signal data from AnalogArchitect
+    with {:ok, signal_a_data} <- VsmPhoenix.Telemetry.AnalogArchitect.get_signal_data(signal_a_name, %{}),
+         {:ok, signal_b_data} <- VsmPhoenix.Telemetry.AnalogArchitect.get_signal_data(signal_b_name, %{}) do
+      correlation = compute_cross_correlation(signal_a_data, signal_b_data)
+      {:reply, {:ok, correlation}, state}
+    else
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
   end
   
   @impl true
