@@ -1714,7 +1714,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       )
       
       # Get current degradation level
-      {:ok, status} = GracefulDegradation.get_status(state.resilience.graceful_degradation)
+      status = GracefulDegradation.get_status(state.resilience.graceful_degradation)
       
       # Update state if degradation level changed
       new_state = if status.current_level != state.resilience.current_degradation_level do

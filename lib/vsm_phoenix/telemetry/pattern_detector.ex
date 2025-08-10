@@ -437,20 +437,26 @@ defmodule VsmPhoenix.Telemetry.PatternDetector do
   
   defp compute_autocorrelation(values) do
     n = length(values)
-    mean = Enum.sum(values) / n
-    variance = Enum.sum(Enum.map(values, fn v -> (v - mean) * (v - mean) end)) / n
     
-    # Compute autocorrelation for different lags
-    max_lag = min(n - 1, 100)
-    
-    Enum.map(0..max_lag, fn lag ->
-      if variance > 0 do
-        correlation = compute_correlation_at_lag(values, values, lag, mean, variance)
-        {lag, correlation}
-      else
-        {lag, 0.0}
-      end
-    end)
+    # Handle empty values case
+    if n == 0 do
+      []
+    else
+      mean = Enum.sum(values) / n
+      variance = Enum.sum(Enum.map(values, fn v -> (v - mean) * (v - mean) end)) / n
+      
+      # Compute autocorrelation for different lags
+      max_lag = min(n - 1, 100)
+      
+      Enum.map(0..max_lag, fn lag ->
+        if variance > 0 do
+          correlation = compute_correlation_at_lag(values, values, lag, mean, variance)
+          {lag, correlation}
+        else
+          {lag, 0.0}
+        end
+      end)
+    end
   end
   
   defp compute_correlation_at_lag(values1, values2, lag, mean, variance) do
@@ -509,20 +515,26 @@ defmodule VsmPhoenix.Telemetry.PatternDetector do
   defp compute_fft_for_periodicity(values) do
     # Simplified FFT for periodicity detection
     n = length(values)
-    frequencies = Enum.map(0..(div(n, 2)), fn k -> k / n end)
     
-    # Compute magnitude spectrum
-    magnitudes = Enum.map(frequencies, fn freq ->
-      # Simplified DFT calculation
-      {real, imag} = Enum.reduce(Enum.with_index(values), {0.0, 0.0}, fn {v, i}, {r, im} ->
-        angle = -2 * :math.pi() * freq * i
-        {r + v * :math.cos(angle), im + v * :math.sin(angle)}
+    # Handle empty values case
+    if n == 0 do
+      []
+    else
+      frequencies = Enum.map(0..(div(n, 2)), fn k -> k / n end)
+      
+      # Compute magnitude spectrum
+      magnitudes = Enum.map(frequencies, fn freq ->
+        # Simplified DFT calculation
+        {real, imag} = Enum.reduce(Enum.with_index(values), {0.0, 0.0}, fn {v, i}, {r, im} ->
+          angle = -2 * :math.pi() * freq * i
+          {r + v * :math.cos(angle), im + v * :math.sin(angle)}
+        end)
+        
+        :math.sqrt(real * real + imag * imag)
       end)
       
-      :math.sqrt(real * real + imag * imag)
-    end)
-    
-    Enum.zip(frequencies, magnitudes)
+      Enum.zip(frequencies, magnitudes)
+    end
   end
   
   defp find_dominant_frequencies(fft_result) do

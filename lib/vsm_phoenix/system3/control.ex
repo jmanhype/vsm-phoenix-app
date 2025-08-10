@@ -49,6 +49,10 @@ defmodule VsmPhoenix.System3.Control do
   def allocate_for_optimization(adjustment) do
     GenServer.cast(@name, {:allocate_for_optimization, adjustment})
   end
+
+  def allocate_for_adaptation(proposal) do
+    GenServer.call(@name, {:allocate_for_adaptation, proposal})
+  end
   
   def get_flow_state do
     GenServer.call(@name, :get_flow_state)
@@ -336,6 +340,37 @@ defmodule VsmPhoenix.System3.Control do
     {:reply, state.pattern_metrics, state}
   end
   
+  @impl true
+  def handle_call({:allocate_for_adaptation, proposal}, _from, state) do
+    Logger.info("Control: Allocating resources for adaptation #{proposal.id}")
+    
+    # Determine resource requirements for the adaptation
+    required_resources = %{
+      cpu: Map.get(proposal, :cpu_required, 10),
+      memory: Map.get(proposal, :memory_required, 50),
+      network: Map.get(proposal, :network_required, 5)
+    }
+    
+    # Attempt allocation
+    case attempt_allocation(required_resources, state.flow_pools) do
+      {:ok, allocation_id} ->
+        {:reply, {:ok, allocation_id}, state}
+      
+      {:error, :insufficient_resources} ->
+        # Try optimization and retry
+        optimized_state = optimize_and_retry(required_resources, state)
+        case attempt_allocation(required_resources, optimized_state.flow_pools) do
+          {:ok, allocation_id} ->
+            {:reply, {:ok, allocation_id}, optimized_state}
+          {:error, reason} ->
+            {:reply, {:error, reason}, optimized_state}
+        end
+      
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
   @impl true
   def handle_call({:audit_s1_direct, target_s1, options}, _from, state) do
     Logger.warning("🔍 S3 AUDIT BYPASS: Direct inspection of #{target_s1}")

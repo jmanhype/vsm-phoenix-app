@@ -44,7 +44,7 @@ defmodule VsmPhoenix.AMQP.ContextWindowManager do
   
   alias VsmPhoenix.CRDT.ContextStore
   alias VsmPhoenix.AMQP.{Discovery, NetworkOptimizer}
-  alias VsmPhoenix.System4.Intelligence.CorticalAttentionEngine
+  alias VsmPhoenix.System2.CorticalAttentionEngine
   
   # Context window configuration
   @default_max_events 10_000
