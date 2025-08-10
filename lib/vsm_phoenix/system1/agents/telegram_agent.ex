@@ -143,6 +143,17 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
         # Update registry with bot info
         # Registry.update_metadata(state.agent_id, %{bot_username: bot_info["username"]})
         
+        # Initialize with Advanced aMCP Protocol Extensions
+        case Process.whereis(VsmPhoenix.System1.Agents.TelegramProtocolIntegration) do
+          nil -> 
+            Logger.warning("Protocol integration not started, skipping announcement")
+          _pid ->
+            VsmPhoenix.System1.Agents.TelegramProtocolIntegration.initialize_telegram_with_protocol(
+              state.agent_id,
+              bot_info["username"]
+            )
+        end
+        
         # Start polling or set webhook
         new_state = if state.webhook_mode do
           case set_webhook_internal(state) do
@@ -538,6 +549,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
 
   defp process_command(text, message, state) do
     chat_id = message["chat"]["id"]
+    from = message["from"]
     [command | args] = String.split(text, " ")
     command = String.trim_leading(command, "/")
     
@@ -546,42 +558,74 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     # Remove bot username if present (e.g., /help@VaoAssitantBot)
     command = command |> String.split("@") |> List.first()
     
-    result = case command do
-      "start" ->
-        handle_start_command(chat_id, state)
-        
-      "help" ->
-        handle_help_command(chat_id, state)
-        
-      "status" ->
-        handle_status_command(chat_id, args, state)
-        
-      "vsm" ->
-        handle_vsm_command(chat_id, args, state)
-        
-      "alert" ->
-        if is_admin?(chat_id, state) do
-          handle_alert_command(chat_id, args, state)
-        else
-          send_telegram_message(chat_id, "❌ Admin access required", state)
-          state
-        end
-        
-      "authorize" ->
-        if is_admin?(chat_id, state) do
-          handle_authorize_command(chat_id, args, state)
-        else
-          send_telegram_message(chat_id, "❌ Admin access required", state)
-          state
-        end
-        
-      _ ->
-        send_telegram_message(chat_id, "❓ Unknown command. Use /help for available commands.", state)
-        state
-    end
+    # Check if command requires consensus through protocol integration
+    critical_commands = ["restart", "shutdown", "deploy", "config", "policy"]
     
-    # Update metrics with the command that was processed
-    |> update_metrics(:command_processed, command)
+    if command in critical_commands and Process.whereis(VsmPhoenix.System1.Agents.TelegramProtocolIntegration) do
+      # Use consensus-based command execution
+      user_info = %{
+        id: from["id"],
+        username: from["username"],
+        first_name: from["first_name"],
+        is_admin: is_admin?(chat_id, state)
+      }
+      
+      full_command = Enum.join([command | args], " ")
+      
+      case VsmPhoenix.System1.Agents.TelegramProtocolIntegration.handle_command_with_consensus(
+        full_command, 
+        chat_id, 
+        user_info
+      ) do
+        {:ok, result} ->
+          send_telegram_message(chat_id, "✅ Command executed with consensus approval", state)
+          state
+        {:error, :consensus_rejected} ->
+          send_telegram_message(chat_id, "❌ Command rejected by consensus", state)
+          state
+        {:error, reason} ->
+          send_telegram_message(chat_id, "⚠️ Command failed: #{inspect(reason)}", state)
+          state
+      end
+    else
+      # Normal command processing without consensus
+      result = case command do
+        "start" ->
+          handle_start_command(chat_id, state)
+          
+        "help" ->
+          handle_help_command(chat_id, state)
+          
+        "status" ->
+          handle_status_command(chat_id, args, state)
+          
+        "vsm" ->
+          handle_vsm_command(chat_id, args, state)
+          
+        "alert" ->
+          if is_admin?(chat_id, state) do
+            handle_alert_command(chat_id, args, state)
+          else
+            send_telegram_message(chat_id, "❌ Admin access required", state)
+            state
+          end
+          
+        "authorize" ->
+          if is_admin?(chat_id, state) do
+            handle_authorize_command(chat_id, args, state)
+          else
+            send_telegram_message(chat_id, "❌ Admin access required", state)
+            state
+          end
+          
+        _ ->
+          send_telegram_message(chat_id, "❓ Unknown command. Use /help for available commands.", state)
+          state
+      end
+      
+      # Update metrics with the command that was processed
+      |> update_metrics(:command_processed, command)
+    end
   end
 
   defp process_callback_query(callback_query, state) do

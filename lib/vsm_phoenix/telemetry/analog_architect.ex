@@ -291,7 +291,10 @@ defmodule VsmPhoenix.Telemetry.AnalogArchitect do
   defp apply_moving_average(values, window_size) do
     values
     |> Enum.chunk_every(window_size, 1, :discard)
-    |> Enum.map(&(Enum.sum(&1) / length(&1)))
+    |> Enum.map(fn chunk -> 
+      len = length(chunk)
+      if len > 0, do: Enum.sum(chunk) / len, else: 0
+    end)
     |> then(fn filtered ->
       # Pad the beginning to maintain signal length
       padding = List.duplicate(List.first(values) || 0, window_size - 1)
@@ -350,33 +353,156 @@ defmodule VsmPhoenix.Telemetry.AnalogArchitect do
     end
   end
   
+  defp perform_waveform_analysis(signal_id, :anomaly) do
+    # Delegate to anomaly detection
+    detect_signal_anomalies(signal_id, :statistical)
+  end
+  
+  defp perform_waveform_analysis(signal_id, :periodic) do
+    # Analyze for periodic patterns
+    case :ets.lookup(:signal_buffers, signal_id) do
+      [{^signal_id, buffer}] ->
+        samples = :queue.to_list(buffer)
+        {:ok, %{
+          detected: false,  # Simplified for now
+          period: nil,
+          confidence: 0.0
+        }}
+      [] ->
+        {:error, :signal_not_found}
+    end
+  end
+  
+  defp perform_waveform_analysis(signal_id, :trend) do
+    # Analyze trend direction
+    case :ets.lookup(:signal_buffers, signal_id) do
+      [{^signal_id, buffer}] ->
+        samples = :queue.to_list(buffer)
+        values = Enum.map(samples, & &1.value)
+        
+        trend = if length(values) > 1 do
+          first = List.first(values)
+          last = List.last(values)
+          cond do
+            last > first * 1.1 -> :increasing
+            last < first * 0.9 -> :decreasing
+            true -> :stable
+          end
+        else
+          :insufficient_data
+        end
+        
+        {:ok, %{
+          trend: trend,
+          start_value: List.first(values),
+          end_value: List.last(values),
+          change_percent: if(length(values) > 1, do: ((List.last(values) - List.first(values)) / List.first(values)) * 100, else: 0)
+        }}
+      [] ->
+        {:error, :signal_not_found}
+    end
+  end
+  
+  defp perform_waveform_analysis(signal_id, :percentile) do
+    # Calculate percentile statistics
+    case :ets.lookup(:signal_buffers, signal_id) do
+      [{^signal_id, buffer}] ->
+        samples = :queue.to_list(buffer)
+        values = samples |> Enum.map(& &1.value) |> Enum.sort()
+        
+        percentiles = if length(values) > 0 do
+          %{
+            p50: Enum.at(values, round(length(values) * 0.50)),
+            p90: Enum.at(values, round(length(values) * 0.90)),
+            p95: Enum.at(values, round(length(values) * 0.95)),
+            p99: Enum.at(values, round(length(values) * 0.99))
+          }
+        else
+          %{p50: 0, p90: 0, p95: 0, p99: 0}
+        end
+        
+        {:ok, percentiles}
+      [] ->
+        {:error, :signal_not_found}
+    end
+  end
+  
+  defp perform_waveform_analysis(signal_id, :clustering) do
+    # Simplified clustering analysis
+    case :ets.lookup(:signal_buffers, signal_id) do
+      [{^signal_id, buffer}] ->
+        samples = :queue.to_list(buffer)
+        {:ok, %{
+          clusters: [],  # Simplified for now
+          method: :k_means
+        }}
+      [] ->
+        {:error, :signal_not_found}
+    end
+  end
+  
+  defp perform_waveform_analysis(signal_id, :basic) do
+    # Basic statistics
+    case :ets.lookup(:signal_buffers, signal_id) do
+      [{^signal_id, buffer}] ->
+        samples = :queue.to_list(buffer)
+        values = Enum.map(samples, & &1.value)
+        
+        stats = if length(values) > 0 do
+          mean = Enum.sum(values) / length(values)
+          %{
+            count: length(values),
+            mean: mean,
+            min: Enum.min(values),
+            max: Enum.max(values),
+            sum: Enum.sum(values)
+          }
+        else
+          %{count: 0, mean: 0, min: 0, max: 0, sum: 0}
+        end
+        
+        {:ok, stats}
+      [] ->
+        {:error, :signal_not_found}
+    end
+  end
+  
+  defp perform_waveform_analysis(signal_id, analysis_type) do
+    Logger.warning("Unknown analysis type: #{inspect(analysis_type)} for signal: #{signal_id}")
+    {:error, {:unknown_analysis_type, analysis_type}}
+  end
+  
   defp detect_signal_anomalies(signal_id, :statistical) do
     case :ets.lookup(:signal_buffers, signal_id) do
       [{^signal_id, buffer}] ->
         samples = :queue.to_list(buffer)
         values = Enum.map(samples, & &1.value)
         
-        # Calculate statistics
-        mean = Enum.sum(values) / length(values)
-        std_dev = calculate_std_dev(values, mean)
-        
-        # Find anomalies (values beyond 3 standard deviations)
-        threshold = 3 * std_dev
-        
-        anomalies = samples
-        |> Enum.filter(fn sample ->
-          abs(sample.value - mean) > threshold
-        end)
-        |> Enum.map(fn sample ->
-          %{
-            timestamp: sample.timestamp,
-            value: sample.value,
-            deviation: (sample.value - mean) / std_dev,
-            severity: calculate_anomaly_severity(sample.value, mean, std_dev)
-          }
-        end)
-        
-        {:ok, anomalies}
+        if length(values) == 0 do
+          {:ok, []}
+        else
+          # Calculate statistics
+          mean = Enum.sum(values) / length(values)
+          std_dev = calculate_std_dev(values, mean)
+          
+          # Find anomalies (values beyond 3 standard deviations)
+          threshold = 3 * std_dev
+          
+          anomalies = samples
+          |> Enum.filter(fn sample ->
+            abs(sample.value - mean) > threshold
+          end)
+          |> Enum.map(fn sample ->
+            %{
+              timestamp: sample.timestamp,
+              value: sample.value,
+              deviation: if std_dev > 0, do: (sample.value - mean) / std_dev, else: 0,
+              severity: calculate_anomaly_severity(sample.value, mean, std_dev)
+            }
+          end)
+          
+          {:ok, anomalies}
+        end
       [] ->
         {:error, :signal_not_found}
     end
@@ -510,15 +636,17 @@ defmodule VsmPhoenix.Telemetry.AnalogArchitect do
     end
   end
   
+  defp calculate_std_dev([], _mean), do: 0
   defp calculate_std_dev(values, mean) do
     variance = values
     |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
     |> Enum.sum()
-    |> Kernel./(length(values))
+    |> then(fn sum -> if length(values) > 0, do: sum / length(values), else: 0 end)
     
     :math.sqrt(variance)
   end
   
+  defp calculate_anomaly_severity(value, mean, std_dev) when std_dev == 0, do: :low
   defp calculate_anomaly_severity(value, mean, std_dev) do
     deviation = abs(value - mean) / std_dev
     
@@ -538,7 +666,7 @@ defmodule VsmPhoenix.Telemetry.AnalogArchitect do
   
   defp apply_mixing_function(sample_set, :average) do
     values = Enum.map(sample_set.samples, & &1.value)
-    Enum.sum(values) / length(values)
+    if length(values) > 0, do: Enum.sum(values) / length(values), else: 0
   end
   
   defp apply_mixing_function(sample_set, :sum) do

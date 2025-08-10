@@ -75,7 +75,14 @@ defmodule VsmPhoenix.System2.Coordinator do
         synchronizations: 0,
         effectiveness: 1.0
       },
-      amqp_channel: nil
+      amqp_channel: nil,
+      attention_metrics: %{
+        total_attention_scored: 0,
+        high_attention_messages: 0,
+        low_attention_filtered: 0,
+        attention_modulated_delays: 0,
+        attention_bypasses: 0
+      }
     }
     
     # Set up AMQP for coordination
@@ -83,6 +90,9 @@ defmodule VsmPhoenix.System2.Coordinator do
     
     # Schedule periodic synchronization check
     schedule_synchronization_check()
+    
+    # Schedule attention metrics reporting
+    schedule_attention_metrics_report()
     
     {:ok, state}
   end
@@ -96,10 +106,17 @@ defmodule VsmPhoenix.System2.Coordinator do
     context = %{source: from_context, target: to_context, state: state}
     {:ok, attention_score, score_components} = CorticalAttentionEngine.score_attention(message, context)
     
-    # Log high-attention messages
-    if attention_score > 0.7 do
-      Logger.info("🧠 High attention message (score: #{Float.round(attention_score, 2)}): #{inspect(message[:type])}")
-    end
+    # Update attention metrics
+    new_attention_metrics = state.attention_metrics
+    |> Map.update!(:total_attention_scored, &(&1 + 1))
+    |> then(fn metrics ->
+      if attention_score > 0.7 do
+        Logger.info("🧠 High attention message (score: #{Float.round(attention_score, 2)}): #{inspect(message[:type])}")
+        Map.update!(metrics, :high_attention_messages, &(&1 + 1))
+      else
+        metrics
+      end
+    end)
     
     # Add attention score to message for downstream processing
     attention_enriched_message = Map.merge(message, %{
@@ -177,8 +194,26 @@ defmodule VsmPhoenix.System2.Coordinator do
         state
     end
     
-    # Update metrics
-    final_state = update_metrics(new_state, :messages_coordinated)
+    # Update attention metrics based on coordination result
+    updated_attention_metrics = case Process.get(:attention_metrics_update) do
+      :low_attention_filtered ->
+        Process.delete(:attention_metrics_update)
+        Map.update!(new_attention_metrics, :low_attention_filtered, &(&1 + 1))
+      _ ->
+        case coordination_result do
+          {:delay, _, _} when attention_score > 0.7 ->
+            Map.update!(new_attention_metrics, :attention_modulated_delays, &(&1 + 1))
+          {:allow, _} when attention_score > 0.8 ->
+            Map.update!(new_attention_metrics, :attention_bypasses, &(&1 + 1))
+          _ ->
+            new_attention_metrics
+        end
+    end
+    
+    # Update metrics with attention metrics
+    final_state = new_state
+    |> Map.put(:attention_metrics, updated_attention_metrics)
+    |> update_metrics(:messages_coordinated)
     
     {:reply, coordination_result, final_state}
   end
@@ -245,7 +280,13 @@ defmodule VsmPhoenix.System2.Coordinator do
         conflict_resolution_rate: systemic_metrics.conflict_resolution_rate,
         flow_balance_ratio: flow_balance.overall_balance,
         unit_imbalances: flow_balance.unit_imbalances
-      }
+      },
+      
+      # Cortical attention metrics
+      attention_metrics: Map.merge(state.attention_metrics, %{
+        attention_effectiveness: calculate_attention_effectiveness(state.attention_metrics),
+        attention_state: get_current_attention_state()
+      })
     }
     
     {:reply, status, state}
@@ -442,6 +483,39 @@ defmodule VsmPhoenix.System2.Coordinator do
     {:noreply, new_state}
   end
   
+  @impl true
+  def handle_info(:report_attention_metrics, state) do
+    # Report attention metrics to infrastructure
+    if state.attention_metrics.total_attention_scored > 0 do
+      effectiveness = calculate_attention_effectiveness(state.attention_metrics)
+      
+      # Log summary
+      Logger.info("""
+      🧠 Cortical Attention Metrics Report:
+      - Total messages scored: #{state.attention_metrics.total_attention_scored}
+      - High attention messages: #{state.attention_metrics.high_attention_messages}
+      - Low attention filtered: #{state.attention_metrics.low_attention_filtered}
+      - Attention modulated delays: #{state.attention_metrics.attention_modulated_delays}
+      - Attention bypasses: #{state.attention_metrics.attention_bypasses}
+      - Effectiveness: #{Float.round(effectiveness * 100, 1)}%
+      """)
+      
+      # Report to metrics infrastructure
+      VsmPhoenix.Infrastructure.CoordinationMetrics.record_custom_metric(
+        :cortical_attention_effectiveness,
+        %{
+          effectiveness: effectiveness,
+          high_attention_rate: state.attention_metrics.high_attention_messages / state.attention_metrics.total_attention_scored,
+          filter_rate: state.attention_metrics.low_attention_filtered / state.attention_metrics.total_attention_scored
+        }
+      )
+    end
+    
+    # Schedule next report
+    schedule_attention_metrics_report()
+    {:noreply, state}
+  end
+  
   # Private Functions
   
   defp load_coordination_rules do
@@ -470,6 +544,8 @@ defmodule VsmPhoenix.System2.Coordinator do
     # Low attention messages can be filtered or delayed
     if attention_score < 0.2 do
       Logger.debug("🧠 Low attention message filtered (score: #{Float.round(attention_score, 2)})")
+      # Update attention metrics for filtered messages
+      Process.put(:attention_metrics_update, :low_attention_filtered)
       {:block, :low_attention}
     else
       # Check for conflicts
@@ -572,9 +648,34 @@ defmodule VsmPhoenix.System2.Coordinator do
     oscillating = is_oscillating?(filtered_history)
     
     if oscillating do
-      # Apply dampening
-      dampening_factor = 0.7
+      # Get attention-based dampening factor
+      context = %{
+        type: :oscillation,
+        source: detector.context_id,
+        urgency: :high,
+        signal_history: filtered_history
+      }
+      
+      {:ok, attention_score, _} = CorticalAttentionEngine.score_attention(
+        %{type: :oscillation_dampening, signal: signal},
+        context
+      )
+      
+      # Attention-modulated dampening: high attention = less dampening (more important to preserve)
+      base_dampening = 0.7
+      attention_preservation = attention_score * 0.3  # Up to 30% preservation
+      dampening_factor = base_dampening + attention_preservation
+      
       dampened_signal = dampen_signal(signal, dampening_factor)
+      
+      # Shift attention if oscillation is severe
+      if detector.oscillation_count > 5 do
+        CorticalAttentionEngine.shift_attention(%{
+          type: :oscillation_crisis,
+          context_id: detector.context_id,
+          severity: :high
+        })
+      end
       
       updated_detector = %{detector | 
         signal_history: filtered_history,
@@ -719,6 +820,35 @@ defmodule VsmPhoenix.System2.Coordinator do
   
   defp schedule_synchronization_check do
     Process.send_after(self(), :synchronization_check, 10_000)  # Every 10 seconds
+  end
+  
+  defp schedule_attention_metrics_report do
+    Process.send_after(self(), :report_attention_metrics, 30_000)  # Every 30 seconds
+  end
+  
+  defp calculate_attention_effectiveness(metrics) do
+    total = metrics.total_attention_scored
+    if total == 0 do
+      1.0
+    else
+      # Effectiveness based on:
+      # - High attention messages are properly prioritized
+      # - Low attention messages are filtered
+      # - Attention-based routing decisions
+      high_attention_rate = metrics.high_attention_messages / total
+      filter_efficiency = metrics.low_attention_filtered / max(total * 0.2, 1)  # Expect ~20% to be low attention
+      routing_efficiency = (metrics.attention_bypasses + metrics.attention_modulated_delays) / max(total * 0.1, 1)
+      
+      # Weighted effectiveness
+      (high_attention_rate * 0.4 + min(filter_efficiency, 1.0) * 0.3 + min(routing_efficiency, 1.0) * 0.3)
+    end
+  end
+  
+  defp get_current_attention_state do
+    case CorticalAttentionEngine.get_attention_state() do
+      {:ok, state_info} -> state_info.state
+      _ -> :unknown
+    end
   end
   
   defp setup_amqp_coordination(state) do

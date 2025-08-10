@@ -45,9 +45,9 @@ defmodule VsmPhoenix.Resilience.Supervisor do
         circuit_breaker_threshold: 3
       ),
 
-      # Resilient AMQP Connection (replaces the original)
-      {VsmPhoenix.Resilience.ResilientAMQPConnection,
-       name: VsmPhoenix.AMQP.ConnectionManager, failure_threshold: 5, circuit_timeout: 30_000}
+      # Resilient AMQP Connection - Commented out to avoid conflict with existing ConnectionManager
+      # {VsmPhoenix.Resilience.ResilientAMQPConnection,
+      #  name: VsmPhoenix.AMQP.ConnectionManager, failure_threshold: 5, circuit_timeout: 30_000}
     ]
 
     Supervisor.init(children, strategy: :rest_for_one)

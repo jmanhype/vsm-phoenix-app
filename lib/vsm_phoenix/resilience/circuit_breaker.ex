@@ -65,7 +65,7 @@ defmodule VsmPhoenix.Resilience.CircuitBreaker do
   @impl true
   def init(opts) do
     # Get dynamic configuration
-    config = DynamicConfig.get_component(:circuit_breaker)
+    config = VsmPhoenix.Infrastructure.DynamicConfig.get_component(:circuit_breaker)
     
     # Merge dynamic config with opts
     merged_opts = Keyword.merge([

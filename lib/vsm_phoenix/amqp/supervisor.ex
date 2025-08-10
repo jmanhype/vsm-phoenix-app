@@ -29,6 +29,12 @@ defmodule VsmPhoenix.AMQP.Supervisor do
       # Start secure command router with cryptographic protection
       {VsmPhoenix.AMQP.SecureCommandRouter, []},
       
+      # Advanced aMCP Protocol Extensions
+      {VsmPhoenix.AMQP.Discovery, []},
+      {VsmPhoenix.AMQP.Consensus, []},
+      {VsmPhoenix.AMQP.NetworkOptimizer, []},
+      {VsmPhoenix.AMQP.ProtocolIntegration, []},
+      
       # Start recursive protocol handler
       # {VsmPhoenix.AMQP.RecursiveProtocol, [meta_pid: self(), config: %{identity: "vsm_main"}]}
     ]

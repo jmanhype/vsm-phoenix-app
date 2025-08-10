@@ -64,6 +64,9 @@ defmodule VsmPhoenix.Application do
       # Start Goldrush Telemetry for real event processing
       VsmPhoenix.Goldrush.Telemetry,
       
+      # Start Analog-Signal Telemetry Architecture
+      VsmPhoenix.Telemetry.Supervisor,
+      
       # Start Goldrush Manager with plugins
       VsmPhoenix.Goldrush.Manager,
       
@@ -72,6 +75,15 @@ defmodule VsmPhoenix.Application do
       
       # Start CRDT-based Context Persistence
       VsmPhoenix.CRDT.Supervisor,
+      
+      # Start Enhanced Security Layer
+      VsmPhoenix.Security.Supervisor,
+      
+      # Start Resilience Patterns (Circuit Breakers and Bulkheads)
+      VsmPhoenix.Resilience.Supervisor,
+      
+      # Start Telegram Protocol Integration for Advanced aMCP
+      VsmPhoenix.System1.Agents.TelegramProtocolIntegration,
       
       # Start Hermes Server Registry first
       Hermes.Server.Registry,
@@ -130,6 +142,9 @@ defmodule VsmPhoenix.Application do
       
       # System 3 - Audit Channel (Direct S1 inspection bypass)
       VsmPhoenix.System3.AuditChannel,
+      
+      # System 2 - Cortical Attention Engine (starts before Coordinator)
+      VsmPhoenix.System2.CorticalAttentionEngine,
       
       # System 2 - Coordination (must start before System 1)
       VsmPhoenix.System2.Coordinator,
