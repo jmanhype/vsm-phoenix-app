@@ -162,7 +162,7 @@ defmodule VsmPhoenix.TelegramBot.ConversationManager do
     limit = opts[:limit] || 50
     include_context = opts[:include_context] || false
     
-    case ContextManager.get_context(:rolling, conversation_key, limit: limit) do
+    case ContextManager.get_context(:conversation_history, conversation_key, limit: limit) do
       {:ok, history} when is_list(history) ->
         # Sort by timestamp (most recent first)
         sorted_history = Enum.sort_by(history, & &1.timestamp, :desc)

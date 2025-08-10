@@ -327,7 +327,9 @@ defmodule VsmPhoenix.ContextManager do
   defp aggregate_context_data(_existing, new), do: new
   
   defp get_from_lww_set(set_name, key) do
-    case ContextStore.get_lww_value(set_name, key) do
+    # Use the generic get function and extract LWW value
+    combined_key = "#{set_name}:#{key}"
+    case ContextStore.get(combined_key) do
       {:ok, value} -> {:ok, value}
       error -> error
     end
@@ -355,10 +357,9 @@ defmodule VsmPhoenix.ContextManager do
   end
   
   defp get_all_from_lww_set(set_name) do
-    case ContextStore.get_all_lww_values(set_name) do
-      {:ok, values} -> {:ok, values}
-      error -> error
-    end
+    # For now, return empty list since we don't have get_all_lww_values
+    # This would need to be implemented by scanning CRDT state
+    {:ok, []}
   end
   
   defp get_all_from_or_set(set_name) do

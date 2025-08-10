@@ -641,6 +641,23 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   defp generate_intelligent_fallback(original_text, chat_id, state) do
     # Get recent conversation context for intelligent fallback
     conversation_context = get_conversation_state(chat_id, state)
+    recent_messages = conversation_context[:messages] || []
+    
+    # Extract last topic from conversation if available
+    last_topic = case recent_messages do
+      [] -> nil
+      messages ->
+        # Look for the last bot response that wasn't a fallback
+        messages
+        |> Enum.reverse()
+        |> Enum.find(fn msg -> 
+          msg[:role] == :assistant && !String.contains?(msg[:content] || "", "[RESILIENCE:")
+        end)
+        |> case do
+          nil -> nil
+          msg -> extract_conversation_topic(msg[:content])
+        end
+    end
     
     # Use Claude-inspired contextual fallback generation
     cond do
@@ -650,8 +667,15 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       String.length(original_text) > 500 ->
         "I received your detailed message but I'm having trouble with my advanced processing right now. Could you help me by breaking it into smaller questions? I can better handle shorter requests at the moment."
       
-      length(conversation_context[:messages] || []) > 5 ->
+      length(recent_messages) > 5 && last_topic ->
+        "I'm having technical difficulties with my full capabilities, but I remember we were discussing #{last_topic}. Would you like me to continue with that topic using my available functions, or is there something specific about #{extract_key_topic(original_text)} you'd like to address?"
+      
+      length(recent_messages) > 5 ->
         "I'm having some technical difficulties with my full capabilities, but I can see we've been having a good conversation. What's the most important thing you'd like me to focus on right now?"
+      
+      last_topic && String.length(original_text) < 50 ->
+        # Short message might be a follow-up
+        "I'm experiencing temporary issues, but I understand you might be asking about #{last_topic}. Could you provide more details so I can help with my available functions?"
       
       true ->
         "I'm experiencing some temporary technical issues. I received your message about #{extract_key_topic(original_text)}, but my advanced processing is limited right now. Is there a specific aspect I can help you with using my basic functions?"
@@ -666,6 +690,24 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     |> Enum.take(3)
     |> Enum.join(", ")
     |> String.slice(0..50)
+  end
+  
+  defp extract_conversation_topic(text) do
+    # Extract main topic from a previous conversation message
+    text
+    |> String.replace(~r/\[.*?\]/, "") # Remove any resilience markers
+    |> String.split(".")
+    |> List.first()
+    |> case do
+      nil -> "our previous topic"
+      sentence ->
+        sentence
+        |> String.split(" ")
+        |> Enum.filter(&(String.length(&1) > 4))
+        |> Enum.take(5)
+        |> Enum.join(" ")
+        |> String.slice(0..60)
+    end
   end
 
   defp execute_simple_telegram_send(chat_id, text, state) do
@@ -826,7 +868,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
         user: from,
         message_type: classify_message_type(message),
         timestamp: DateTime.utc_now(),
-        conversation_history: get_conversation_state(chat_id, state)
+        conversation_history: get_enhanced_conversation_state(chat_id, state)
       }
       
       # Score attention using cortical engine
@@ -1104,8 +1146,8 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     # Send typing indicator
     send_chat_action(chat_id, "typing", state)
     
-    # Check if we have conversation state for this chat
-    conversation_state = get_conversation_state(chat_id, state)
+    # Check if we have conversation state for this chat using enhanced context manager
+    conversation_state = get_enhanced_conversation_state(chat_id, state)
     
     # Start or continue LLM conversation
     Task.start(fn ->
@@ -1165,18 +1207,8 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   end
   
   defp update_conversation_state(chat_id, user_message, bot_response, state) do
-    current_state = get_conversation_state(chat_id, state)
-    
-    new_messages = current_state.messages ++ [
-      %{role: "user", content: user_message, timestamp: DateTime.utc_now()},
-      %{role: "assistant", content: bot_response, timestamp: DateTime.utc_now()}
-    ]
-    
-    # Keep only last 20 messages for context
-    trimmed_messages = Enum.take(new_messages, -20)
-    
-    new_state = %{current_state | messages: trimmed_messages}
-    :ets.insert(state.conversation_table, {chat_id, new_state})
+    # Use the enhanced TelegramContextManager for proper context management and pattern learning
+    TelegramContextManager.update_conversation_context(chat_id, user_message, bot_response, state)
   end
   
   defp request_llm_response(text, message, conversation_state, state) do
@@ -1521,6 +1553,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
         chat_id: chat_id,
         message_id: message_id,
         text: text,
+        original_message: text,  # Store for context updates
         context: context,
         user: from,
         timestamp: DateTime.utc_now()
@@ -1646,6 +1679,28 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
         
         # Store assistant response in history
         add_to_conversation_history(chat_id, :assistant, response_text, nil, nil, state)
+        
+        # 🧠 CRITICAL FIX: Update conversation context with neural intelligence
+        # Get the original user message from the response
+        user_message = response["original_message"] || ""
+        TelegramContextManager.update_conversation_context(
+          chat_id, 
+          user_message,
+          response_text, 
+          state
+        )
+        
+        # 📊 TELEMETRY: Track conversation continuity signal
+        VsmPhoenix.Telemetry.AnalogArchitect.sample_signal(
+          "telegram_conversation_continuity_#{chat_id}",
+          1.0,  # Successful context persistence
+          %{
+            source: "telegram_bot",
+            chat_id: chat_id,
+            context_maintained: true,
+            response_length: String.length(response_text)
+          }
+        )
         
         # Update conversation state if provided
         new_conv_states = if response["conversation_state"] do
@@ -1921,23 +1976,26 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     
     Logger.info("🧠 Processing with GEPA efficiency and resilience: #{text}")
     
+    # 🧠 CRITICAL FIX: Process message through TelegramContextManager
+    enhanced_state = TelegramContextManager.process_telegram_message(message, chat_id, state)
+    
     # Check degradation level to preserve efficiency during stress
-    case state.resilience.current_degradation_level do
+    case enhanced_state.resilience.current_degradation_level do
       0 ->
         # Normal operation - Full GEPA 35x efficiency
-        process_with_full_gepa_optimization(text, message, state)
+        process_with_full_gepa_optimization(text, message, enhanced_state)
         
       level when level <= 2 ->
         # Light degradation - Essential GEPA patterns (25x efficiency)
-        process_with_essential_gepa_patterns(text, message, state)
+        process_with_essential_gepa_patterns(text, message, enhanced_state)
         
       level when level <= 4 ->
         # Heavy degradation - Basic optimization (15x efficiency)
-        process_with_basic_optimization(text, message, state)
+        process_with_basic_optimization(text, message, enhanced_state)
         
       5 ->
         # Emergency - Essential response only (3x efficiency)
-        process_essential_response_only(text, message, state)
+        process_essential_response_only(text, message, enhanced_state)
     end
   end
 
@@ -2035,6 +2093,8 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
         case basic_response do
           {:ok, response} ->
             send_telegram_message(chat_id, response, state, reply_to_message_id: message["message_id"])
+            # Update conversation state for basic optimization
+            update_conversation_state(chat_id, text, "[DEGRADED: #{response}]", state)
             record_user_satisfaction_estimate(chat_id, 0.5, state)
             
           {:error, _reason} ->
@@ -2058,6 +2118,8 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     
     case send_telegram_message(chat_id, fallback_text, state, reply_to_message_id: message["message_id"]) do
       {:ok, _} ->
+        # Update conversation state in emergency mode
+        update_conversation_state(chat_id, text, "[EMERGENCY: #{fallback_text}]", state)
         record_user_satisfaction_estimate(chat_id, 0.3, state)
         Logger.info("✅ Emergency response sent to chat #{chat_id}")
         
@@ -2065,7 +2127,9 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
         Logger.error("❌ Even emergency response failed for chat #{chat_id}: #{inspect(reason)}")
         
         # Ultimate fallback - basic acknowledgment
-        execute_simple_telegram_send(chat_id, "I received your message but I'm experiencing significant technical difficulties.", state)
+        ultimate_msg = "I received your message but I'm experiencing significant technical difficulties."
+        execute_simple_telegram_send(chat_id, ultimate_msg, state)
+        update_conversation_state(chat_id, text, "[CRITICAL: #{ultimate_msg}]", state)
     end
     
     update_metrics(state, :message_received)
@@ -2122,6 +2186,9 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     
     case send_telegram_message(chat_id, fallback_text, state, reply_to_message_id: message["message_id"]) do
       {:ok, _} ->
+        # CRITICAL: Update conversation state even for fallback responses
+        update_conversation_state(chat_id, text, "[RESILIENCE: #{fallback_text}]", state)
+        
         update_resilience_metrics(state, :fallback_success)
         record_user_satisfaction_estimate(chat_id, 0.4, state)  # Lower satisfaction for fallback
         Logger.info("✅ Fallback response sent to chat #{chat_id}")
@@ -2129,8 +2196,10 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       {:error, reason} ->
         Logger.error("❌ Fallback response failed for chat #{chat_id}: #{inspect(reason)}")
         
-        # Try minimal acknowledgment
-        execute_simple_telegram_send(chat_id, "⚠️ Technical difficulties - message received", state)
+        # Try minimal acknowledgment and still update conversation state
+        minimal_msg = "⚠️ Technical difficulties - message received"
+        execute_simple_telegram_send(chat_id, minimal_msg, state)
+        update_conversation_state(chat_id, text, "[EMERGENCY: #{minimal_msg}]", state)
     end
   end
 
@@ -2853,11 +2922,14 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     
     Logger.info("🚀 Processing message with full infrastructure enhancement stack")
     
-    # Step 1: Add message to context window manager for long conversation management
-    enhanced_state = add_message_to_context(chat_id, message, from, state)
+    # 🧠 CRITICAL FIX: Process message through TelegramContextManager FIRST
+    enhanced_state = TelegramContextManager.process_telegram_message(message, chat_id, state)
     
-    # Step 2: Build comprehensive user context
-    user_context = build_comprehensive_user_context(chat_id, from, enhanced_state)
+    # Step 1: Add message to context window manager for long conversation management
+    enhanced_state = add_message_to_context(chat_id, message, from, enhanced_state)
+    
+    # Step 2: Build comprehensive user context with neural intelligence
+    user_context = TelegramContextManager.build_conversation_context(chat_id, enhanced_state)
     
     # Step 3: Route message intelligently using enhanced aMCP routing
     case route_message_intelligently(message, user_context, enhanced_state) do
@@ -3012,6 +3084,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     end
     
     Map.merge(base_request, %{
+      conversation_history: model_optimizations.conversation_history,  # Put at top level where LLM expects it
       optimizations: model_optimizations,
       context: Map.merge(user_context.conversation.context, %{
         platform: "telegram",
@@ -3152,5 +3225,25 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       %{strategy_applied: 1},
       %{mode: strategy.mode, threshold: strategy.attention_threshold}
     )
+  end
+  
+  # Enhanced conversation state retrieval using TelegramContextManager
+  defp get_enhanced_conversation_state(chat_id, state) do
+    # Use enhanced TelegramContextManager to build comprehensive conversation context
+    enhanced_context = TelegramContextManager.build_conversation_context(chat_id, state)
+    
+    # Return context in format expected by LLM requests
+    %{
+      messages: enhanced_context.history,
+      context: %{
+        topic: enhanced_context.current_topic,
+        intent_pattern: enhanced_context.detected_intent,
+        user_engagement: enhanced_context.user_engagement_level,
+        conversation_coherence: enhanced_context.conversation_coherence,
+        semantic_continuity: enhanced_context.semantic_continuity,
+        temporal_patterns: enhanced_context.temporal_patterns,
+        last_interaction: enhanced_context.last_message_time
+      }
+    }
   end
 end

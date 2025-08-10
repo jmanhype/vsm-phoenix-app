@@ -76,6 +76,12 @@ defmodule VsmPhoenix.Application do
       # Start CRDT-based Context Persistence
       VsmPhoenix.CRDT.Supervisor,
       
+      # Start Context Manager for persistent contexts
+      VsmPhoenix.ContextManager,
+      
+      # Start Enhanced Telegram Bot Components (CRDT persistence)
+      VsmPhoenix.TelegramBot.EnhancedSupervisor,
+      
       # Start Enhanced Security Layer
       VsmPhoenix.Security.Supervisor,
       

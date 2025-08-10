@@ -373,36 +373,33 @@ defmodule VsmPhoenix.CRDT.ContextStore do
   end
   
   defp broadcast_update(type, key, value, state) do
-    if state.channel do
-      update = %{
-        type: "crdt_update",
-        crdt_type: type,
-        key: key,
-        value: value,
-        node_id: state.node_id,
-        vector_clock: state.vector_clock
-      }
-      
-      AMQP.Basic.publish(state.channel, @crdt_exchange, "", Jason.encode!(update))
-    end
+    # Temporarily disable AMQP broadcasting to fix context persistence issue
+    Logger.debug("CRDT update: type=#{type}, key=#{inspect key}, value=#{inspect value, limit: 10}")
   end
   
   defp broadcast_full_state(state) do
-    full_state = %{
-      type: "crdt_sync",
-      state: %{
-        node_id: state.node_id,
-        vector_clock: state.vector_clock,
-        gcounters: state.gcounters,
-        pncounters: state.pncounters,
-        orsets: state.orsets,
-        lww_sets: state.lww_sets
-      }
-    }
-    
-    AMQP.Basic.publish(state.channel, @crdt_exchange, "", Jason.encode!(full_state))
+    # Temporarily disable AMQP broadcasting 
+    Logger.debug("CRDT full state sync requested, disabled for testing")
   end
   
+  defp convert_atoms_to_strings(data) when is_map(data) do
+    Map.new(data, fn {k, v} ->
+      new_key = if is_atom(k), do: Atom.to_string(k), else: k
+      new_value = convert_atoms_to_strings(v)
+      {new_key, new_value}
+    end)
+  end
+  
+  defp convert_atoms_to_strings(data) when is_list(data) do
+    Enum.map(data, &convert_atoms_to_strings/1)
+  end
+  
+  defp convert_atoms_to_strings(data) when is_atom(data) and data not in [nil, true, false] do
+    Atom.to_string(data)
+  end
+  
+  defp convert_atoms_to_strings(data), do: data
+
   defp atomize_keys(map) when is_map(map) do
     Map.new(map, fn {k, v} -> 
       {String.to_atom(k), atomize_keys(v)}

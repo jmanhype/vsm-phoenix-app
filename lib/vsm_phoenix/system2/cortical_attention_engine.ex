@@ -326,8 +326,31 @@ defmodule VsmPhoenix.System2.CorticalAttentionEngine do
       0.5
     end
     
-    # Combine context and focus relevance
-    max(context_weight, focus_relevance)
+    # NEW: Calculate conversation continuity relevance from TelegramContextManager
+    conversation_relevance = case context[:conversation_history] do
+      %{context: %{semantic_continuity: semantic_continuity, conversation_coherence: coherence}} ->
+        # Boost relevance based on conversation continuity and coherence
+        base_continuity = (semantic_continuity || 0.5) * 0.3
+        coherence_boost = (coherence || 0.5) * 0.2
+        base_continuity + coherence_boost
+      
+      %{messages: messages} when length(messages) > 0 ->
+        # Fallback: simple message history relevance
+        min(0.4, length(messages) * 0.05)
+      
+      _ ->
+        0.0
+    end
+    
+    # Combine all relevance factors
+    combined_relevance = max(context_weight, max(focus_relevance, conversation_relevance))
+    
+    # Ensure conversation continuity gets priority
+    if conversation_relevance > 0.3 do
+      min(1.0, combined_relevance + 0.2)  # Boost messages with good conversation continuity
+    else
+      combined_relevance
+    end
   end
   
   defp calculate_intensity(message) do
