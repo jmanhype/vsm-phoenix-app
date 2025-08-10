@@ -492,7 +492,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
 
   defp send_message_with_circuit_breaker(chat_id, text, state, opts) do
     # Execute with adaptive circuit breaker protection
-    Integration.with_circuit_breaker(:telegram_api, fn ->
+    Integration.with_external_api_circuit_breaker(fn ->
       # Intelligent retry wrapper for Telegram API calls
       Retry.with_retry(fn ->
         execute_telegram_api_call(chat_id, text, state, opts)
