@@ -228,13 +228,25 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       }
       
       # 🚀 Initialize Massive Infrastructure Enhancement Components
-      enhanced_state = initialize_massive_infrastructure(state)
+      enhanced_state = case initialize_massive_infrastructure(state) do
+        {:ok, new_state} -> new_state
+        {:error, reason} ->
+          Logger.error("❌ Failed to initialize massive infrastructure: #{inspect(reason)}")
+          # Fall back to basic state without advanced infrastructure
+          state
+      end
       
       # Send startup message
       send(self(), :after_init)
       
       # Initialize resilience components
-      resilient_state = initialize_resilience_system(enhanced_state)
+      resilient_state = case initialize_resilience_system(enhanced_state) do
+        {:ok, new_state} -> new_state
+        {:error, reason} ->
+          Logger.error("❌ Failed to initialize resilience system: #{inspect(reason)}")
+          # Fall back to basic state without resilience features
+          enhanced_state
+      end
       
       {:ok, resilient_state}
     else
@@ -1749,61 +1761,100 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   defp initialize_resilience_system(state) do
     Logger.info("🛡️ Initializing Claude Code-inspired resilience system for #{state.agent_id}")
     
-    # Initialize adaptive circuit breaker for Telegram API
-    {:ok, circuit_breaker_pid} = CircuitBreaker.start_link([
-      name: :"telegram_api_#{state.agent_id}",
-      failure_threshold: 5,
-      timeout: 30_000,
-      adaptive_enabled: true,
-      on_state_change: fn name, old_state, new_state ->
-        Logger.info("🔄 Circuit breaker #{name}: #{old_state} → #{new_state}")
-        
-        # Emit algedonic signal based on state change
-        signal = case new_state do
-          :open -> {:pain, intensity: 0.9, context: :circuit_breaker_opened}
-          :closed -> {:pleasure, intensity: 0.7, context: :circuit_breaker_recovered}
-          :half_open -> {:neutral, intensity: 0.3, context: :circuit_breaker_testing}
+    try do
+      # Initialize adaptive circuit breaker for Telegram API
+      circuit_breaker_result = case CircuitBreaker.start_link([
+        name: :"telegram_api_#{state.agent_id}",
+        failure_threshold: 5,
+        timeout: 30_000,
+        adaptive_enabled: true,
+        on_state_change: fn name, old_state, new_state ->
+          Logger.info("🔄 Circuit breaker #{name}: #{old_state} → #{new_state}")
+          
+          # Emit algedonic signal based on state change
+          signal = case new_state do
+            :open -> {:pain, intensity: 0.9, context: :circuit_breaker_opened}
+            :closed -> {:pleasure, intensity: 0.7, context: :circuit_breaker_recovered}
+            :half_open -> {:neutral, intensity: 0.3, context: :circuit_breaker_testing}
+          end
+          
+          try do
+            AlgedonicSignals.emit_signal(signal)
+          catch
+            _kind, error ->
+              Logger.warning("⚠️ Failed to emit algedonic signal: #{inspect(error)}")
+          end
         end
-        
-        AlgedonicSignals.emit_signal(signal)
+      ]) do
+        {:ok, pid} -> pid
+        {:error, reason} ->
+          Logger.warning("⚠️ Circuit breaker failed to start: #{inspect(reason)}")
+          nil
       end
-    ])
-    
-    # Initialize graceful degradation system
-    {:ok, degradation_pid} = GracefulDegradation.start_link([
-      name: :"telegram_degradation_#{state.agent_id}"
-    ])
-    
-    # Register essential vs non-essential operations
-    GracefulDegradation.register_essential_operation(degradation_pid, :message_sending)
-    GracefulDegradation.register_essential_operation(degradation_pid, :command_processing)
-    GracefulDegradation.register_essential_operation(degradation_pid, :error_handling)
-    
-    GracefulDegradation.register_non_essential_operation(degradation_pid, :detailed_logging)
-    GracefulDegradation.register_non_essential_operation(degradation_pid, :conversation_analytics)
-    GracefulDegradation.register_non_essential_operation(degradation_pid, :advanced_features)
-    
-    # Initialize bulkhead pool for concurrent message processing
-    {:ok, bulkhead_pid} = Bulkhead.start_link([
-      name: :"telegram_bulkhead_#{state.agent_id}",
-      max_concurrent: 20,
-      max_waiting: 100
-    ])
-    
-    # Set up stress monitoring
-    schedule_resilience_monitoring()
-    
-    # Update state with resilience components
-    resilience = %{
-      state.resilience |
-      circuit_breaker: circuit_breaker_pid,
-      graceful_degradation: degradation_pid,
-      bulkhead_pool: bulkhead_pid
+      
+      # Initialize graceful degradation system
+      degradation_result = case GracefulDegradation.start_link([
+        name: :"telegram_degradation_#{state.agent_id}"
+      ]) do
+        {:ok, pid} -> 
+          # Register operations if successfully started
+          try do
+            # Register essential vs non-essential operations
+            GracefulDegradation.register_essential_operation(pid, :message_sending)
+            GracefulDegradation.register_essential_operation(pid, :command_processing)
+            GracefulDegradation.register_essential_operation(pid, :error_handling)
+            
+            GracefulDegradation.register_non_essential_operation(pid, :detailed_logging)
+            GracefulDegradation.register_non_essential_operation(pid, :conversation_analytics)
+            GracefulDegradation.register_non_essential_operation(pid, :advanced_features)
+            
+            pid
+          rescue
+            error ->
+              Logger.warning("⚠️ Failed to register degradation operations: #{inspect(error)}")
+              pid
+          end
+        {:error, reason} ->
+          Logger.warning("⚠️ Graceful degradation failed to start: #{inspect(reason)}")
+          nil
+      end
+      
+      # Initialize bulkhead pool for concurrent message processing
+      bulkhead_result = case Bulkhead.start_link([
+        name: :"telegram_bulkhead_#{state.agent_id}",
+        max_concurrent: 20,
+        max_waiting: 100
+      ]) do
+        {:ok, pid} -> pid
+        {:error, reason} ->
+          Logger.warning("⚠️ Bulkhead failed to start: #{inspect(reason)}")
+          nil
+      end
+      
+      # Set up stress monitoring
+      try do
+        schedule_resilience_monitoring()
+      catch
+        _kind, error ->
+          Logger.warning("⚠️ Failed to schedule resilience monitoring: #{inspect(error)}")
+      end
+      
+      # Update state with resilience components
+      resilience = %{
+        state.resilience |
+        circuit_breaker: circuit_breaker_result,
+      graceful_degradation: degradation_result,
+      bulkhead_pool: bulkhead_result
     }
     
     Logger.info("✅ Resilience system initialized for #{state.agent_id}")
     
-    %{state | resilience: resilience}
+    {:ok, %{state | resilience: resilience}}
+    rescue
+      error ->
+        Logger.error("❌ Resilience system initialization failed: #{inspect(error)}")
+        {:error, error}
+    end
   end
 
   defp schedule_resilience_monitoring() do
@@ -2377,31 +2428,42 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   defp initialize_massive_infrastructure(state) do
     Logger.info("🚀 Initializing massive infrastructure enhancements for #{state.agent_id}")
     
-    # Initialize context window management
-    {:ok, context_manager_pid} = start_conversation_context_manager(state.agent_id)
-    
-    # Initialize model configurations for multi-model optimization
-    model_configurations = initialize_model_configurations()
-    
-    # Initialize command router with advanced aMCP routing
-    command_router_config = %{
-      agent_id: state.agent_id,
-      routing_strategy: :capability_driven,
-      polyagent_support: true,
-      consensus_required: false
-    }
-    
-    # Update infrastructure state
-    updated_infrastructure = %{
-      state.infrastructure |
-      context_manager: context_manager_pid,
-      model_configurations: model_configurations,
-      command_router: command_router_config
-    }
-    
-    Logger.info("✅ Massive infrastructure initialized for #{state.agent_id}")
-    
-    %{state | infrastructure: updated_infrastructure}
+    try do
+      # Initialize context window management
+      context_manager_result = case start_conversation_context_manager(state.agent_id) do
+        {:ok, pid} -> pid
+        {:error, reason} -> 
+          Logger.warning("⚠️ Context manager failed to start: #{inspect(reason)}")
+          nil
+      end
+      
+      # Initialize model configurations for multi-model optimization
+      model_configurations = initialize_model_configurations()
+      
+      # Initialize command router with advanced aMCP routing
+      command_router_config = %{
+        agent_id: state.agent_id,
+        routing_strategy: :capability_driven,
+        polyagent_support: true,
+        consensus_required: false
+      }
+      
+      # Update infrastructure state
+      updated_infrastructure = %{
+        state.infrastructure |
+        context_manager: context_manager_result,
+        model_configurations: model_configurations,
+        command_router: command_router_config
+      }
+      
+      Logger.info("✅ Massive infrastructure initialized for #{state.agent_id}")
+      
+      {:ok, %{state | infrastructure: updated_infrastructure}}
+    rescue
+      error ->
+        Logger.error("❌ Infrastructure initialization failed: #{inspect(error)}")
+        {:error, error}
+    end
   end
 
   defp start_conversation_context_manager(agent_id) do
