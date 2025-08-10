@@ -83,6 +83,13 @@ defmodule VsmPhoenix.CRDT.ContextStore do
   def merge_state(remote_state) do
     GenServer.cast(__MODULE__, {:merge_state, remote_state})
   end
+
+  @doc """
+  Create a new vector clock
+  """
+  def new_vector_clock do
+    %{}
+  end
   
   # Server Callbacks
   
