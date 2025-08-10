@@ -10,7 +10,7 @@ defmodule VsmPhoenix.VarietyEngineering.Amplifiers.S2ToS1.Helpers do
 
   def generate_task_id do
     # Generate unique task ID
-    "task_" <> UUID.uuid4()
+    "task_" <> (:erlang.unique_integer([:positive, :monotonic]) |> to_string())
   end
 
   def update_performance_metrics(metrics, status, duration) do

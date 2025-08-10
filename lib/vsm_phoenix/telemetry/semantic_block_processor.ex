@@ -1012,4 +1012,676 @@ defmodule VsmPhoenix.Telemetry.SemanticBlockProcessor do
     # Check if system context is internally consistent
     0.75
   end
+
+  # 🧠 NEURAL CONTEXTUAL INTELLIGENCE - Missing Functions for Telegram Integration
+
+  def extract_user_intent(message_text) when is_binary(message_text) do
+    """
+    Extract user intent from message text for neural context processing.
+    """
+    
+    # Analyze intent indicators in the message
+    words = String.split(String.downcase(message_text))
+    
+    # Intent classification patterns
+    intent_patterns = %{
+      question: Enum.any?(words, &(&1 in ["?", "how", "what", "why", "when", "where", "which"])),
+      help_request: Enum.any?(words, &(&1 in ["help", "assist", "guide", "support", "explain"])),
+      status_inquiry: Enum.any?(words, &(&1 in ["status", "health", "state", "check", "show"])),
+      action_request: Enum.any?(words, &(&1 in ["start", "stop", "run", "execute", "do"])),
+      problem_report: Enum.any?(words, &(&1 in ["error", "problem", "issue", "broken", "fail"])),
+      configuration: Enum.any?(words, &(&1 in ["config", "setting", "setup", "configure"])),
+      information_seeking: Enum.any?(words, &(&1 in ["list", "show", "display", "get", "find"]))
+    }
+    
+    # Determine primary intent
+    primary_intent = intent_patterns
+                    |> Enum.filter(fn {_intent, detected} -> detected end)
+                    |> Enum.map(fn {intent, _} -> intent end)
+                    |> List.first()
+                    |> case do
+                      nil -> :general_conversation
+                      intent -> intent
+                    end
+    
+    # Calculate confidence based on clarity of intent signals
+    confidence_score = calculate_intent_confidence(message_text, intent_patterns)
+    
+    %{
+      primary_intent: primary_intent,
+      confidence_score: confidence_score,
+      detected_patterns: intent_patterns,
+      message_complexity: analyze_message_complexity_for_intent(message_text),
+      emotional_indicators: detect_emotional_indicators_in_message(message_text)
+    }
+  end
+  
+  def extract_user_intent(_), do: %{primary_intent: :unknown, confidence_score: 0.0}
+  
+  def attach_semantic_context(params) do
+    """
+    Attach semantic context to message processing for enhanced understanding.
+    """
+    
+    message = Map.get(params, :message, "")
+    user_intent = Map.get(params, :user_intent, %{})
+    contextual_relationships = Map.get(params, :contextual_relationships, [])
+    meaning_graph_data = Map.get(params, :meaning_graph_data, %{})
+    
+    # Generate semantic context block
+    semantic_context = %{
+      message_semantics: analyze_message_semantics(message),
+      intent_enhancement: enhance_intent_with_context(user_intent, contextual_relationships),
+      relationship_mapping: map_contextual_relationships(contextual_relationships),
+      meaning_graph_integration: integrate_meaning_graph_data(meaning_graph_data),
+      semantic_coherence: calculate_semantic_context_coherence(params),
+      context_attachment_metadata: %{
+        created_at: DateTime.utc_now(),
+        processing_version: "1.0",
+        confidence_level: calculate_semantic_attachment_confidence(params)
+      }
+    }
+    
+    semantic_context
+  end
+  
+  def build_meaning_graph(params) do
+    """
+    Build meaning graphs for user behavior profiling and semantic understanding.
+    """
+    
+    user_profile = Map.get(params, :user_profile, %{})
+    conversation_patterns = Map.get(params, :conversation_patterns, %{})
+    semantic_relationships = Map.get(params, :semantic_relationships, [])
+    interaction_preferences = Map.get(params, :interaction_preferences, %{})
+    
+    # Build nodes representing concepts and relationships
+    concept_nodes = extract_concept_nodes(user_profile, conversation_patterns)
+    relationship_edges = build_relationship_edges(semantic_relationships)
+    behavioral_patterns = analyze_behavioral_patterns(interaction_preferences)
+    
+    # Create meaning graph structure
+    meaning_graph = %{
+      nodes: concept_nodes,
+      edges: relationship_edges,
+      behavioral_patterns: behavioral_patterns,
+      graph_metadata: %{
+        node_count: length(concept_nodes),
+        edge_count: length(relationship_edges),
+        density: calculate_graph_density(concept_nodes, relationship_edges),
+        centrality_scores: calculate_centrality_scores(concept_nodes, relationship_edges),
+        created_at: DateTime.utc_now()
+      },
+      semantic_clusters: identify_semantic_clusters(concept_nodes, relationship_edges),
+      user_preferences: extract_user_preferences_from_graph(concept_nodes, behavioral_patterns)
+    }
+    
+    meaning_graph
+  end
+  
+  # Helper functions for intent extraction
+  
+  defp calculate_intent_confidence(message_text, intent_patterns) do
+    """
+    Calculate confidence score for intent detection.
+    """
+    
+    # Base confidence from clear intent signals
+    detected_intents = intent_patterns |> Enum.count(fn {_intent, detected} -> detected end)
+    base_confidence = min(0.9, detected_intents * 0.3)
+    
+    # Adjust for message clarity
+    message_length = String.length(message_text)
+    word_count = length(String.split(message_text))
+    
+    clarity_bonus = cond do
+      word_count > 2 and word_count < 20 -> 0.1  # Clear, concise messages
+      word_count >= 20 and word_count < 50 -> 0.05  # Detailed messages
+      message_length < 10 -> -0.2  # Too short, unclear
+      word_count > 100 -> -0.1  # Very long, potentially unclear
+      true -> 0.0
+    end
+    
+    # Question marks and punctuation clarity
+    punctuation_bonus = if String.contains?(message_text, ["?", "!", "."]), do: 0.05, else: 0.0
+    
+    max(0.1, min(1.0, base_confidence + clarity_bonus + punctuation_bonus))
+  end
+  
+  defp analyze_message_complexity_for_intent(message_text) do
+    """
+    Analyze message complexity for intent understanding.
+    """
+    
+    word_count = length(String.split(message_text))
+    sentence_count = max(1, length(String.split(message_text, ~r/[.!?]/)))
+    
+    %{
+      word_count: word_count,
+      sentence_count: sentence_count,
+      avg_words_per_sentence: word_count / sentence_count,
+      complexity_level: cond do
+        word_count < 5 -> :very_simple
+        word_count < 15 -> :simple
+        word_count < 50 -> :moderate
+        word_count < 100 -> :complex
+        true -> :very_complex
+      end,
+      structure_indicators: %{
+        has_questions: String.contains?(message_text, "?"),
+        has_commands: String.match?(message_text, ~r/^\/\w+/),
+        has_multiple_sentences: sentence_count > 1
+      }
+    }
+  end
+  
+  defp detect_emotional_indicators_in_message(message_text) do
+    """
+    Detect emotional indicators in message for context enhancement.
+    """
+    
+    text_lower = String.downcase(message_text)
+    
+    emotional_patterns = %{
+      urgency: String.contains?(text_lower, ["urgent", "asap", "quickly", "now", "emergency"]),
+      frustration: String.contains?(text_lower, ["annoying", "frustrated", "angry", "upset"]),
+      satisfaction: String.contains?(text_lower, ["thanks", "great", "awesome", "perfect", "excellent"]),
+      confusion: String.contains?(text_lower, ["confused", "don't understand", "unclear", "what do you mean"]),
+      enthusiasm: String.contains?(text_lower, ["excited", "amazing", "fantastic", "love it"]),
+      concern: String.contains?(text_lower, ["worried", "concerned", "afraid", "nervous"])
+    }
+    
+    # Determine primary emotional tone
+    primary_emotion = emotional_patterns
+                     |> Enum.filter(fn {_emotion, detected} -> detected end)
+                     |> Enum.map(fn {emotion, _} -> emotion end)
+                     |> List.first()
+                     |> case do
+                       nil -> :neutral
+                       emotion -> emotion
+                     end
+    
+    # Calculate emotional intensity based on punctuation and capitalization
+    intensity_indicators = [
+      String.contains?(message_text, "!!!") && 1.0,
+      String.contains?(message_text, "!!") && 0.8,
+      String.contains?(message_text, "!") && 0.6,
+      String.match?(message_text, ~r/[A-Z]{3,}/) && 0.7  # ALL CAPS
+    ] |> Enum.filter(&(&1)) |> Enum.max(fn -> 0.3 end)
+    
+    %{
+      primary_emotion: primary_emotion,
+      detected_patterns: emotional_patterns,
+      intensity_level: intensity_indicators,
+      emotional_complexity: length(Enum.filter(emotional_patterns, fn {_, detected} -> detected end))
+    }
+  end
+  
+  # Helper functions for semantic context attachment
+  
+  defp analyze_message_semantics(message) do
+    """
+    Analyze semantic properties of the message.
+    """
+    
+    words = String.split(String.downcase(message))
+    
+    # Semantic categories
+    semantic_categories = %{
+      technical_terms: count_technical_terms(words),
+      action_verbs: count_action_verbs(words),
+      descriptive_adjectives: count_descriptive_adjectives(words),
+      temporal_references: count_temporal_references(words),
+      relational_words: count_relational_words(words)
+    }
+    
+    %{
+      word_count: length(words),
+      semantic_categories: semantic_categories,
+      semantic_density: calculate_semantic_density(semantic_categories),
+      dominant_category: determine_dominant_semantic_category(semantic_categories)
+    }
+  end
+  
+  defp enhance_intent_with_context(user_intent, contextual_relationships) do
+    """
+    Enhance user intent analysis with contextual relationships.
+    """
+    
+    base_intent = Map.get(user_intent, :primary_intent, :unknown)
+    confidence = Map.get(user_intent, :confidence_score, 0.5)
+    
+    # Context enhancement based on relationships
+    context_boost = if length(contextual_relationships) > 0 do
+      relationship_strength = contextual_relationships
+                             |> Enum.map(&Map.get(&1, :strength, 0.5))
+                             |> Enum.sum()
+                             |> Kernel./(length(contextual_relationships))
+      
+      relationship_strength * 0.2
+    else
+      0.0
+    end
+    
+    %{
+      enhanced_intent: base_intent,
+      enhanced_confidence: min(1.0, confidence + context_boost),
+      context_factors: %{
+        relationship_count: length(contextual_relationships),
+        context_boost_applied: context_boost,
+        original_confidence: confidence
+      }
+    }
+  end
+  
+  defp map_contextual_relationships(relationships) do
+    """
+    Map contextual relationships into structured format.
+    """
+    
+    relationships
+    |> Enum.map(fn relationship ->
+      %{
+        source: Map.get(relationship, :source, "unknown"),
+        target: Map.get(relationship, :target, "unknown"),
+        relationship_type: Map.get(relationship, :type, :contextual),
+        strength: Map.get(relationship, :strength, 0.5),
+        directionality: determine_relationship_directionality(relationship)
+      }
+    end)
+  end
+  
+  defp integrate_meaning_graph_data(meaning_graph_data) do
+    """
+    Integrate existing meaning graph data into semantic context.
+    """
+    
+    if map_size(meaning_graph_data) > 0 do
+      %{
+        graph_nodes: Map.get(meaning_graph_data, :nodes, []),
+        graph_edges: Map.get(meaning_graph_data, :edges, []),
+        behavioral_insights: Map.get(meaning_graph_data, :behavioral_patterns, %{}),
+        integration_metadata: %{
+          graph_complexity: map_size(meaning_graph_data),
+          integration_timestamp: DateTime.utc_now()
+        }
+      }
+    else
+      %{
+        graph_available: false,
+        integration_status: :no_existing_data
+      }
+    end
+  end
+  
+  defp calculate_semantic_context_coherence(params) do
+    """
+    Calculate coherence score for semantic context attachment.
+    """
+    
+    # Base coherence from parameter completeness
+    param_completeness = params
+                        |> Map.keys()
+                        |> length()
+                        |> Kernel./(4)  # 4 expected parameters
+                        |> min(1.0)
+    
+    # Intent clarity coherence
+    user_intent = Map.get(params, :user_intent, %{})
+    intent_confidence = Map.get(user_intent, :confidence_score, 0.5)
+    
+    # Relationship coherence
+    relationships = Map.get(params, :contextual_relationships, [])
+    relationship_coherence = if length(relationships) > 0 do
+      avg_strength = relationships
+                    |> Enum.map(&Map.get(&1, :strength, 0.5))
+                    |> Enum.sum()
+                    |> Kernel./(length(relationships))
+      avg_strength
+    else
+      0.7  # Neutral score when no relationships
+    end
+    
+    # Overall coherence
+    (param_completeness + intent_confidence + relationship_coherence) / 3
+  end
+  
+  defp calculate_semantic_attachment_confidence(params) do
+    """
+    Calculate confidence level for semantic attachment process.
+    """
+    
+    message = Map.get(params, :message, "")
+    message_quality = if String.length(message) > 5, do: 0.8, else: 0.4
+    
+    intent_data = Map.get(params, :user_intent, %{})
+    intent_confidence = Map.get(intent_data, :confidence_score, 0.5)
+    
+    context_richness = Map.get(params, :contextual_relationships, [])
+                      |> length()
+                      |> case do
+                        0 -> 0.5
+                        count when count <= 3 -> 0.7
+                        count when count <= 6 -> 0.9
+                        _ -> 1.0
+                      end
+    
+    (message_quality + intent_confidence + context_richness) / 3
+  end
+  
+  # Helper functions for meaning graph construction
+  
+  defp extract_concept_nodes(user_profile, conversation_patterns) do
+    """
+    Extract concept nodes from user profile and conversation patterns.
+    """
+    
+    # Profile-based concepts
+    profile_concepts = user_profile
+                      |> Map.get(:preferences, %{})
+                      |> Map.get(:topics_of_interest, [])
+                      |> Enum.map(&create_concept_node(&1, :interest))
+    
+    # Pattern-based concepts
+    pattern_concepts = conversation_patterns
+                      |> Map.get(:user_topics, [])
+                      |> Enum.map(&create_concept_node(&1, :topic))
+    
+    profile_concepts ++ pattern_concepts
+  end
+  
+  defp create_concept_node(concept, node_type) do
+    """
+    Create a concept node for the meaning graph.
+    """
+    
+    %{
+      id: generate_node_id(concept),
+      concept: concept,
+      node_type: node_type,
+      weight: calculate_concept_weight(concept, node_type),
+      created_at: DateTime.utc_now()
+    }
+  end
+  
+  defp build_relationship_edges(semantic_relationships) do
+    """
+    Build relationship edges for the meaning graph.
+    """
+    
+    semantic_relationships
+    |> Enum.map(fn relationship ->
+      %{
+        id: generate_edge_id(relationship),
+        source_node: Map.get(relationship, :source, "unknown"),
+        target_node: Map.get(relationship, :target, "unknown"),
+        relationship_type: Map.get(relationship, :type, :semantic),
+        strength: Map.get(relationship, :strength, 0.5),
+        directionality: Map.get(relationship, :directionality, :bidirectional),
+        created_at: DateTime.utc_now()
+      }
+    end)
+  end
+  
+  defp analyze_behavioral_patterns(interaction_preferences) do
+    """
+    Analyze behavioral patterns from interaction preferences.
+    """
+    
+    %{
+      interaction_frequency: Map.get(interaction_preferences, :interaction_frequency, :moderate),
+      response_speed_preference: Map.get(interaction_preferences, :response_speed_preference, :moderate),
+      detail_preference: Map.get(interaction_preferences, :detail_preference, :balanced),
+      technical_engagement: Map.get(interaction_preferences, :technical_engagement, :moderate),
+      context_usage: Map.get(interaction_preferences, :context_usage, %{}),
+      pattern_consistency: calculate_behavioral_consistency(interaction_preferences)
+    }
+  end
+  
+  defp calculate_graph_density(nodes, edges) do
+    """
+    Calculate density of the meaning graph.
+    """
+    
+    node_count = length(nodes)
+    edge_count = length(edges)
+    
+    if node_count > 1 do
+      max_possible_edges = node_count * (node_count - 1) / 2
+      edge_count / max_possible_edges
+    else
+      0.0
+    end
+  end
+  
+  defp calculate_centrality_scores(nodes, edges) do
+    """
+    Calculate centrality scores for nodes in the meaning graph.
+    """
+    
+    # Simple degree centrality calculation
+    nodes
+    |> Enum.map(fn node ->
+      node_id = node.id
+      
+      degree = edges
+              |> Enum.count(fn edge ->
+                edge.source_node == node_id or edge.target_node == node_id
+              end)
+      
+      {node_id, degree / max(1, length(edges))}
+    end)
+    |> Enum.into(%{})
+  end
+  
+  defp identify_semantic_clusters(nodes, edges) do
+    """
+    Identify semantic clusters in the meaning graph.
+    """
+    
+    # Group nodes by concept similarity
+    node_groups = nodes
+                 |> Enum.group_by(&determine_concept_category(&1.concept))
+    
+    node_groups
+    |> Enum.map(fn {category, category_nodes} ->
+      %{
+        cluster_id: generate_cluster_id(category),
+        category: category,
+        nodes: category_nodes,
+        node_count: length(category_nodes),
+        internal_connections: count_internal_connections(category_nodes, edges),
+        cluster_cohesion: calculate_cluster_cohesion(category_nodes, edges)
+      }
+    end)
+  end
+  
+  defp extract_user_preferences_from_graph(nodes, behavioral_patterns) do
+    """
+    Extract user preferences from the meaning graph structure.
+    """
+    
+    # Analyze node types and weights to infer preferences
+    topic_preferences = nodes
+                       |> Enum.filter(&(&1.node_type == :topic))
+                       |> Enum.sort_by(& &1.weight, :desc)
+                       |> Enum.take(5)
+                       |> Enum.map(& &1.concept)
+    
+    # Combine with behavioral patterns
+    %{
+      top_topics: topic_preferences,
+      interaction_style: Map.get(behavioral_patterns, :interaction_frequency, :moderate),
+      engagement_level: Map.get(behavioral_patterns, :technical_engagement, :moderate),
+      preferred_response_style: determine_preferred_response_style(behavioral_patterns),
+      context_retention_preference: analyze_context_retention_preference(nodes, behavioral_patterns)
+    }
+  end
+  
+  # Additional helper functions
+  
+  defp count_technical_terms(words) do
+    technical_terms = ["api", "system", "database", "server", "config", "algorithm", "protocol"]
+    Enum.count(words, &(&1 in technical_terms))
+  end
+  
+  defp count_action_verbs(words) do
+    action_verbs = ["run", "start", "stop", "create", "delete", "update", "configure", "analyze"]
+    Enum.count(words, &(&1 in action_verbs))
+  end
+  
+  defp count_descriptive_adjectives(words) do
+    adjectives = ["good", "bad", "fast", "slow", "easy", "difficult", "important", "urgent"]
+    Enum.count(words, &(&1 in adjectives))
+  end
+  
+  defp count_temporal_references(words) do
+    temporal_words = ["now", "later", "yesterday", "tomorrow", "soon", "before", "after", "during"]
+    Enum.count(words, &(&1 in temporal_words))
+  end
+  
+  defp count_relational_words(words) do
+    relational_words = ["and", "or", "but", "because", "so", "then", "if", "when"]
+    Enum.count(words, &(&1 in relational_words))
+  end
+  
+  defp calculate_semantic_density(semantic_categories) do
+    total_semantic_words = semantic_categories |> Map.values() |> Enum.sum()
+    total_words = Map.get(semantic_categories, :word_count, 1)
+    
+    if total_words > 0 do
+      total_semantic_words / total_words
+    else
+      0.0
+    end
+  end
+  
+  defp determine_dominant_semantic_category(semantic_categories) do
+    semantic_categories
+    |> Enum.max_by(fn {_category, count} -> count end)
+    |> elem(0)
+  end
+  
+  defp determine_relationship_directionality(relationship) do
+    # Simple heuristic for relationship directionality
+    source_strength = Map.get(relationship, :source_strength, 0.5)
+    target_strength = Map.get(relationship, :target_strength, 0.5)
+    
+    cond do
+      source_strength > target_strength * 1.5 -> :source_to_target
+      target_strength > source_strength * 1.5 -> :target_to_source
+      true -> :bidirectional
+    end
+  end
+  
+  defp generate_node_id(concept) do
+    "node_#{:erlang.phash2(concept)}_#{:erlang.system_time(:microsecond)}"
+  end
+  
+  defp generate_edge_id(relationship) do
+    "edge_#{:erlang.phash2(relationship)}_#{:erlang.system_time(:microsecond)}"
+  end
+  
+  defp generate_cluster_id(category) do
+    "cluster_#{category}_#{:erlang.system_time(:microsecond)}"
+  end
+  
+  defp calculate_concept_weight(concept, node_type) do
+    # Base weight by node type
+    base_weight = case node_type do
+      :interest -> 0.8
+      :topic -> 0.6
+      :behavior -> 0.7
+      _ -> 0.5
+    end
+    
+    # Adjust for concept complexity
+    concept_complexity = if is_binary(concept) do
+      String.length(concept) / 20  # Normalize by typical concept length
+    else
+      0.5
+    end
+    
+    min(1.0, base_weight + concept_complexity * 0.2)
+  end
+  
+  defp calculate_behavioral_consistency(interaction_preferences) do
+    # Simple consistency measure based on preference stability
+    preferences = Map.values(interaction_preferences)
+    |> Enum.filter(&is_atom/1)
+    
+    if length(preferences) > 0 do
+      # Higher consistency if preferences are not contradictory
+      0.8
+    else
+      0.5
+    end
+  end
+  
+  defp determine_concept_category(concept) when is_binary(concept) do
+    concept_lower = String.downcase(concept)
+    
+    cond do
+      String.contains?(concept_lower, ["tech", "system", "api", "code"]) -> :technical
+      String.contains?(concept_lower, ["help", "support", "question"]) -> :support
+      String.contains?(concept_lower, ["status", "health", "monitor"]) -> :monitoring
+      String.contains?(concept_lower, ["config", "setting", "setup"]) -> :configuration
+      true -> :general
+    end
+  end
+  
+  defp determine_concept_category(_), do: :unknown
+  
+  defp count_internal_connections(cluster_nodes, edges) do
+    node_ids = MapSet.new(cluster_nodes, & &1.id)
+    
+    Enum.count(edges, fn edge ->
+      MapSet.member?(node_ids, edge.source_node) and
+      MapSet.member?(node_ids, edge.target_node)
+    end)
+  end
+  
+  defp calculate_cluster_cohesion(cluster_nodes, edges) do
+    internal_connections = count_internal_connections(cluster_nodes, edges)
+    node_count = length(cluster_nodes)
+    
+    if node_count > 1 do
+      max_possible_connections = node_count * (node_count - 1) / 2
+      internal_connections / max_possible_connections
+    else
+      1.0
+    end
+  end
+  
+  defp determine_preferred_response_style(behavioral_patterns) do
+    interaction_freq = Map.get(behavioral_patterns, :interaction_frequency, :moderate)
+    detail_pref = Map.get(behavioral_patterns, :detail_preference, :balanced)
+    
+    case {interaction_freq, detail_pref} do
+      {:high, :detailed} -> :comprehensive
+      {:high, _} -> :quick_and_frequent
+      {_, :detailed} -> :thorough
+      {:low, :concise} -> :minimal
+      _ -> :balanced
+    end
+  end
+  
+  defp analyze_context_retention_preference(nodes, behavioral_patterns) do
+    # Analyze if user prefers context retention based on graph complexity
+    node_count = length(nodes)
+    context_usage = Map.get(behavioral_patterns, :context_usage, %{})
+    
+    retention_score = cond do
+      node_count > 10 -> :high
+      node_count > 5 -> :medium
+      node_count > 2 -> :low
+      true -> :minimal
+    end
+    
+    %{
+      retention_level: retention_score,
+      context_complexity: node_count,
+      usage_patterns: context_usage
+    }
+  end
 end

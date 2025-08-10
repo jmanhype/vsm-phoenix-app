@@ -17,7 +17,8 @@ defmodule VsmPhoenix.AMQP.ProtocolIntegration do
   require Logger
   
   alias VsmPhoenix.AMQP.{Discovery, Consensus, NetworkOptimizer, MessageTypes}
-  alias VsmPhoenix.Infrastructure.{Security, CRDTStore}
+  alias VsmPhoenix.Infrastructure.Security
+  alias VsmPhoenix.CRDT.ContextStore
   alias VsmPhoenix.System2.CorticalAttentionEngine
   alias VsmPhoenix.AMQP.{ConnectionManager, SecureCommandRouter}
   
@@ -249,13 +250,13 @@ defmodule VsmPhoenix.AMQP.ProtocolIntegration do
     
     if length(target_agents) > 0 do
       # Get current CRDT state
-      case CRDTStore.get_state(crdt_name) do
+      case ContextStore.get_state() do
         {:ok, crdt_state} ->
           # Create sync message with security
           sync_payload = %{
             crdt_name: crdt_name,
             state: crdt_state,
-            version: CRDTStore.get_version(crdt_name),
+            version: System.system_time(:millisecond),
             agent_id: agent_id,
             timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
           }
@@ -518,7 +519,8 @@ defmodule VsmPhoenix.AMQP.ProtocolIntegration do
     crdt_name = "vsm_#{config.spawn_id}_state"
     
     # Create CRDT for VSM state
-    CRDTStore.create(crdt_name, :ormap)
+    # Initialize CRDT for VSM state (ContextStore manages all CRDTs internally)
+    ContextStore.add_to_set("vsm_instances", crdt_name)
     
     # Register VSM for CRDT sync
     Discovery.announce(

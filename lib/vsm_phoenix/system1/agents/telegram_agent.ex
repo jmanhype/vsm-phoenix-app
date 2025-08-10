@@ -811,12 +811,66 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     # Check authorization
     if authorized?(chat_id, from["id"], state) do
       Logger.info("✅ User authorized")
-      # Process commands
-      if String.starts_with?(text, "/") do
-        process_command(text, message, state)
-      else
-        # Process natural language message with massive infrastructure enhancements
-        process_message_with_massive_infrastructure(text, message, state)
+      
+      # 🎯 Predictive Load Management - Analyze and optimize system resources
+      load_management_strategy = TelegramLoadPredictor.predict_and_manage_load(state)
+      Logger.info("📊 Load management strategy: #{load_management_strategy.mode} (threshold: #{load_management_strategy.attention_threshold})")
+      
+      # Apply load management to state
+      enhanced_state = apply_load_management_strategy(state, load_management_strategy)
+      
+      # 🧠 Cortical Attention Analysis - Enhanced message processing
+      message_context = %{
+        source: "telegram",
+        chat_id: chat_id,
+        user: from,
+        message_type: classify_message_type(message),
+        timestamp: DateTime.utc_now(),
+        conversation_history: get_conversation_state(chat_id, state)
+      }
+      
+      # Score attention using cortical engine
+      {:ok, attention_score, score_components} = CorticalAttentionEngine.score_attention(
+        message, 
+        message_context
+      )
+      
+      Logger.info("🧠 Attention score: #{Float.round(attention_score, 3)} for chat #{chat_id}")
+      
+      # Apply attention reminders for conversation context
+      context_enhanced_state = AttentionReminders.apply_system_reminder(
+        enhanced_state,
+        :conversation_continuity,
+        %{
+          chat_id: chat_id,
+          user: from["first_name"],
+          attention_score: attention_score,
+          message_type: message_context.message_type,
+          conversation_length: length(message_context.conversation_history[:messages] || []),
+          last_interaction: message_context.conversation_history[:last_activity]
+        }
+      )
+      
+      # Use TelegramAttentionProcessor for attention-based routing
+      routing_decision = TelegramAttentionProcessor.process_message(message, context_enhanced_state)
+      
+      # Route based on attention analysis
+      case routing_decision.action do
+        :immediate_processing ->
+          Logger.info("⚡ CRITICAL attention - immediate processing")
+          process_message_with_priority(message, :critical, context_enhanced_state)
+          
+        :priority_processing ->
+          Logger.info("🔥 HIGH attention - priority processing")
+          process_message_with_priority(message, :high, context_enhanced_state)
+          
+        :standard_processing ->
+          Logger.info("📝 NORMAL attention - standard processing")
+          process_message_with_priority(message, :normal, context_enhanced_state)
+          
+        :defer_or_simple ->
+          Logger.info("💤 LOW attention - simple/deferred processing")
+          process_message_with_priority(message, :low, context_enhanced_state)
       end
     else
       send_telegram_message(chat_id, "⛔ Unauthorized. This incident has been logged.", state)
@@ -2695,17 +2749,22 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   
   defp route_to_polyagent_capability(capability, task, state) do
     # Route task to PolyAgent with specific capability
-    case Discovery.find_agents_with_capability(capability) do
+    capability_predicate = fn agent_info ->
+      capabilities = Map.get(agent_info.metadata, :capabilities, [])
+      capability in capabilities
+    end
+    
+    case Discovery.query_agents(capability_predicate) do
       {:ok, agents} when length(agents) > 0 ->
         # Select best agent based on current load and performance
         selected_agent = select_optimal_agent(agents, task, state)
         
         # Delegate task using enhanced aMCP routing
-        CommandRouter.route_to_agent(selected_agent, task, %{
-          routing_strategy: :capability_driven,
+        CommandRouter.delegate_to_capability(capability_predicate, task, [
+          strategy: :capability_driven,
           context: build_routing_context(state),
           timeout: 10_000
-        })
+        ])
         
       {:ok, []} ->
         # No agents found - consider spawning new PolyAgent
@@ -2968,5 +3027,109 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
           complexity_preference: :medium
         }
     end
+  end
+
+  # Missing functions that are called by cortical attention processing
+
+  defp classify_message_type(message) do
+    text = message["text"] || ""
+    
+    cond do
+      String.starts_with?(text, "/") -> :command
+      String.contains?(text, ["?", "how", "what", "why", "when", "where"]) -> :question
+      String.contains?(text, ["help", "support", "issue", "problem"]) -> :support_request  
+      String.contains?(text, ["urgent", "emergency", "asap", "immediately"]) -> :urgent
+      String.length(text) > 200 -> :complex_message
+      String.length(text) < 10 -> :simple_message
+      true -> :conversation
+    end
+  end
+
+  defp process_message_with_priority(message, priority, state) do
+    chat_id = message["chat"]["id"]
+    text = message["text"] || ""
+    
+    Logger.info("🎯 Processing message with priority: #{priority}")
+    
+    case priority do
+      :critical ->
+        # Use massive infrastructure for critical messages
+        process_message_with_massive_infrastructure(text, message, state)
+        
+      :high ->
+        # Use enhanced GEPA processing for high priority
+        process_natural_language_with_gepa_efficiency(text, message, state)
+        
+      :normal ->
+        # Standard processing with infrastructure integration
+        if String.starts_with?(text, "/") do
+          process_command(text, message, state)
+        else
+          process_message_with_massive_infrastructure(text, message, state)
+        end
+        
+      :low ->
+        # Simple processing for low priority messages
+        if String.starts_with?(text, "/") do
+          process_command(text, message, state) 
+        else
+          # Use basic GEPA processing for simple messages
+          process_natural_language_with_gepa_efficiency(text, message, state)
+        end
+    end
+  end
+
+  # Load Management Integration
+  
+  defp apply_load_management_strategy(state, strategy) do
+    # Update state with load management configuration
+    new_state = state
+    |> Map.put(:load_strategy, strategy)
+    |> Map.put(:attention_threshold, strategy.attention_threshold)
+    |> Map.put(:resource_limits, strategy.resource_limits)
+    |> Map.put(:processing_mode, strategy.mode)
+    
+    # Update metrics tracking
+    update_load_management_metrics(new_state, strategy)
+    
+    # Apply resource constraints based on strategy
+    case strategy.mode do
+      :emergency_throttling ->
+        Logger.warning("🚨 EMERGENCY throttling active - limited responses only")
+        Map.put(new_state, :emergency_mode, true)
+        
+      :preventive_throttling ->
+        Logger.info("⚠️ Preventive throttling active - reduced LLM usage")
+        Map.put(new_state, :throttling_active, true)
+        
+      :optimal_service ->
+        Logger.info("🚀 Optimal service mode - full capabilities available")
+        Map.put(new_state, :optimal_mode, true)
+        
+      _ ->
+        Logger.info("⚖️ Balanced service mode active")
+        new_state
+    end
+  end
+  
+  defp update_load_management_metrics(state, strategy) do
+    metrics = %{
+      load_strategy: strategy.mode,
+      attention_threshold: strategy.attention_threshold,
+      resource_utilization: strategy.resource_limits.max_concurrent_llm,
+      timestamp: DateTime.utc_now()
+    }
+    
+    # Update performance monitor with load management metrics
+    if Process.whereis(VsmPhoenix.PerformanceMonitor) do
+      GenServer.cast(VsmPhoenix.PerformanceMonitor, {:update_load_metrics, metrics})
+    end
+    
+    # Log load strategy changes
+    :telemetry.execute(
+      [:vsm_phoenix, :telegram, :load_management],
+      %{strategy_applied: 1},
+      %{mode: strategy.mode, threshold: strategy.attention_threshold}
+    )
   end
 end

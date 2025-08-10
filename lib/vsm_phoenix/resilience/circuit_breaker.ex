@@ -158,8 +158,8 @@ defmodule VsmPhoenix.Resilience.CircuitBreaker do
       
       # Report success metrics
       recovery_time = System.monotonic_time(:millisecond) - start_time
-      DynamicConfig.report_metric(:circuit_breaker, :recovery_time, recovery_time)
-      DynamicConfig.report_outcome(:circuit_breaker, state.name, :success)
+      VsmPhoenix.Infrastructure.DynamicConfig.report_metric(:circuit_breaker, :recovery_time, recovery_time)
+      VsmPhoenix.Infrastructure.DynamicConfig.report_outcome(:circuit_breaker, state.name, :success)
 
       # Reset failure count on success if we had failures
       new_state =
@@ -172,11 +172,11 @@ defmodule VsmPhoenix.Resilience.CircuitBreaker do
       {:reply, {:ok, result}, new_state}
     rescue
       error ->
-        DynamicConfig.report_outcome(:circuit_breaker, state.name, :failure)
+        VsmPhoenix.Infrastructure.DynamicConfig.report_outcome(:circuit_breaker, state.name, :failure)
         handle_failure(state, error, :closed)
     catch
       :exit, reason ->
-        DynamicConfig.report_outcome(:circuit_breaker, state.name, :failure)
+        VsmPhoenix.Infrastructure.DynamicConfig.report_outcome(:circuit_breaker, state.name, :failure)
         handle_failure(state, {:exit, reason}, :closed)
     end
   end
@@ -191,7 +191,7 @@ defmodule VsmPhoenix.Resilience.CircuitBreaker do
       {:reply, {:error, :circuit_open}, state}
     else
       # Still in cooldown
-      DynamicConfig.report_outcome(:circuit_breaker, state.name, :rejected_open)
+      VsmPhoenix.Infrastructure.DynamicConfig.report_outcome(:circuit_breaker, state.name, :rejected_open)
       {:reply, {:error, :circuit_open}, state}
     end
   end

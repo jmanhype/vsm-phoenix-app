@@ -177,8 +177,8 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
 
         # Report metrics
         pool_utilization = map_size(busy) / state.max_concurrent
-        DynamicConfig.report_metric(:bulkhead, :pool_utilization, pool_utilization)
-        DynamicConfig.report_outcome(:bulkhead, state.name, :checkout_success)
+        VsmPhoenix.Infrastructure.DynamicConfig.report_metric(:bulkhead, :pool_utilization, pool_utilization)
+        VsmPhoenix.Infrastructure.DynamicConfig.report_outcome(:bulkhead, state.name, :checkout_success)
 
         {:reply, {:ok, resource}, state}
 
@@ -188,7 +188,7 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
         Logger.warning("❌ Bulkhead #{state.name}: Queue full, rejecting request")
         
         # Report rejection
-        DynamicConfig.report_outcome(:bulkhead, state.name, :rejected)
+        VsmPhoenix.Infrastructure.DynamicConfig.report_outcome(:bulkhead, state.name, :rejected)
         
         {:reply, {:error, :bulkhead_full}, state}
 
@@ -204,7 +204,7 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
 
         # Report queue metrics
         queue_size = :queue.len(new_queue)
-        DynamicConfig.report_metric(:bulkhead, :queue_size, queue_size)
+        VsmPhoenix.Infrastructure.DynamicConfig.report_metric(:bulkhead, :queue_size, queue_size)
 
         {:noreply, state}
     end
@@ -250,7 +250,7 @@ defmodule VsmPhoenix.Resilience.Bulkhead do
             case timer_ref do
               {_, _, _, start_time} ->
                 wait_time = System.monotonic_time(:millisecond) - start_time
-                DynamicConfig.report_metric(:bulkhead, :queue_wait_time, wait_time)
+                VsmPhoenix.Infrastructure.DynamicConfig.report_metric(:bulkhead, :queue_wait_time, wait_time)
               _ -> :ok
             end
 

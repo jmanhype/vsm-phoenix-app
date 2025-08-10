@@ -622,4 +622,225 @@ defmodule VsmPhoenix.Telemetry.ContextFusionEngine do
     end
   end
   defp check_causal_strength_consistency(_), do: 1.0
+
+  # 🧠 NEURAL CONTEXTUAL INTELLIGENCE - Claude-Style Functions
+  
+  def filter_conversation_context(params) do
+    """
+    Filter conversation context using Claude-style relevance filtering.
+    """
+    
+    chat_id = Map.get(params, :chat_id)
+    current_message = Map.get(params, :current_message, "")
+    conversation_history = Map.get(params, :conversation_history, [])
+    user_preferences = Map.get(params, :user_preferences, %{})
+    system_phase = Map.get(params, :system_phase, :system1)
+    
+    # Apply phase-based filtering
+    phase_context = Map.get(@phase_contexts, system_phase, @phase_contexts.system1)
+    
+    # Filter messages based on relevance and recency
+    relevant_messages = filter_message_relevance(conversation_history, %{
+      max_messages: 15,
+      relevance_threshold: 0.7,
+      recency_weight: 0.3,
+      semantic_similarity_weight: 0.7,
+      current_message: current_message,
+      user_preferences: user_preferences
+    })
+    
+    # Create filtered context
+    %{
+      relevant_messages: relevant_messages,
+      context_phase: system_phase,
+      context_weight: phase_context.context_weight,
+      signal_priority: phase_context.signal_priority,
+      semantic_tags: phase_context.semantic_tags,
+      recency_weight: 0.3,
+      semantic_coherence: calculate_semantic_coherence(relevant_messages),
+      context_relationships: build_context_relationships(relevant_messages, current_message)
+    }
+  end
+  
+  def filter_message_relevance(messages, options) do
+    """
+    Filter messages based on relevance to current context.
+    """
+    
+    max_messages = Map.get(options, :max_messages, 15)
+    relevance_threshold = Map.get(options, :relevance_threshold, 0.7)
+    recency_weight = Map.get(options, :recency_weight, 0.3)
+    semantic_weight = Map.get(options, :semantic_similarity_weight, 0.7)
+    current_message = Map.get(options, :current_message, "")
+    
+    # Score each message for relevance
+    scored_messages = messages
+                     |> Enum.with_index()
+                     |> Enum.map(fn {message, index} ->
+                       relevance_score = calculate_message_relevance(message, current_message, index, length(messages))
+                       recency_score = calculate_recency_score(index, length(messages))
+                       
+                       total_score = (relevance_score * semantic_weight) + (recency_score * recency_weight)
+                       
+                       {message, total_score}
+                     end)
+                     |> Enum.filter(fn {_message, score} -> score >= relevance_threshold end)
+                     |> Enum.sort_by(fn {_message, score} -> -score end)
+                     |> Enum.take(max_messages)
+                     |> Enum.map(fn {message, _score} -> message end)
+    
+    scored_messages
+  end
+  
+  defp calculate_message_relevance(message, current_message, index, total_messages) do
+    """
+    Calculate relevance score for a message.
+    """
+    
+    message_text = Map.get(message, :content, Map.get(message, :text, ""))
+    
+    # Simple semantic similarity based on word overlap
+    message_words = String.split(String.downcase(message_text))
+    current_words = String.split(String.downcase(current_message))
+    
+    common_words = MapSet.intersection(MapSet.new(message_words), MapSet.new(current_words))
+    word_similarity = if length(current_words) > 0 do
+      MapSet.size(common_words) / length(current_words)
+    else
+      0.0
+    end
+    
+    # Position bonus (more recent messages get higher scores)
+    position_bonus = (total_messages - index) / total_messages * 0.3
+    
+    # Role importance (user questions get higher relevance)
+    role_bonus = case Map.get(message, :role) do
+      :user -> 0.2
+      "user" -> 0.2
+      _ -> 0.0
+    end
+    
+    word_similarity + position_bonus + role_bonus
+  end
+  
+  defp calculate_recency_score(index, total_messages) do
+    """
+    Calculate recency score based on message position.
+    """
+    if total_messages > 0 do
+      (total_messages - index) / total_messages
+    else
+      0.0
+    end
+  end
+  
+  defp calculate_semantic_coherence(messages) do
+    """
+    Calculate semantic coherence across filtered messages.
+    """
+    if length(messages) < 2 do
+      1.0
+    else
+      # Simple coherence based on topic consistency
+      topics = Enum.map(messages, &extract_message_topic/1)
+      unique_topics = Enum.uniq(topics)
+      
+      # Higher coherence when fewer unique topics
+      1.0 - (length(unique_topics) / length(messages))
+    end
+  end
+  
+  defp build_context_relationships(messages, current_message) do
+    """
+    Build relationships between messages and current context.
+    """
+    
+    relationships = messages
+                   |> Enum.with_index()
+                   |> Enum.map(fn {message, index} ->
+                     %{
+                       message_index: index,
+                       relationship_type: determine_relationship_type(message, current_message),
+                       strength: calculate_relationship_strength(message, current_message),
+                       temporal_distance: index
+                     }
+                   end)
+                   |> Enum.filter(fn rel -> rel.strength > 0.3 end)
+    
+    %{
+      message_relationships: relationships,
+      relationship_count: length(relationships),
+      avg_relationship_strength: calculate_avg_relationship_strength(relationships)
+    }
+  end
+  
+  defp extract_message_topic(message) do
+    """
+    Extract primary topic from message.
+    """
+    
+    message_text = Map.get(message, :content, Map.get(message, :text, ""))
+    words = String.split(String.downcase(message_text))
+    
+    # Simple topic detection based on keywords
+    cond do
+      Enum.any?(words, &(&1 in ["error", "problem", "issue", "bug"])) -> "problem_solving"
+      Enum.any?(words, &(&1 in ["help", "how", "explain", "what"])) -> "help_request"
+      Enum.any?(words, &(&1 in ["status", "health", "running", "working"])) -> "status_inquiry"
+      Enum.any?(words, &(&1 in ["config", "setting", "setup", "configure"])) -> "configuration"
+      true -> "general"
+    end
+  end
+  
+  defp determine_relationship_type(message, current_message) do
+    """
+    Determine the type of relationship between messages.
+    """
+    
+    message_text = Map.get(message, :content, Map.get(message, :text, ""))
+    
+    # Simple relationship detection
+    cond do
+      String.contains?(String.downcase(current_message), ["that", "this", "it"]) and
+      String.length(message_text) > String.length(current_message) -> :reference
+      
+      extract_message_topic(message) == extract_message_topic(%{content: current_message}) -> :topical
+      
+      Map.get(message, :role) != :user -> :conversational
+      
+      true -> :contextual
+    end
+  end
+  
+  defp calculate_relationship_strength(message, current_message) do
+    """
+    Calculate strength of relationship between messages.
+    """
+    
+    message_text = Map.get(message, :content, Map.get(message, :text, ""))
+    
+    # Word overlap strength
+    message_words = String.split(String.downcase(message_text))
+    current_words = String.split(String.downcase(current_message))
+    
+    common_words = MapSet.intersection(MapSet.new(message_words), MapSet.new(current_words))
+    
+    if length(current_words) > 0 do
+      MapSet.size(common_words) / length(current_words)
+    else
+      0.0
+    end
+  end
+  
+  defp calculate_avg_relationship_strength(relationships) do
+    """
+    Calculate average relationship strength.
+    """
+    if length(relationships) > 0 do
+      total_strength = Enum.reduce(relationships, 0.0, &(&1.strength + &2))
+      total_strength / length(relationships)
+    else
+      0.0
+    end
+  end
 end

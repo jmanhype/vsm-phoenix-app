@@ -49,6 +49,13 @@ defmodule VsmPhoenix.Infrastructure.Security do
     expected_signature = sign_message(message, secret_key)
     Plug.Crypto.secure_compare(signature, expected_signature)
   end
+
+  @doc """
+  Verify a secure message wrapper (alias for unwrap_secure_message for compatibility).
+  """
+  def verify_secure_message(wrapped_message, secret_key) do
+    unwrap_secure_message(wrapped_message, secret_key)
+  end
   
   @doc """
   Wrap a message with security envelope including nonce, timestamp, and signature

@@ -56,7 +56,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramContextManager do
   end
 
   @doc """
-  Update conversation context with new interaction data.
+  Update conversation context with new interaction data and pattern learning.
   """
   def update_conversation_context(chat_id, user_message, bot_response, state) do
     # Get existing context
@@ -82,19 +82,37 @@ defmodule VsmPhoenix.System1.Agents.TelegramContextManager do
       satisfaction_estimate: estimate_response_satisfaction(bot_response, user_message)
     }
     
+    # 🧠 User Pattern Learning Integration
+    user_patterns = learn_user_patterns(chat_id, user_entry, current_context)
+    adaptation_feedback = generate_adaptation_feedback(user_entry, bot_entry, current_context, user_patterns)
+    
+    # Store learned patterns for future adaptation
+    if should_store_pattern?(adaptation_feedback) do
+      store_user_adaptation_pattern(chat_id, user_patterns, adaptation_feedback, state)
+    end
+    
     # Update conversation history with context preservation
     updated_history = [bot_entry, user_entry | current_context.history]
     |> Enum.take(50)  # Keep more history for better context
     |> compress_history_if_needed()
     
-    # Store updated context
-    :ets.insert(state.conversation_table, {chat_id, %{
+    # Store updated context with pattern learning data
+    enhanced_context = %{
       messages: updated_history,
       last_updated: timestamp,
       context_summary: generate_context_summary(updated_history),
       topic_evolution: track_topic_evolution(current_context.current_topic, user_message),
-      engagement_trajectory: update_engagement_trajectory(current_context.user_engagement_level, user_entry)
-    }})
+      engagement_trajectory: update_engagement_trajectory(current_context.user_engagement_level, user_entry),
+      user_patterns: user_patterns,
+      adaptation_insights: adaptation_feedback
+    }
+    
+    :ets.insert(state.conversation_table, {chat_id, enhanced_context})
+    
+    # Trigger pattern-based adaptation if significant patterns are detected
+    if should_trigger_adaptation?(user_patterns, adaptation_feedback) do
+      trigger_user_adaptation(chat_id, user_patterns, adaptation_feedback, state)
+    end
   end
 
   # Private helper functions
@@ -579,4 +597,510 @@ defmodule VsmPhoenix.System1.Agents.TelegramContextManager do
       _ -> 0.5  # Default moderate momentum
     end
   end
+
+  # User Pattern Learning Functions
+
+  defp learn_user_patterns(chat_id, user_entry, context) do
+    existing_patterns = extract_existing_user_patterns(chat_id, context)
+    
+    # Analyze current interaction patterns
+    communication_style = analyze_communication_style(user_entry, context)
+    preference_patterns = detect_preference_patterns(user_entry, context)
+    temporal_behavior = analyze_temporal_behavior(user_entry, context)
+    engagement_patterns = identify_engagement_patterns(user_entry, context)
+    complexity_preferences = assess_complexity_preferences(user_entry, context)
+    
+    # Update patterns with new observations
+    %{
+      chat_id: chat_id,
+      communication_style: merge_pattern_updates(existing_patterns[:communication_style], communication_style),
+      preferences: merge_pattern_updates(existing_patterns[:preferences], preference_patterns),
+      temporal_behavior: merge_pattern_updates(existing_patterns[:temporal_behavior], temporal_behavior),
+      engagement: merge_pattern_updates(existing_patterns[:engagement], engagement_patterns),
+      complexity_preferences: merge_pattern_updates(existing_patterns[:complexity_preferences], complexity_preferences),
+      confidence_level: calculate_pattern_confidence(context),
+      last_updated: DateTime.utc_now(),
+      pattern_evolution: track_pattern_evolution(existing_patterns, user_entry)
+    }
+  end
+
+  defp extract_existing_user_patterns(_chat_id, context) do
+    case Map.get(context, :user_patterns) do
+      nil -> %{}
+      patterns -> patterns
+    end
+  end
+
+  defp analyze_communication_style(user_entry, context) do
+    # Analyze how the user communicates
+    content_length = String.length(user_entry.content)
+    question_frequency = context.history
+    |> Enum.filter(fn msg -> msg[:role] == "user" end)
+    |> Enum.count(fn msg -> String.contains?(msg[:content] || "", "?") end)
+    
+    formality_level = assess_formality_level(user_entry.content)
+    directness = assess_directness(user_entry.content)
+    
+    %{
+      preferred_length: categorize_length_preference(content_length),
+      question_tendency: categorize_question_tendency(question_frequency, length(context.history)),
+      formality: formality_level,
+      directness: directness,
+      emoji_usage: count_emoji_usage(user_entry.content),
+      punctuation_style: analyze_punctuation_style(user_entry.content)
+    }
+  end
+
+  defp detect_preference_patterns(user_entry, context) do
+    # Detect what types of responses the user prefers
+    recent_satisfaction = context.history
+    |> Enum.filter(fn msg -> msg[:role] == "assistant" end)
+    |> Enum.take(5)
+    |> Enum.map(fn msg -> msg[:satisfaction_estimate] || 0.5 end)
+    |> Enum.sum()
+    |> Kernel./(max(1, 5))
+    
+    topic_preferences = analyze_topic_preferences(context)
+    response_type_preferences = analyze_response_type_preferences(context)
+    
+    %{
+      satisfaction_trend: recent_satisfaction,
+      preferred_topics: topic_preferences,
+      preferred_response_types: response_type_preferences,
+      technical_level: assess_preferred_technical_level(user_entry, context),
+      detail_preference: assess_detail_preference(context)
+    }
+  end
+
+  defp analyze_temporal_behavior(user_entry, _context) do
+    # Analyze when and how often the user interacts
+    current_hour = user_entry.timestamp.hour
+    
+    %{
+      preferred_hours: [current_hour],  # Will accumulate over time
+      interaction_frequency: :moderate,  # Will be calculated from history
+      session_length_preference: :medium,  # Based on conversation patterns
+      response_time_expectation: :normal  # Based on user patience indicators
+    }
+  end
+
+  defp identify_engagement_patterns(user_entry, context) do
+    # Identify how the user engages with the bot
+    follow_up_tendency = count_follow_up_questions(context)
+    topic_switching = analyze_topic_switching_behavior(context)
+    depth_seeking = assess_depth_seeking_behavior(user_entry, context)
+    
+    %{
+      follow_up_tendency: follow_up_tendency,
+      topic_persistence: topic_switching,
+      depth_seeking: depth_seeking,
+      conversation_initiative: assess_conversation_initiative(context),
+      engagement_sustainability: assess_engagement_sustainability(context)
+    }
+  end
+
+  defp assess_complexity_preferences(user_entry, context) do
+    # Assess preferred complexity level of responses
+    # user_complexity = user_entry.complexity  # Not used in this simplified version
+    user_messages = context.history
+    |> Enum.filter(fn msg -> msg[:role] == "user" end)
+    |> Enum.take(5)
+    
+    avg_user_complexity = user_messages
+    |> Enum.map(fn msg -> complexity_to_numeric(msg[:complexity] || :minimal) end)
+    |> case do
+        [] -> 0.3
+        values -> Enum.sum(values) / length(values)
+      end
+    
+    %{
+      preferred_complexity: numeric_to_complexity(avg_user_complexity),
+      technical_tolerance: assess_technical_tolerance(context),
+      explanation_depth: assess_explanation_depth_preference(context)
+    }
+  end
+
+  def generate_adaptation_feedback(user_entry, bot_entry, context, user_patterns) do
+    # Public version - Generate feedback for how well the bot adapted to user patterns
+    pattern_alignment = calculate_pattern_alignment(bot_entry, user_patterns)
+    response_effectiveness = bot_entry.satisfaction_estimate || 0.5
+    
+    # Identify areas for improvement
+    improvement_areas = identify_improvement_areas(user_entry, bot_entry, user_patterns)
+    
+    # Generate specific adaptation suggestions
+    adaptation_suggestions = generate_adaptation_suggestions(user_patterns, improvement_areas)
+    
+    %{
+      pattern_alignment: pattern_alignment,
+      response_effectiveness: response_effectiveness,
+      improvement_areas: improvement_areas,
+      adaptation_suggestions: adaptation_suggestions,
+      confidence: user_patterns.confidence_level,
+      context_relevance: calculate_context_relevance_score(context),
+      learning_opportunity: assess_learning_opportunity(user_entry, context)
+    }
+  end
+
+  def should_store_pattern?(adaptation_feedback) do
+    # Public version - decide whether this interaction provides valuable learning data
+    adaptation_feedback.confidence > 0.6 and
+    adaptation_feedback.learning_opportunity > 0.5 and
+    length(adaptation_feedback.adaptation_suggestions) > 0
+  end
+
+  def store_user_adaptation_pattern(chat_id, user_patterns, adaptation_feedback, _state) do
+    # Store pattern in System5 AdaptationStore for organizational learning
+    adaptation_id = "telegram_user_#{chat_id}_#{:erlang.system_time(:millisecond)}"
+    
+    adaptation_data = %{
+      domain: :telegram_interaction,
+      anomaly_context: %{
+        user_patterns: user_patterns,
+        chat_id: chat_id,
+        pattern_alignment: adaptation_feedback.pattern_alignment
+      },
+      policy_changes: adaptation_feedback.adaptation_suggestions,
+      metadata: %{
+        source: "telegram_context_manager",
+        confidence: adaptation_feedback.confidence,
+        improvement_areas: adaptation_feedback.improvement_areas
+      }
+    }
+    
+    # Store in System5 persistence layer
+    if Process.whereis(VsmPhoenix.System5.Persistence.AdaptationStore) do
+      VsmPhoenix.System5.Persistence.AdaptationStore.store_adaptation(
+        adaptation_id,
+        adaptation_data,
+        %{
+          success: adaptation_feedback.response_effectiveness > 0.7,
+          performance_impact: adaptation_feedback.pattern_alignment,
+          stability_impact: adaptation_feedback.confidence
+        }
+      )
+    end
+    
+    Logger.info("🧠 Stored user adaptation pattern for chat #{chat_id} with confidence #{Float.round(adaptation_feedback.confidence, 2)}")
+  end
+
+  def trigger_user_adaptation(chat_id, user_patterns, adaptation_feedback, _state) do
+    # Trigger System4 Intelligence to generate adaptation proposal
+    challenge = %{
+      type: :user_experience_optimization,
+      urgency: :medium,
+      scope: :interaction_improvement,
+      context: %{
+        chat_id: chat_id,
+        user_patterns: user_patterns,
+        improvement_areas: adaptation_feedback.improvement_areas,
+        adaptation_suggestions: adaptation_feedback.adaptation_suggestions
+      },
+      source: "telegram_context_manager"
+    }
+    
+    if Process.whereis(VsmPhoenix.System4.Intelligence.AdaptationEngine) do
+      send(VsmPhoenix.System4.Intelligence.AdaptationEngine, {:adaptation_needed, challenge})
+      Logger.info("🚀 Triggered user experience adaptation for chat #{chat_id}")
+    end
+  end
+  
+  def should_trigger_adaptation?(user_patterns, adaptation_feedback) do
+    # Public version of the function for external calls
+    user_patterns.confidence_level > 0.8 and
+    adaptation_feedback.pattern_alignment < 0.6 and
+    length(adaptation_feedback.adaptation_suggestions) >= 3
+  end
+
+  # Helper functions for pattern analysis
+
+  defp merge_pattern_updates(existing_pattern, new_observation) do
+    case existing_pattern do
+      nil -> new_observation
+      existing -> 
+        # Use exponential moving average to update patterns
+        alpha = 0.3
+        merge_maps_with_ema(existing, new_observation, alpha)
+    end
+  end
+
+  defp merge_maps_with_ema(existing, new_map, alpha) do
+    Map.merge(existing, new_map, fn _key, old_val, new_val ->
+      case {old_val, new_val} do
+        {old, new} when is_number(old) and is_number(new) ->
+          alpha * new + (1 - alpha) * old
+        {_old, new} -> new  # Use new value for non-numeric data
+      end
+    end)
+  end
+
+  defp calculate_pattern_confidence(context) do
+    # Calculate confidence based on interaction history
+    history_length = length(context.history)
+    consistency_score = calculate_consistency_score(context.history)
+    
+    base_confidence = min(history_length / 20, 1.0)  # Max confidence after 20 interactions
+    base_confidence * consistency_score
+  end
+
+  defp calculate_consistency_score(history) do
+    # Measure consistency in user behavior
+    if length(history) < 3 do
+      0.5  # Default for insufficient data
+    else
+      user_messages = history |> Enum.filter(fn msg -> msg[:role] == "user" end) |> Enum.take(10)
+      
+      # Analyze consistency across different dimensions
+      intent_consistency = analyze_intent_consistency(user_messages)
+      complexity_consistency = analyze_complexity_consistency(user_messages)
+      tone_consistency = analyze_tone_consistency(user_messages)
+      
+      (intent_consistency + complexity_consistency + tone_consistency) / 3
+    end
+  end
+
+  defp track_pattern_evolution(existing_patterns, user_entry) do
+    # Track how user patterns are evolving over time
+    %{
+      timestamp: DateTime.utc_now(),
+      changes_detected: detect_pattern_changes(existing_patterns, user_entry),
+      evolution_trend: assess_evolution_trend(existing_patterns),
+      stability_score: calculate_pattern_stability(existing_patterns)
+    }
+  end
+
+  # Utility functions for specific pattern analysis
+
+  defp categorize_length_preference(length) do
+    cond do
+      length < 20 -> :brief
+      length < 100 -> :moderate
+      length < 300 -> :detailed
+      true -> :comprehensive
+    end
+  end
+
+  defp categorize_question_tendency(question_count, total_messages) do
+    if total_messages == 0, do: :unknown, else: question_count / total_messages
+  end
+
+  defp assess_formality_level(content) do
+    formal_indicators = ["please", "thank you", "could you", "would you"]
+    informal_indicators = ["hi", "hey", "cool", "awesome", "lol"]
+    
+    formal_score = Enum.count(formal_indicators, &String.contains?(String.downcase(content), &1))
+    informal_score = Enum.count(informal_indicators, &String.contains?(String.downcase(content), &1))
+    
+    cond do
+      formal_score > informal_score -> :formal
+      informal_score > formal_score -> :informal
+      true -> :neutral
+    end
+  end
+
+  defp assess_directness(content) do
+    imperative_patterns = ["show me", "give me", "tell me", "explain"]
+    polite_patterns = ["can you", "could you", "would you mind", "if possible"]
+    
+    imperative_count = Enum.count(imperative_patterns, &String.contains?(String.downcase(content), &1))
+    polite_count = Enum.count(polite_patterns, &String.contains?(String.downcase(content), &1))
+    
+    cond do
+      imperative_count > polite_count -> :direct
+      polite_count > imperative_count -> :polite
+      true -> :balanced
+    end
+  end
+
+  defp count_emoji_usage(content) do
+    emoji_count = Regex.scan(~r/[\x{1F600}-\x{1F64F}]|[\x{1F300}-\x{1F5FF}]|[\x{1F680}-\x{1F6FF}]|[\x{2600}-\x{26FF}]|[\x{2700}-\x{27BF}]/u, content)
+    |> length()
+    
+    cond do
+      emoji_count == 0 -> :none
+      emoji_count <= 2 -> :minimal
+      emoji_count <= 5 -> :moderate
+      true -> :frequent
+    end
+  end
+
+  defp analyze_punctuation_style(content) do
+    exclamation_count = String.graphemes(content) |> Enum.count(&(&1 == "!"))
+    question_count = String.graphemes(content) |> Enum.count(&(&1 == "?"))
+    
+    %{
+      exclamation_usage: categorize_punctuation_usage(exclamation_count),
+      question_usage: categorize_punctuation_usage(question_count),
+      overall_style: determine_overall_punctuation_style(content)
+    }
+  end
+
+  defp categorize_punctuation_usage(count) do
+    cond do
+      count == 0 -> :none
+      count <= 1 -> :minimal
+      count <= 3 -> :moderate
+      true -> :heavy
+    end
+  end
+
+  defp determine_overall_punctuation_style(content) do
+    if String.contains?(content, ["!!!", "???", "...", "---"]) do
+      :expressive
+    else
+      :standard
+    end
+  end
+
+  # Additional helper functions
+
+  defp analyze_topic_preferences(context) do
+    # Extract topic preferences from conversation history
+    context.history
+    |> Enum.filter(fn msg -> msg[:role] == "user" end)
+    |> Enum.map(fn msg -> extract_message_topic(msg) end)
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {_topic, count} -> count end, :desc)
+    |> Enum.take(3)
+    |> Enum.map(fn {topic, _count} -> topic end)
+  end
+
+  defp analyze_response_type_preferences(context) do
+    # Analyze which response types get better satisfaction
+    context.history
+    |> Enum.filter(fn msg -> msg[:role] == "assistant" and msg[:satisfaction_estimate] end)
+    |> Enum.group_by(fn msg -> msg[:response_type] end)
+    |> Enum.map(fn {type, responses} ->
+      avg_satisfaction = responses
+      |> Enum.map(fn r -> r[:satisfaction_estimate] end)
+      |> Enum.sum()
+      |> Kernel./(length(responses))
+      {type, avg_satisfaction}
+    end)
+    |> Enum.sort_by(fn {_type, satisfaction} -> satisfaction end, :desc)
+    |> Enum.take(3)
+    |> Enum.map(fn {type, _satisfaction} -> type end)
+  end
+
+  defp complexity_to_numeric(complexity) do
+    case complexity do
+      :minimal -> 0.1
+      :low -> 0.3
+      :medium -> 0.5
+      :high -> 0.7
+    end
+  end
+
+  defp numeric_to_complexity(value) do
+    cond do
+      value < 0.2 -> :minimal
+      value < 0.4 -> :low
+      value < 0.6 -> :medium
+      true -> :high
+    end
+  end
+
+  defp calculate_pattern_alignment(bot_entry, user_patterns) do
+    # Calculate how well the bot response aligns with learned user patterns
+    # This is a simplified calculation - in production would be more sophisticated
+    alignment_score = 0.5  # Base alignment
+    
+    # Adjust based on response type preference
+    if user_patterns[:preferences] && user_patterns.preferences[:preferred_response_types] do
+      if bot_entry.response_type in user_patterns.preferences.preferred_response_types do
+        alignment_score = alignment_score + 0.2
+      end
+    end
+    
+    # Adjust based on complexity preference
+    if user_patterns[:complexity_preferences] do
+      bot_complexity = assess_message_complexity(bot_entry.content)
+      user_preferred = user_patterns.complexity_preferences[:preferred_complexity]
+      
+      if bot_complexity == user_preferred do
+        alignment_score = alignment_score + 0.2
+      end
+    end
+    
+    min(1.0, alignment_score)
+  end
+
+  defp identify_improvement_areas(user_entry, bot_entry, user_patterns) do
+    improvement_areas = []
+    
+    # Check response length alignment
+    improvement_areas = if needs_length_adjustment?(user_entry, bot_entry, user_patterns) do
+      [:response_length | improvement_areas]
+    else
+      improvement_areas
+    end
+    
+    # Check complexity alignment
+    improvement_areas = if needs_complexity_adjustment?(bot_entry, user_patterns) do
+      [:complexity_level | improvement_areas]
+    else
+      improvement_areas
+    end
+    
+    # Check engagement level
+    improvement_areas = if needs_engagement_improvement?(bot_entry) do
+      [:engagement_level | improvement_areas]
+    else
+      improvement_areas
+    end
+    
+    improvement_areas
+  end
+
+  defp generate_adaptation_suggestions(user_patterns, improvement_areas) do
+    suggestions = []
+    
+    # Generate suggestions based on improvement areas
+    suggestions = if :response_length in improvement_areas do
+      length_suggestion = suggest_length_adjustment(user_patterns)
+      [length_suggestion | suggestions]
+    else
+      suggestions
+    end
+    
+    suggestions = if :complexity_level in improvement_areas do
+      complexity_suggestion = suggest_complexity_adjustment(user_patterns)
+      [complexity_suggestion | suggestions]
+    else
+      suggestions
+    end
+    
+    suggestions = if :engagement_level in improvement_areas do
+      ["increase_interactive_elements", "add_follow_up_questions" | suggestions]
+    else
+      suggestions
+    end
+    
+    suggestions
+  end
+
+  # Placeholder implementations for complex functions
+  
+  defp assess_preferred_technical_level(_user_entry, _context), do: :moderate
+  defp assess_detail_preference(_context), do: :balanced
+  defp count_follow_up_questions(_context), do: :moderate
+  defp analyze_topic_switching_behavior(_context), do: :stable
+  defp assess_depth_seeking_behavior(_user_entry, _context), do: :moderate
+  defp assess_conversation_initiative(_context), do: :balanced
+  defp assess_engagement_sustainability(_context), do: :stable
+  defp assess_technical_tolerance(_context), do: :moderate
+  defp assess_explanation_depth_preference(_context), do: :balanced
+  defp calculate_context_relevance_score(_context), do: 0.7
+  defp assess_learning_opportunity(_user_entry, _context), do: 0.6
+  defp analyze_intent_consistency(_messages), do: 0.7
+  defp analyze_complexity_consistency(_messages), do: 0.7
+  defp analyze_tone_consistency(_messages), do: 0.7
+  defp detect_pattern_changes(_existing, _entry), do: []
+  defp assess_evolution_trend(_patterns), do: :stable
+  defp calculate_pattern_stability(_patterns), do: 0.8
+  defp needs_length_adjustment?(_user_entry, _bot_entry, _patterns), do: false
+  defp needs_complexity_adjustment?(_bot_entry, _patterns), do: false
+  defp needs_engagement_improvement?(_bot_entry), do: false
+  defp suggest_length_adjustment(_patterns), do: "adjust_response_length"
+  defp suggest_complexity_adjustment(_patterns), do: "adjust_complexity_level"
 end

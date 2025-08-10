@@ -69,6 +69,49 @@ defmodule VsmPhoenix.CRDT.ContextStore do
   def get(key) do
     GenServer.call(__MODULE__, {:get, key})
   end
+
+  @doc """
+  Get counter value for a specific key.
+  """
+  def get_counter_value(key) do
+    case get(key) do
+      {:ok, counter} when is_map(counter) ->
+        # Try to determine counter type and get value
+        cond do
+          Map.has_key?(counter, :p) and Map.has_key?(counter, :n) ->
+            {:ok, VsmPhoenix.CRDT.PNCounter.value(counter)}
+          Map.has_key?(counter, :entries) ->
+            {:ok, VsmPhoenix.CRDT.GCounter.value(counter)}
+          true ->
+            {:ok, 0}
+        end
+      _ ->
+        {:ok, 0}
+    end
+  end
+
+  @doc """
+  Reset counter to zero.
+  """
+  def reset_counter(key) do
+    GenServer.call(__MODULE__, {:set_counter, key, 0})
+  end
+
+  @doc """
+  Get values from a set.
+  """
+  def get_set_values(key) do
+    case get(key) do
+      {:ok, set} when is_map(set) ->
+        if Map.has_key?(set, :elements) do
+          {:ok, VsmPhoenix.CRDT.ORSet.value(set)}
+        else
+          {:ok, []}
+        end
+      _ ->
+        {:ok, []}
+    end
+  end
   
   @doc """
   Get the full state for debugging
@@ -229,6 +272,15 @@ defmodule VsmPhoenix.CRDT.ContextStore do
     }
     
     {:reply, {:ok, full_state}, state}
+  end
+
+  @impl true
+  def handle_call({:set_counter, key, value}, _from, state) do
+    # Reset counter by creating new counter with specified value
+    counter = VsmPhoenix.CRDT.PNCounter.new()
+    counter = VsmPhoenix.CRDT.PNCounter.increment(counter, state.node_id, value)
+    new_pncounters = Map.put(state.pncounters, key, counter)
+    {:reply, :ok, %{state | pncounters: new_pncounters}}
   end
   
   @impl true

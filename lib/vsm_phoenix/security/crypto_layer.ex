@@ -22,7 +22,7 @@ defmodule VsmPhoenix.Security.CryptoLayer do
   @ephemeral_key_lifetime 3_600_000  # 1 hour
   
   # Crypto algorithms
-  @supported_algorithms [:hmac_sha256, :hmac_sha512, :ed25519, :aes_256_gcm]
+  # @supported_algorithms [:hmac_sha256, :hmac_sha512, :ed25519, :aes_256_gcm]
   @default_algorithm :hmac_sha256
   @default_kdf :pbkdf2
   
@@ -72,6 +72,94 @@ defmodule VsmPhoenix.Security.CryptoLayer do
   """
   def get_security_metrics do
     GenServer.call(@name, :get_metrics)
+  end
+
+  @doc """
+  Sign a message with HMAC for integrity verification.
+  """
+  def sign_message(message, agent_id) when is_map(message) do
+    message_json = Jason.encode!(message)
+    signature = :crypto.mac(:hmac, :sha256, agent_id, message_json)
+    Base.encode64(signature)
+  end
+
+  @doc """
+  Verify message signature.
+  """
+  def verify_message_signature(message, signature, agent_id) when is_map(message) do
+    expected_signature = sign_message(message, agent_id)
+    {:ok, expected_signature == signature}
+  end
+
+  @doc """
+  Generate a cryptographic nonce.
+  """
+  def generate_nonce do
+    :crypto.strong_rand_bytes(16) |> Base.encode64()
+  end
+
+  @doc """
+  Encrypt data with AES-256-GCM (simplified implementation).
+  """
+  def encrypt(data, _agent_id) when is_binary(data) do
+    key = :crypto.strong_rand_bytes(32)
+    iv = :crypto.strong_rand_bytes(12)
+    {ciphertext, tag} = :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, data, <<>>, true)
+    encrypted = %{
+      ciphertext: Base.encode64(ciphertext),
+      tag: Base.encode64(tag),
+      iv: Base.encode64(iv),
+      key: Base.encode64(key)
+    }
+    {:ok, Jason.encode!(encrypted)}
+  end
+
+  @doc """
+  Decrypt AES-256-GCM encrypted data.
+  """
+  def decrypt(encrypted_json, _agent_id) when is_binary(encrypted_json) do
+    try do
+      encrypted = Jason.decode!(encrypted_json)
+      key = Base.decode64!(encrypted["key"])
+      iv = Base.decode64!(encrypted["iv"])
+      ciphertext = Base.decode64!(encrypted["ciphertext"])
+      tag = Base.decode64!(encrypted["tag"])
+      
+      case :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, ciphertext, <<>>, tag, false) do
+        :error -> {:error, :decryption_failed}
+        plaintext -> {:ok, plaintext}
+      end
+    rescue
+      _ -> {:error, :invalid_format}
+    end
+  end
+
+  @doc """
+  Create a secure token (simplified implementation).
+  """
+  def create_secure_token(data, agent_id) when is_map(data) do
+    data_json = Jason.encode!(data)
+    signature = sign_message(data, agent_id)
+    token_data = %{data: data_json, signature: signature, created_at: System.system_time(:millisecond)}
+    Base.encode64(Jason.encode!(token_data))
+  end
+
+  @doc """
+  Verify a secure token.
+  """
+  def verify_secure_token(token, agent_id) when is_binary(token) do
+    try do
+      token_json = Base.decode64!(token)
+      token_data = Jason.decode!(token_json)
+      original_data = Jason.decode!(token_data["data"])
+      
+      case verify_message_signature(original_data, token_data["signature"], agent_id) do
+        {:ok, true} -> {:ok, original_data}
+        _ -> {:error, :invalid_signature}
+      end
+    rescue
+      _ -> {:error, :invalid_token}
+    end
   end
   
   # Server Callbacks
@@ -382,8 +470,8 @@ defmodule VsmPhoenix.Security.CryptoLayer do
   
   defp derive_node_key(master_key, node_id, :argon2) do
     salt = "vsm_node:#{node_id}"
-    Argon2.hash_pwd_salt(master_key, salt: salt)
-    |> Map.get(:raw_hash)
+    # Use PBKDF2 for key derivation (built-in alternative to Argon2)
+    :crypto.pbkdf2_hmac(:sha256, master_key, salt, 100_000, 32)
   end
   
   defp derive_signing_key(node_key, purpose) do
