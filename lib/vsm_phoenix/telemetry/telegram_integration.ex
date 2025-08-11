@@ -13,7 +13,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
   require Logger
   
   alias VsmPhoenix.Telemetry.{
-    AnalogArchitect,
+    RefactoredAnalogArchitect,
     SignalProcessor,
     PatternDetector,
     AdaptiveController,
@@ -93,7 +93,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
     timestamp = :erlang.system_time(:microsecond)
     
     # Record to message rate signal
-    AnalogArchitect.sample_signal(
+    RefactoredAnalogArchitect.sample_signal(
       @signal_ids.message_rate,
       1.0,  # One message
       %{
@@ -106,7 +106,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
     
     # Record user activity signal
     user_activity_value = calculate_user_activity(message_data)
-    AnalogArchitect.sample_signal(
+    RefactoredAnalogArchitect.sample_signal(
       @signal_ids.user_activity,
       user_activity_value,
       %{user_id: message_data[:user_id]}
@@ -118,14 +118,14 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
   @impl true
   def handle_cast({:record_command, command, execution_time}, state) do
     # Record command frequency
-    AnalogArchitect.sample_signal(
+    RefactoredAnalogArchitect.sample_signal(
       @signal_ids.command_frequency,
       1.0,
       %{command: command, timestamp: :erlang.system_time(:microsecond)}
     )
     
     # Record response time
-    AnalogArchitect.sample_signal(
+    RefactoredAnalogArchitect.sample_signal(
       @signal_ids.response_time,
       execution_time,
       %{command: command}
@@ -144,7 +144,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
       _ -> 1.0
     end
     
-    AnalogArchitect.sample_signal(
+    RefactoredAnalogArchitect.sample_signal(
       @signal_ids.error_rate,
       error_weight,
       %{
@@ -212,7 +212,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
   
   defp register_telegram_signals do
     # Message rate signal - tracks messages per second
-    AnalogArchitect.register_signal(@signal_ids.message_rate, %{
+    RefactoredAnalogArchitect.register_signal(@signal_ids.message_rate, %{
       sampling_rate: :high_frequency,
       buffer_size: 10000,
       filters: [
@@ -227,7 +227,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
     })
     
     # Command frequency signal
-    AnalogArchitect.register_signal(@signal_ids.command_frequency, %{
+    RefactoredAnalogArchitect.register_signal(@signal_ids.command_frequency, %{
       sampling_rate: :standard,
       buffer_size: 5000,
       analysis_modes: [:periodic, :trend],
@@ -238,7 +238,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
     })
     
     # Error rate signal
-    AnalogArchitect.register_signal(@signal_ids.error_rate, %{
+    RefactoredAnalogArchitect.register_signal(@signal_ids.error_rate, %{
       sampling_rate: :standard,
       buffer_size: 5000,
       filters: [
@@ -252,7 +252,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
     })
     
     # Response time signal
-    AnalogArchitect.register_signal(@signal_ids.response_time, %{
+    RefactoredAnalogArchitect.register_signal(@signal_ids.response_time, %{
       sampling_rate: :high_frequency,
       buffer_size: 10000,
       analysis_modes: [:envelope, :percentile],
@@ -263,7 +263,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
     })
     
     # User activity signal
-    AnalogArchitect.register_signal(@signal_ids.user_activity, %{
+    RefactoredAnalogArchitect.register_signal(@signal_ids.user_activity, %{
       sampling_rate: :standard,
       buffer_size: 5000,
       analysis_modes: [:periodic, :clustering],
@@ -363,9 +363,9 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
   
   defp analyze_telegram_health(state) do
     # Get current signal values
-    {:ok, message_rate} = AnalogArchitect.get_signal_data(@signal_ids.message_rate, %{last_n: 100})
-    {:ok, error_rate} = AnalogArchitect.get_signal_data(@signal_ids.error_rate, %{last_n: 100})
-    {:ok, response_time} = AnalogArchitect.get_signal_data(@signal_ids.response_time, %{last_n: 100})
+    {:ok, message_rate} = RefactoredAnalogArchitect.get_signal_data(@signal_ids.message_rate, %{last_n: 100})
+    {:ok, error_rate} = RefactoredAnalogArchitect.get_signal_data(@signal_ids.error_rate, %{last_n: 100})
+    {:ok, response_time} = RefactoredAnalogArchitect.get_signal_data(@signal_ids.response_time, %{last_n: 100})
     
     # Detect patterns
     {:ok, message_patterns} = PatternDetector.detect_patterns(@signal_ids.message_rate, [:trend, :anomaly])

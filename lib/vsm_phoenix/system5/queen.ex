@@ -12,12 +12,26 @@ defmodule VsmPhoenix.System5.Queen do
   use GenServer
   require Logger
   
+  # Legacy system aliases (to be phased out)
   alias VsmPhoenix.System4.Intelligence
   alias VsmPhoenix.System3.Control
   alias VsmPhoenix.System2.Coordinator
   alias VsmPhoenix.System5.PolicySynthesizer
   alias AMQP
   alias VsmPhoenix.Infrastructure.CausalityAMQP
+  
+  # NEW: Refactored components
+  alias VsmPhoenix.System5.Algedonic.SignalProcessor, as: AlgedonicProcessor
+  alias VsmPhoenix.System5.Policy.PolicyManager
+  alias VsmPhoenix.System5.Viability.ViabilityEvaluator
+  alias VsmPhoenix.System5.Decision.DecisionEngine
+  
+  # NEW: Integration with other swarm's modules
+  alias VsmPhoenix.System2.CorticalAttentionEngine
+  alias VsmPhoenix.AMQP.ProtocolIntegration
+  alias VsmPhoenix.Telemetry.RefactoredAnalogArchitect
+  alias VsmPhoenix.Resilience.{CircuitBreaker, Integration}
+  alias VsmPhoenix.CRDT.ContextStore
   
   @name __MODULE__
   
@@ -29,11 +43,13 @@ defmodule VsmPhoenix.System5.Queen do
   end
   
   def set_policy(policy_type, policy_data) do
-    GenServer.call(@name, {:set_policy, policy_type, policy_data})
+    # NEW: Delegate to PolicyManager
+    PolicyManager.set_policy(policy_type, policy_data)
   end
   
   def evaluate_viability do
-    GenServer.call(@name, :evaluate_viability)
+    # NEW: Delegate to ViabilityEvaluator
+    ViabilityEvaluator.evaluate_viability()
   end
   
   def get_strategic_direction do
@@ -49,15 +65,18 @@ defmodule VsmPhoenix.System5.Queen do
   end
   
   def make_policy_decision(params) do
-    GenServer.call(@name, {:make_policy_decision, params})
+    # NEW: Delegate to DecisionEngine
+    DecisionEngine.make_policy_decision(params)
   end
   
   def send_pleasure_signal(intensity, context) do
-    GenServer.cast(@name, {:pleasure_signal, intensity, context})
+    # NEW: Delegate to AlgedonicProcessor
+    AlgedonicProcessor.send_pleasure_signal(intensity, context)
   end
   
   def send_pain_signal(intensity, context) do
-    GenServer.cast(@name, {:pain_signal, intensity, context})
+    # NEW: Delegate to AlgedonicProcessor
+    AlgedonicProcessor.send_pain_signal(intensity, context)
   end
   
   def get_governance_state do
@@ -132,7 +151,11 @@ defmodule VsmPhoenix.System5.Queen do
     schedule_viability_check()
     
     # Set up AMQP consumer for algedonic signals
-    state_with_amqp = setup_algedonic_consumer(state)
+    state_with_amqp = if System.get_env("DISABLE_AMQP") == "true" do
+      state
+    else
+      setup_algedonic_consumer(state)
+    end
     
     {:ok, state_with_amqp}
   end
@@ -1246,7 +1269,7 @@ defmodule VsmPhoenix.System5.Queen do
   @impl true
   def handle_cast({:broadcast_policy_amqp, policy_type, policy_data}, state) do
     # Broadcast policy changes via AMQP
-    if state[:amqp_channel] do
+    if state[:amqp_channel] && System.get_env("DISABLE_AMQP") != "true" do
       policy_message = %{
         type: "policy_update",
         policy_type: to_string(policy_type),

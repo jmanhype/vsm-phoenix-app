@@ -114,7 +114,11 @@ defmodule VsmPhoenix.System3.Control do
     }
     
     # Set up AMQP for flow control
-    state = setup_amqp_control(state)
+    state = if System.get_env("DISABLE_AMQP") == "true" do
+      state
+    else
+      setup_amqp_control(state)
+    end
     
     # Subscribe to systemic patterns for real-time monitoring
     Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:variety_metrics")
@@ -3064,7 +3068,7 @@ defmodule VsmPhoenix.System3.Control do
   end
 
   defp publish_flow_event(event, state) do
-    if state[:amqp_channel] do
+    if state[:amqp_channel] && System.get_env("DISABLE_AMQP") != "true" do
       # Use CausalityAMQP for automatic event tracking
       :ok = CausalityAMQP.publish(
         state.amqp_channel,

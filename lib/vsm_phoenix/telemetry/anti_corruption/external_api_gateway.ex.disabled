@@ -1,0 +1,493 @@
+defmodule VsmPhoenix.Telemetry.AntiCorruption.ExternalApiGateway do
+  @moduledoc """
+  External API Anti-Corruption Layer
+  
+  Provides a protective layer between our telemetry system and external APIs,
+  ensuring that external system changes don't corrupt our internal domain model.
+  
+  Features:
+  - Protocol translation between external and internal formats
+  - Data validation and sanitization
+  - Error boundary and fallback handling
+  - Rate limiting and circuit breaker protection
+  - Consistent internal interfaces regardless of external API changes
+  """
+
+  use VsmPhoenix.Telemetry.Behaviors.SharedLogging
+  use VsmPhoenix.Telemetry.Behaviors.ResilienceBehavior
+
+  @external_apis %{
+    prometheus: VsmPhoenix.Telemetry.AntiCorruption.PrometheusAdapter,
+    grafana: VsmPhoenix.Telemetry.AntiCorruption.GrafanaAdapter,
+    elasticsearch: VsmPhoenix.Telemetry.AntiCorruption.ElasticsearchAdapter,
+    datadog: VsmPhoenix.Telemetry.AntiCorruption.DatadogAdapter,
+    custom_webhook: VsmPhoenix.Telemetry.AntiCorruption.WebhookAdapter
+  }
+
+  @doc """
+  Send telemetry data to external system with anti-corruption protection
+  """
+  def send_to_external(api_type, telemetry_data, opts \\ []) do
+    resilient("send_to_external_#{api_type}", fn ->
+      adapter = get_adapter(api_type)
+      
+      # Apply anti-corruption transformations
+      external_data = transform_to_external_format(api_type, telemetry_data)
+      validated_data = validate_external_data(api_type, external_data)
+      
+      # Send through adapter with protection
+      adapter.send_data(validated_data, opts)
+    end, strategy: :with_circuit_breaker)
+  end
+
+  @doc """
+  Receive data from external system and transform to internal format
+  """
+  def receive_from_external(api_type, external_data, opts \\ []) do
+    resilient("receive_from_external_#{api_type}", fn ->
+      adapter = get_adapter(api_type)
+      
+      # Validate and sanitize external data
+      sanitized_data = sanitize_external_data(api_type, external_data)
+      
+      # Transform to internal format
+      internal_data = transform_to_internal_format(api_type, sanitized_data)
+      
+      # Validate internal consistency
+      validate_internal_data(internal_data)
+    end)
+  end
+
+  @doc """
+  Query external system and return results in internal format
+  """
+  def query_external(api_type, query, opts \\ []) do
+    resilient("query_external_#{api_type}", fn ->
+      adapter = get_adapter(api_type)
+      
+      # Transform query to external format
+      external_query = transform_query_to_external(api_type, query)
+      
+      # Execute query through adapter
+      case adapter.execute_query(external_query, opts) do
+        {:ok, external_results} ->
+          # Transform results back to internal format
+          internal_results = transform_results_to_internal(api_type, external_results)
+          {:ok, internal_results}
+          
+        {:error, external_error} ->
+          # Transform error to internal error format
+          internal_error = transform_error_to_internal(api_type, external_error)
+          {:error, internal_error}
+      end
+    end, strategy: :with_timeout)
+  end
+
+  @doc """
+  Get health status of external API through adapter
+  """
+  def check_external_health(api_type) do
+    resilient("check_health_#{api_type}", fn ->
+      adapter = get_adapter(api_type)
+      
+      case adapter.health_check() do
+        {:ok, external_health} ->
+          # Normalize health response
+          internal_health = normalize_health_response(api_type, external_health)
+          {:ok, internal_health}
+          
+        {:error, reason} ->
+          log_warning("External API health check failed", %{
+            api_type: api_type,
+            reason: reason
+          })
+          {:error, :health_check_failed}
+      end
+    end)
+  end
+
+  @doc """
+  Register a custom adapter for new external API
+  """
+  def register_adapter(api_type, adapter_module) do
+    # This would typically be done through configuration
+    # but can be dynamic for runtime extension
+    log_info("Registering custom adapter", %{
+      api_type: api_type,
+      adapter: adapter_module
+    })
+    
+    # Validate adapter implements required behavior
+    case validate_adapter_interface(adapter_module) do
+      :ok -> 
+        Process.put({:api_adapter, api_type}, adapter_module)
+        :ok
+      error -> error
+    end
+  end
+
+  # Private Implementation
+
+  defp get_adapter(api_type) do
+    # Check for dynamic adapter first
+    case Process.get({:api_adapter, api_type}) do
+      nil -> Map.get(@external_apis, api_type, default_adapter())
+      adapter -> adapter
+    end
+  end
+
+  defp default_adapter do
+    VsmPhoenix.Telemetry.AntiCorruption.DefaultAdapter
+  end
+
+  defp transform_to_external_format(:prometheus, telemetry_data) do
+    # Transform to Prometheus metrics format
+    %{
+      metrics: telemetry_data.signals
+      |> Enum.map(fn {signal_id, data} ->
+        %{
+          name: sanitize_metric_name(signal_id),
+          type: determine_prometheus_type(data),
+          value: extract_metric_value(data),
+          labels: extract_metric_labels(data),
+          timestamp: format_prometheus_timestamp(data.timestamp)
+        }
+      end)
+    }
+  end
+
+  defp transform_to_external_format(:grafana, telemetry_data) do
+    # Transform to Grafana datapoints format
+    %{
+      datapoints: telemetry_data.signals
+      |> Enum.flat_map(fn {signal_id, data} ->
+        data.samples
+        |> Enum.map(fn sample ->
+          [sample.value, format_grafana_timestamp(sample.timestamp)]
+        end)
+      end),
+      target: telemetry_data.target || "telemetry_data"
+    }
+  end
+
+  defp transform_to_external_format(:elasticsearch, telemetry_data) do
+    # Transform to Elasticsearch document format
+    %{
+      index: determine_es_index(telemetry_data),
+      type: "_doc",
+      body: %{
+        timestamp: DateTime.utc_now(),
+        telemetry: telemetry_data,
+        metadata: %{
+          source: "vsm_phoenix",
+          version: "1.0",
+          processed_at: DateTime.utc_now()
+        }
+      }
+    }
+  end
+
+  defp transform_to_external_format(:datadog, telemetry_data) do
+    # Transform to Datadog metrics format
+    %{
+      series: telemetry_data.signals
+      |> Enum.map(fn {signal_id, data} ->
+        %{
+          metric: "vsm.#{signal_id}",
+          points: data.samples
+          |> Enum.map(fn sample ->
+            [format_datadog_timestamp(sample.timestamp), sample.value]
+          end),
+          tags: extract_datadog_tags(data),
+          host: Node.self() |> to_string()
+        }
+      end)
+    }
+  end
+
+  defp transform_to_external_format(:custom_webhook, telemetry_data) do
+    # Generic webhook format - keep internal structure
+    Map.merge(telemetry_data, %{
+      source: "vsm_phoenix_telemetry",
+      sent_at: DateTime.utc_now(),
+      format_version: "1.0"
+    })
+  end
+
+  defp transform_to_external_format(_unknown_type, telemetry_data) do
+    # Default: minimal transformation
+    telemetry_data
+  end
+
+  defp validate_external_data(api_type, data) do
+    case api_type do
+      :prometheus -> validate_prometheus_data(data)
+      :grafana -> validate_grafana_data(data)
+      :elasticsearch -> validate_elasticsearch_data(data)
+      :datadog -> validate_datadog_data(data)
+      _ -> validate_generic_data(data)
+    end
+  end
+
+  defp sanitize_external_data(api_type, external_data) do
+    # Apply security and consistency sanitization
+    sanitized = external_data
+    |> remove_sensitive_fields()
+    |> normalize_field_names()
+    |> validate_data_types()
+    
+    # API-specific sanitization
+    case api_type do
+      :elasticsearch -> sanitize_es_injection(sanitized)
+      :custom_webhook -> sanitize_webhook_payload(sanitized)
+      _ -> sanitized
+    end
+  end
+
+  defp transform_to_internal_format(api_type, external_data) do
+    case api_type do
+      :prometheus -> prometheus_to_internal(external_data)
+      :grafana -> grafana_to_internal(external_data)
+      :elasticsearch -> elasticsearch_to_internal(external_data)
+      :datadog -> datadog_to_internal(external_data)
+      _ -> generic_to_internal(external_data)
+    end
+  end
+
+  defp validate_internal_data(internal_data) do
+    required_fields = [:signals, :timestamp]
+    
+    case validate_required_fields(internal_data, required_fields) do
+      :ok -> 
+        case validate_signal_format(internal_data.signals) do
+          :ok -> {:ok, internal_data}
+          error -> {:error, error}
+        end
+      error -> {:error, error}
+    end
+  end
+
+  defp normalize_health_response(api_type, external_health) do
+    base_health = %{
+      api_type: api_type,
+      status: :unknown,
+      checked_at: DateTime.utc_now()
+    }
+    
+    case api_type do
+      :prometheus ->
+        %{base_health | 
+          status: normalize_prometheus_health(external_health),
+          details: extract_prometheus_health_details(external_health)
+        }
+      
+      :grafana ->
+        %{base_health |
+          status: normalize_grafana_health(external_health),
+          details: extract_grafana_health_details(external_health)
+        }
+        
+      _ ->
+        %{base_health |
+          status: normalize_generic_health(external_health),
+          raw_response: external_health
+        }
+    end
+  end
+
+  # Validation Helpers
+
+  defp validate_prometheus_data(data) do
+    required_fields = [:metrics]
+    case validate_required_fields(data, required_fields) do
+      :ok ->
+        if is_list(data.metrics) and Enum.all?(data.metrics, &validate_prometheus_metric/1) do
+          {:ok, data}
+        else
+          {:error, :invalid_prometheus_metrics}
+        end
+      error -> {:error, error}
+    end
+  end
+
+  defp validate_prometheus_metric(metric) do
+    is_map(metric) and 
+    Map.has_key?(metric, :name) and 
+    Map.has_key?(metric, :value) and
+    is_binary(metric.name) and
+    is_number(metric.value)
+  end
+
+  defp validate_grafana_data(data) do
+    required_fields = [:datapoints]
+    case validate_required_fields(data, required_fields) do
+      :ok ->
+        if is_list(data.datapoints) and Enum.all?(data.datapoints, &validate_grafana_datapoint/1) do
+          {:ok, data}
+        else
+          {:error, :invalid_grafana_datapoints}
+        end
+      error -> {:error, error}
+    end
+  end
+
+  defp validate_grafana_datapoint([value, timestamp]) when is_number(value) and is_number(timestamp), do: true
+  defp validate_grafana_datapoint(_), do: false
+
+  defp validate_required_fields(data, required_fields) do
+    missing_fields = Enum.filter(required_fields, fn field -> not Map.has_key?(data, field) end)
+    
+    if Enum.empty?(missing_fields) do
+      :ok
+    else
+      {:error, {:missing_fields, missing_fields}}
+    end
+  end
+
+  defp validate_signal_format(signals) when is_map(signals) do
+    signals
+    |> Enum.all?(fn {signal_id, signal_data} ->
+      is_binary(signal_id) and is_map(signal_data)
+    end)
+    |> case do
+      true -> :ok
+      false -> :invalid_signal_format
+    end
+  end
+
+  defp validate_signal_format(_), do: :invalid_signal_format
+
+  # Sanitization Helpers
+
+  defp remove_sensitive_fields(data) when is_map(data) do
+    sensitive_fields = [:password, :api_key, :secret, :token, :auth]
+    Map.drop(data, sensitive_fields)
+  end
+
+  defp remove_sensitive_fields(data), do: data
+
+  defp normalize_field_names(data) when is_map(data) do
+    # Convert all keys to atoms for consistency
+    Map.new(data, fn {k, v} ->
+      key = if is_binary(k), do: String.to_atom(k), else: k
+      {key, normalize_field_names(v)}
+    end)
+  end
+
+  defp normalize_field_names(data) when is_list(data) do
+    Enum.map(data, &normalize_field_names/1)
+  end
+
+  defp normalize_field_names(data), do: data
+
+  defp validate_data_types(data) when is_map(data) do
+    # Ensure numeric fields are actually numeric
+    Map.new(data, fn {k, v} ->
+      {k, convert_numeric_strings(v)}
+    end)
+  end
+
+  defp validate_data_types(data), do: data
+
+  defp convert_numeric_strings(value) when is_binary(value) do
+    case Float.parse(value) do
+      {number, ""} -> number
+      _ -> value
+    end
+  end
+
+  defp convert_numeric_strings(value), do: value
+
+  defp validate_adapter_interface(module) do
+    required_functions = [:send_data, :execute_query, :health_check]
+    
+    exported_functions = module.__info__(:functions)
+    |> Enum.map(fn {name, _arity} -> name end)
+    
+    missing_functions = required_functions -- exported_functions
+    
+    if Enum.empty?(missing_functions) do
+      :ok
+    else
+      {:error, {:missing_functions, missing_functions}}
+    end
+  end
+
+  # Format Conversion Helpers
+
+  defp sanitize_metric_name(signal_id) do
+    signal_id
+    |> String.replace(~r/[^a-zA-Z0-9_]/, "_")
+    |> String.downcase()
+  end
+
+  defp determine_prometheus_type(_data), do: "gauge"  # Default type
+
+  defp extract_metric_value(data) do
+    case data do
+      %{current_value: value} -> value
+      %{samples: [latest | _]} -> latest.value
+      _ -> 0
+    end
+  end
+
+  defp extract_metric_labels(data) do
+    Map.get(data, :metadata, %{})
+    |> Map.take([:source, :component, :environment])
+  end
+
+  defp format_prometheus_timestamp(timestamp) when is_integer(timestamp) do
+    timestamp / 1_000_000  # Convert microseconds to seconds
+  end
+
+  defp format_grafana_timestamp(timestamp) when is_integer(timestamp) do
+    timestamp / 1000  # Convert microseconds to milliseconds
+  end
+
+  defp format_datadog_timestamp(timestamp) when is_integer(timestamp) do
+    timestamp / 1_000_000  # Convert microseconds to seconds
+  end
+
+  defp determine_es_index(_telemetry_data) do
+    "telemetry-#{Date.utc_today() |> to_string()}"
+  end
+
+  defp extract_datadog_tags(data) do
+    data
+    |> Map.get(:metadata, %{})
+    |> Enum.map(fn {k, v} -> "#{k}:#{v}" end)
+  end
+
+  # Health Status Normalization
+
+  defp normalize_prometheus_health(health) do
+    case health do
+      %{status: "up"} -> :healthy
+      %{status: "down"} -> :unhealthy
+      _ -> :unknown
+    end
+  end
+
+  defp normalize_grafana_health(health) do
+    case health do
+      %{database: "ok"} -> :healthy
+      _ -> :unknown
+    end
+  end
+
+  defp normalize_generic_health(health) do
+    case health do
+      %{status: status} when status in ["ok", "healthy", "up"] -> :healthy
+      %{status: status} when status in ["error", "unhealthy", "down"] -> :unhealthy
+      _ -> :unknown
+    end
+  end
+
+  defp extract_prometheus_health_details(health) do
+    Map.take(health, [:version, :uptime, :targets])
+  end
+
+  defp extract_grafana_health_details(health) do
+    Map.take(health, [:version, :database, :commit])
+  end
+end

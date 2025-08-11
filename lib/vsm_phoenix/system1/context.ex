@@ -69,9 +69,13 @@ defmodule VsmPhoenix.System1.Context do
         PubSub.subscribe(@pubsub, "vsm:system1")
         
         # Get AMQP channel for algedonic signals
-        amqp_channel = case VsmPhoenix.AMQP.ConnectionManager.get_channel(:algedonic) do
-          {:ok, channel} -> channel
-          _ -> nil
+        amqp_channel = if System.get_env("DISABLE_AMQP") == "true" do
+          nil
+        else
+          case VsmPhoenix.AMQP.ConnectionManager.get_channel(:algedonic) do
+            {:ok, channel} -> channel
+            _ -> nil
+          end
         end
         
         # Setup AMQP for audit commands
@@ -439,7 +443,10 @@ defmodule VsmPhoenix.System1.Context do
       
       defp setup_audit_amqp(context_name) do
         # Setup AMQP channel for receiving audit commands from S3
-        case VsmPhoenix.AMQP.ConnectionManager.get_channel(:audit) do
+        if System.get_env("DISABLE_AMQP") == "true" do
+          nil
+        else
+          case VsmPhoenix.AMQP.ConnectionManager.get_channel(:audit) do
           {:ok, channel} ->
             try do
               # Declare queue for this context to receive audit commands
@@ -464,6 +471,7 @@ defmodule VsmPhoenix.System1.Context do
           {:error, reason} ->
             Logger.error("Could not get audit channel: #{inspect(reason)}")
             nil
+          end
         end
       end
       
@@ -597,7 +605,10 @@ defmodule VsmPhoenix.System1.Context do
       end
       
       defp setup_audit_amqp(context_name) do
-        case VsmPhoenix.AMQP.ConnectionManager.get_channel(:audit) do
+        if System.get_env("DISABLE_AMQP") == "true" do
+          nil
+        else
+          case VsmPhoenix.AMQP.ConnectionManager.get_channel(:audit) do
           {:ok, channel} ->
             try do
               # Declare queue for this context's audit commands
@@ -621,6 +632,7 @@ defmodule VsmPhoenix.System1.Context do
           {:error, reason} ->
             Logger.error("#{context_name}: Could not get audit channel: #{inspect(reason)}")
             nil
+          end
         end
       end
       

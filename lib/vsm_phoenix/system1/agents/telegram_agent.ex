@@ -48,16 +48,22 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   alias VsmPhoenix.CRDT.ContextStore
   # Claude Code-inspired Resilience System Integration
   alias VsmPhoenix.Resilience.{CircuitBreaker, Retry, RecoveryTemplates, Bulkhead, GracefulDegradation}
+  alias VsmPhoenix.Resilience.{CircuitBreakerBehavior, ResilienceBehavior, SharedBehaviors}
   alias VsmPhoenix.Resilience.Integration
   alias VsmPhoenix.System5.AlgedonicSignals
+  alias VsmPhoenix.System5.Algedonic.SignalProcessor, as: AlgedonicProcessor
+  alias VsmPhoenix.System5.Policy.PolicyManager
+  alias VsmPhoenix.System5.Viability.ViabilityEvaluator
+  alias VsmPhoenix.System5.Decision.DecisionEngine
   
   # Cortical Attention System Integration
   alias VsmPhoenix.System2.{CorticalAttentionEngine, AttentionReminders, AttentionToolRouter}
   alias VsmPhoenix.System1.Agents.{TelegramContextManager, TelegramAttentionProcessor, TelegramLoadPredictor}
 
   # 🧠 NEURAL CONTEXTUAL INTELLIGENCE - Enhanced Telegram Bot
-  alias VsmPhoenix.Telemetry.{ContextFusionEngine, GEPAPerformanceMonitor, SemanticBlockProcessor}
+  alias VsmPhoenix.Telemetry.{ContextFusionEngine, GEPAPerformanceMonitor, RefactoredSemanticBlockProcessor}
   alias VsmPhoenix.Telemetry.PatternDetector
+  alias VsmPhoenix.Telemetry.Core.{SignalRegistry, SignalSampler}
 
   @telegram_api_base "https://api.telegram.org/bot"
   @poll_timeout 30_000  # 30 seconds long polling

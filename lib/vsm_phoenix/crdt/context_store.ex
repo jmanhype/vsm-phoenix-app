@@ -152,7 +152,9 @@ defmodule VsmPhoenix.CRDT.ContextStore do
     }
     
     # Set up AMQP for state synchronization
-    send(self(), :setup_amqp)
+    unless System.get_env("DISABLE_AMQP") == "true" do
+      send(self(), :setup_amqp)
+    end
     
     {:ok, state}
   end

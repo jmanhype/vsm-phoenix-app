@@ -14,6 +14,9 @@ defmodule VsmPhoenix.MCP.VsmTools do
   alias VsmPhoenix.System5.Queen
   alias VsmPhoenix.MCP.VsmTools.HiveCoordination
   
+  # NEW: Refactored components
+  alias VsmPhoenix.System5.Viability.ViabilityEvaluator
+  
   @behaviour HermesMCP.Tool
   
   @doc """
@@ -296,7 +299,8 @@ defmodule VsmPhoenix.MCP.VsmTools do
   end
   
   defp check_viability(_params) do
-    case Queen.evaluate_viability() do
+    # Use refactored ViabilityEvaluator
+    case ViabilityEvaluator.evaluate_viability() do
       viability when is_map(viability) ->
         {:ok, %{
           viability_metrics: viability,

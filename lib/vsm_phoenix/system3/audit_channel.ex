@@ -74,7 +74,11 @@ defmodule VsmPhoenix.System3.AuditChannel do
     }
     
     # Setup AMQP for audit operations
-    state = setup_audit_amqp(state)
+    state = if System.get_env("DISABLE_AMQP") == "true" do
+      state
+    else
+      setup_audit_amqp(state)
+    end
     
     {:ok, state}
   end
@@ -109,7 +113,7 @@ defmodule VsmPhoenix.System3.AuditChannel do
     
     payload = Jason.encode!(audit_message)
     
-    if state.channel do
+    if state[:channel] && System.get_env("DISABLE_AMQP") != "true" do
       :ok = AMQP.Basic.publish(
         state.channel,
         "",  # Use default exchange for direct queue routing

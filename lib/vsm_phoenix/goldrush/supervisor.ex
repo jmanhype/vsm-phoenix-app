@@ -13,10 +13,11 @@ defmodule VsmPhoenix.Goldrush.Supervisor do
   def init(_opts) do
     children = [
       # Start components in the correct order
-      VsmPhoenix.Goldrush.PatternStore,
-      VsmPhoenix.Goldrush.PatternEngine,
-      VsmPhoenix.Goldrush.EventAggregator,
-      VsmPhoenix.Goldrush.ActionHandler,
+      # NOTE: These modules don't exist yet - commented out for now
+      # VsmPhoenix.Goldrush.PatternStore,
+      # VsmPhoenix.Goldrush.PatternEngine,
+      # VsmPhoenix.Goldrush.EventAggregator,
+      # VsmPhoenix.Goldrush.ActionHandler,
       # Manager depends on all the above
       VsmPhoenix.Goldrush.Manager
     ]

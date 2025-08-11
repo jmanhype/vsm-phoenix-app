@@ -12,12 +12,27 @@ defmodule VsmPhoenix.System2.CorticalAttentionEngine do
   - Multi-scale temporal attention windows
   - Selective filtering and routing
   - Attention shift detection and management
+  
+  REFACTORED: Now integrates with new architectural components:
+  - CRDT Context Store for distributed attention state
+  - Resilience behaviors for fault tolerance
+  - Telemetry architecture for signal processing
+  - Policy Manager for attention governance
   """
   
   use GenServer
   require Logger
   
+  # Legacy aliases (to be phased out)
   alias VsmPhoenix.Infrastructure.{CoordinationMetrics, SystemicCoordinationMetrics}
+  
+  # NEW: Integration with refactored architecture
+  alias VsmPhoenix.CRDT.ContextStore
+  alias VsmPhoenix.Resilience.{CircuitBreakerBehavior, Integration}
+  alias VsmPhoenix.Telemetry.RefactoredAnalogArchitect
+  alias VsmPhoenix.System5.Policy.PolicyManager
+  alias VsmPhoenix.System5.Decision.DecisionEngine
+  alias VsmPhoenix.Behaviors.{LoggerBehavior, ResilienceBehavior}
   
   # Attention states inspired by neuroscience
   @attention_states [:focused, :distributed, :shifting, :fatigued, :recovering]
@@ -59,22 +74,30 @@ defmodule VsmPhoenix.System2.CorticalAttentionEngine do
   # Server Callbacks
   
   @impl true
-  def init(_opts) do
-    Logger.info("🧠 Cortical Attention-Engine initializing...")
+  def init(opts) do
+    Logger.info("🧠 Cortical Attention-Engine initializing with refactored architecture...")
+    
+    # NEW: Initialize with dependency injection
+    logger = Keyword.get(opts, :logger, LoggerBehavior.Default)
+    resilience = Keyword.get(opts, :resilience, ResilienceBehavior.Default)
+    
+    # NEW: Register attention signals with telemetry
+    register_telemetry_signals()
+    
+    # NEW: Initialize CRDT context for distributed attention state
+    initialize_crdt_context()
     
     state = %{
+      # Injected dependencies
+      logger: logger,
+      resilience_manager: resilience,
+      
       # Current attention state
       attention_state: :distributed,
       current_focus: nil,
       
-      # Attention scoring parameters
-      salience_weights: %{
-        novelty: 0.3,          # How new/unexpected
-        urgency: 0.25,         # Time criticality
-        relevance: 0.2,        # Context relevance
-        intensity: 0.15,       # Signal strength
-        coherence: 0.1         # Pattern coherence
-      },
+      # Attention scoring parameters (can be overridden by PolicyManager)
+      salience_weights: load_salience_weights_from_policy(),
       
       # Attention windows for different temporal scales
       attention_windows: %{
@@ -89,7 +112,7 @@ defmodule VsmPhoenix.System2.CorticalAttentionEngine do
       recovery_rate: 0.01,
       fatigue_threshold: 0.7,
       
-      # Context memory for relevance scoring
+      # Context memory for relevance scoring (backed by CRDT)
       context_memory: %{},
       context_decay_rate: 0.95,
       
@@ -113,37 +136,122 @@ defmodule VsmPhoenix.System2.CorticalAttentionEngine do
     {:ok, state}
   end
   
+  # NEW: Integration helper functions
+  
+  defp register_telemetry_signals do
+    # Register attention signals with the refactored telemetry architecture
+    signals = [
+      {"attention_score", %{
+        signal_type: :gauge,
+        sampling_rate: :high,
+        buffer_size: 1000,
+        analysis_modes: [:statistical, :anomaly]
+      }},
+      {"attention_fatigue", %{
+        signal_type: :gauge,
+        sampling_rate: :standard,
+        buffer_size: 500,
+        analysis_modes: [:trend]
+      }},
+      {"attention_shifts", %{
+        signal_type: :counter,
+        sampling_rate: :standard,
+        buffer_size: 100,
+        analysis_modes: [:rate]
+      }},
+      {"message_priority_distribution", %{
+        signal_type: :histogram,
+        sampling_rate: :standard,
+        buffer_size: 1000,
+        analysis_modes: [:distribution]
+      }}
+    ]
+    
+    Enum.each(signals, fn {signal_id, config} ->
+      RefactoredAnalogArchitect.register_signal(signal_id, config)
+    end)
+  end
+  
+  defp initialize_crdt_context do
+    # Initialize CRDT context for distributed attention state
+    # This allows multiple attention engines to share state
+    ContextStore.add_to_set("active_attention_engines", node())
+    ContextStore.set_lww("attention_config", %{
+      node: node(),
+      initialized_at: DateTime.utc_now(),
+      version: "2.0-refactored"
+    })
+  end
+  
+  defp load_salience_weights_from_policy do
+    # Load attention weights from PolicyManager
+    case PolicyManager.get_policy(:attention_salience_weights) do
+      {:ok, weights} -> 
+        weights
+      {:error, _} ->
+        # Default weights if policy not found
+        %{
+          novelty: 0.3,
+          urgency: 0.25,
+          relevance: 0.2,
+          intensity: 0.15,
+          coherence: 0.1
+        }
+    end
+  end
+  
   @impl true
   def handle_call({:score_attention, message, context}, _from, state) do
-    # Calculate multi-dimensional attention score
-    score_components = %{
-      novelty: calculate_novelty(message, state),
-      urgency: calculate_urgency(message),
-      relevance: calculate_relevance(message, context, state),
-      intensity: calculate_intensity(message),
-      coherence: calculate_coherence(message, state)
-    }
+    # NEW: Use resilience behavior for fault tolerance
+    result = state.resilience_manager.with_circuit_breaker(fn ->
+      # Calculate multi-dimensional attention score
+      score_components = %{
+        novelty: calculate_novelty(message, state),
+        urgency: calculate_urgency(message),
+        relevance: calculate_relevance(message, context, state),
+        intensity: calculate_intensity(message),
+        coherence: calculate_coherence(message, state)
+      }
+      
+      # Apply current attention state modulation
+      state_multiplier = get_state_multiplier(state.attention_state)
+      
+      # Calculate weighted score
+      base_score = Enum.reduce(score_components, 0.0, fn {component, value}, acc ->
+        weight = state.salience_weights[component] || 0.0
+        acc + (value * weight)
+      end)
+      
+      # Apply fatigue dampening
+      fatigue_factor = 1.0 - (state.fatigue_level * 0.5)
+      final_score = base_score * state_multiplier * fatigue_factor
+      
+      # NEW: Sample attention score to telemetry
+      RefactoredAnalogArchitect.sample_signal("attention_score", final_score, %{
+        message_type: Map.get(context, :message_type),
+        components: score_components
+      })
+      
+      # NEW: Update CRDT context for distributed state
+      ContextStore.increment_counter("attention_scores_processed", 1)
+      
+      {:ok, final_score, score_components}
+    end, circuit_id: :attention_scoring)
     
-    # Apply current attention state modulation
-    state_multiplier = get_state_multiplier(state.attention_state)
-    
-    # Calculate weighted score
-    base_score = Enum.reduce(score_components, 0.0, fn {component, value}, acc ->
-      weight = state.salience_weights[component] || 0.0
-      acc + (value * weight)
-    end)
-    
-    # Apply fatigue dampening
-    fatigue_factor = 1.0 - (state.fatigue_level * 0.5)
-    final_score = base_score * state_multiplier * fatigue_factor
-    
-    # Update attention windows
-    new_state = update_attention_windows(state, message, final_score)
-    
-    # Track metrics
-    updated_state = update_attention_metrics(new_state, final_score)
-    
-    {:reply, {:ok, final_score, score_components}, updated_state}
+    case result do
+      {:ok, final_score, score_components} ->
+        # Update attention windows
+        new_state = update_attention_windows(state, message, final_score)
+        
+        # Track metrics
+        updated_state = update_attention_metrics(new_state, final_score)
+        
+        {:reply, {:ok, final_score, score_components}, updated_state}
+        
+      {:error, reason} ->
+        state.logger.error("Attention scoring failed", %{reason: reason})
+        {:reply, {:error, reason}, state}
+    end
   end
   
   @impl true
@@ -334,7 +442,7 @@ defmodule VsmPhoenix.System2.CorticalAttentionEngine do
         coherence_boost = (coherence || 0.5) * 0.2
         base_continuity + coherence_boost
       
-      %{messages: messages} when length(messages) > 0 ->
+      %{messages: messages} when messages != [] ->
         # Fallback: simple message history relevance
         min(0.4, length(messages) * 0.05)
       
@@ -369,7 +477,7 @@ defmodule VsmPhoenix.System2.CorticalAttentionEngine do
   
   defp calculate_coherence(message, state) do
     # Check if message fits learned patterns
-    pattern_matches = Enum.reduce(state.learned_patterns, 0, fn {pattern_id, pattern}, acc ->
+    pattern_matches = Enum.reduce(state.learned_patterns, 0, fn {_pattern_id, pattern}, acc ->
       if matches_pattern?(message, pattern) do
         acc + pattern.strength
       else
@@ -581,7 +689,31 @@ defmodule VsmPhoenix.System2.CorticalAttentionEngine do
   end
   
   defp report_attention_metrics(state) do
-    # Report to coordination metrics
+    # NEW: Use refactored telemetry architecture
+    RefactoredAnalogArchitect.sample_signal("attention_fatigue", state.fatigue_level, %{
+      state: state.attention_state
+    })
+    
+    RefactoredAnalogArchitect.sample_signal("attention_shifts", state.metrics.attention_shifts, %{
+      type: :counter
+    })
+    
+    # NEW: Update CRDT context for distributed monitoring
+    ContextStore.set_lww("attention_metrics", %{
+      node: node(),
+      attention_state: state.attention_state,
+      fatigue_level: state.fatigue_level,
+      messages_processed: state.metrics.messages_processed,
+      timestamp: DateTime.utc_now()
+    })
+    
+    # NEW: Use injected logger
+    state.logger.info("Attention state changed", %{
+      state: state.attention_state,
+      fatigue_level: Float.round(state.fatigue_level, 2)
+    })
+    
+    # Legacy support - will be removed
     CoordinationMetrics.record_custom_metric(
       :attention_state_change,
       %{
@@ -590,9 +722,6 @@ defmodule VsmPhoenix.System2.CorticalAttentionEngine do
         messages_processed: state.metrics.messages_processed
       }
     )
-    
-    # Log significant state changes
-    Logger.info("🧠 Attention state changed to: #{state.attention_state} (fatigue: #{Float.round(state.fatigue_level, 2)})")
   end
   
   defp schedule_attention_maintenance do

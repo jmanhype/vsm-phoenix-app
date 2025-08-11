@@ -86,7 +86,11 @@ defmodule VsmPhoenix.System2.Coordinator do
     }
     
     # Set up AMQP for coordination
-    state = setup_amqp_coordination(state)
+    state = if System.get_env("DISABLE_AMQP") == "true" do
+      state
+    else
+      setup_amqp_coordination(state)
+    end
     
     # Schedule periodic synchronization check
     schedule_synchronization_check()
@@ -383,7 +387,7 @@ defmodule VsmPhoenix.System2.Coordinator do
     coordinated_message = apply_broadcast_coordination(topic, message, state)
     
     # Broadcast via AMQP if available
-    if state[:amqp_channel] do
+    if state[:amqp_channel] && System.get_env("DISABLE_AMQP") != "true" do
       amqp_message = %{
         type: "coordination_broadcast",
         topic: topic,

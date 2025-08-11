@@ -120,7 +120,11 @@ defmodule VsmPhoenix.System4.Intelligence do
     {:ok, tidewave} = init_tidewave_connection()
     
     # Set up AMQP for environmental alerts
-    state = setup_amqp_intelligence(state)
+    state = if System.get_env("DISABLE_AMQP") == "true" do
+      state
+    else
+      setup_amqp_intelligence(state)
+    end
     
     # Schedule periodic environmental scanning
     schedule_environmental_scan()
@@ -1327,7 +1331,7 @@ defmodule VsmPhoenix.System4.Intelligence do
   end
   
   defp publish_environmental_alert(alert, state) do
-    if state[:amqp_channel] do
+    if state[:amqp_channel] && System.get_env("DISABLE_AMQP") != "true" do
       try do
         payload = Jason.encode!(alert)
         

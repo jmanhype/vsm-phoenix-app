@@ -64,14 +64,22 @@ defmodule VsmPhoenix.Application do
       # Start Goldrush Telemetry for real event processing
       VsmPhoenix.Goldrush.Telemetry,
       
+    ] ++ if System.get_env("DISABLE_TELEMETRY") == "true" do
+      []
+    else
       # Start Analog-Signal Telemetry Architecture
-      VsmPhoenix.Telemetry.Supervisor,
+      [VsmPhoenix.Telemetry.Supervisor]
+    end ++ [
       
-      # Start Goldrush Manager with plugins
-      VsmPhoenix.Goldrush.Manager,
+      # Start Goldrush Supervisor to ensure proper component startup order
+      VsmPhoenix.Goldrush.Supervisor,
       
-      # Start AMQP/RabbitMQ Supervisor
-      VsmPhoenix.AMQP.Supervisor,
+      # Start AMQP/RabbitMQ Supervisor (only if AMQP not disabled)
+    ] ++ if System.get_env("DISABLE_AMQP") == "true" do
+      []
+    else
+      [VsmPhoenix.AMQP.Supervisor]
+    end ++ [
       
       # Start CRDT-based Context Persistence
       VsmPhoenix.CRDT.Supervisor,
@@ -88,8 +96,12 @@ defmodule VsmPhoenix.Application do
       # Start Resilience Patterns (Circuit Breakers and Bulkheads)
       VsmPhoenix.Resilience.Supervisor,
       
+    ] ++ if System.get_env("DISABLE_AMQP") == "true" do
+      []
+    else
       # Start Telegram Protocol Integration for Advanced aMCP
-      VsmPhoenix.System1.Agents.TelegramProtocolIntegration,
+      [VsmPhoenix.System1.Agents.TelegramProtocolIntegration]
+    end ++ [
       
       # Start Hermes Server Registry first
       Hermes.Server.Registry,
@@ -137,7 +149,16 @@ defmodule VsmPhoenix.Application do
       
       # VSM System Hierarchy (start from top down for proper dependencies)
       
-      # System 5 - Queen Policy Governance (highest authority, starts first)
+      # System 5 - Persistence layer (must start before Queen)
+      VsmPhoenix.System5.Persistence.Supervisor,
+      
+      # System 5 - Refactored Components (start before Queen)
+      VsmPhoenix.System5.Algedonic.SignalProcessor,
+      VsmPhoenix.System5.Policy.PolicyManager,
+      VsmPhoenix.System5.Viability.ViabilityEvaluator,
+      VsmPhoenix.System5.Decision.DecisionEngine,
+      
+      # System 5 - Queen Policy Governance (lightweight orchestrator)
       VsmPhoenix.System5.Queen,
       
       # System 4 - Intelligence and Adaptation
