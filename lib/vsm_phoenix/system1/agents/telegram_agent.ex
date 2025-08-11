@@ -3150,7 +3150,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     Map.merge(base_request, %{
       conversation_history: model_optimizations.conversation_history,  # Put at top level where LLM expects it
       optimizations: model_optimizations,
-      context: Map.merge(user_context.conversation.context, %{
+      context: Map.merge(Map.take(user_context.conversation, [:current_topic, :detected_intent, :user_engagement_level]), %{
         platform: "telegram",
         agent_id: state.agent_id,
         model_optimization: selected_model,
