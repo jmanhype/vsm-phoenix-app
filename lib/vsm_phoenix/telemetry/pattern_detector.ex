@@ -469,7 +469,7 @@ defmodule VsmPhoenix.Telemetry.PatternDetector do
         acc + (Enum.at(values1, i) - mean) * (Enum.at(values2, i + lag) - mean)
       end)
       
-      sum / (n * variance)
+      if variance > 0, do: sum / (n * variance), else: 0.0
     end
   end
   
