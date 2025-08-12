@@ -1289,12 +1289,12 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
   end
   
   defp update_latency_metrics(socket) do
-    # In production, this would track real command/response latencies
-    # For now, simulate with reasonable values
+    # Get real command/response latencies from telemetry
+    # Return zeros until we have real latency data
     metrics = %{
-      avg: 45 + :rand.uniform(30),  # 45-75ms average
-      p95: 80 + :rand.uniform(40),  # 80-120ms p95
-      p99: 100 + :rand.uniform(50)  # 100-150ms p99
+      avg: 0,
+      p95: 0,
+      p99: 0
     }
     
     assign(socket, :latency_metrics, metrics)
