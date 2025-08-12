@@ -222,37 +222,50 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   end
   
   defp send_to_llm_worker(message, context) do
-    # Try to send to LLM worker via AMQP
-    try do
-      # Get channel from pool
-      case VsmPhoenix.AMQP.ChannelPool.checkout(:telegram_llm_bridge) do
-        {:ok, channel} ->
-          # Publish to LLM request exchange
-          request = %{
-            message: message,
-            context: context,
-            timestamp: System.system_time(:millisecond)
-          }
-          
-          AMQP.Basic.publish(
-            channel,
-            "vsm.llm.requests",
-            "llm.request.conversation",
-            Jason.encode!(request)
-          )
-          
-          # Return channel to pool
-          VsmPhoenix.AMQP.ChannelPool.checkin(:telegram_llm_bridge, channel)
-          
-          # For now, return immediately with a placeholder
-          # In production, would wait for response on response queue
-          {:error, :async_not_implemented}
-          
-        {:error, reason} ->
-          {:error, reason}
+    # Check if AMQP is enabled and available
+    if amqp_available?() do
+      # Try to send to LLM worker via AMQP
+      try do
+        # Get channel from pool
+        case VsmPhoenix.AMQP.ChannelPool.checkout(:telegram_llm_bridge) do
+          {:ok, channel} ->
+            # Publish to LLM request exchange
+            request = %{
+              message: message,
+              context: context,
+              timestamp: System.system_time(:millisecond)
+            }
+            
+            AMQP.Basic.publish(
+              channel,
+              "vsm.llm.requests",
+              "llm.request.conversation",
+              Jason.encode!(request)
+            )
+            
+            # Return channel to pool
+            VsmPhoenix.AMQP.ChannelPool.checkin(channel)
+            
+            # For now, return immediately with a placeholder
+            # In production, would wait for response on response queue
+            {:error, :async_not_implemented}
+            
+          {:error, reason} ->
+            {:error, reason}
+        end
+      rescue
+        e -> {:error, e}
       end
-    rescue
-      e -> {:error, e}
+    else
+      # AMQP not available, return error to fall back to echo
+      {:error, :amqp_disabled}
+    end
+  end
+  
+  defp amqp_available? do
+    case Process.whereis(VsmPhoenix.AMQP.ChannelPool) do
+      nil -> false
+      _pid -> true
     end
   end
   
