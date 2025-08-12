@@ -39,15 +39,19 @@ defmodule VsmPhoenix.HealthChecker do
       }
     }
     
-    # Schedule periodic health checks
-    Process.send_after(self(), :periodic_health_check, 10_000)
-    
     # Subscribe to system metrics
     Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:variety_metrics")
     Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:variety_balance")
     Phoenix.PubSub.subscribe(VsmPhoenix.PubSub, "vsm:telemetry:metrics")
     
-    {:ok, state}
+    # Run initial health check immediately
+    initial_audit = perform_system_audit(state)
+    state_with_health = %{state | system_health: initial_audit.health_summary}
+    
+    # Schedule periodic health checks
+    Process.send_after(self(), :periodic_health_check, 10_000)
+    
+    {:ok, state_with_health}
   end
   
   @impl true

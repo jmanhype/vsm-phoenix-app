@@ -92,7 +92,7 @@ defmodule VsmPhoenix.VarietyEngineering.Metrics.VarietyCalculator do
   
   @impl true
   def handle_cast({:record_message, system_level, direction, message_type}, state) do
-    timestamp = System.monotonic_time(:millisecond)
+    timestamp = System.system_time(:millisecond)
     
     # Ensure the system level exists in state
     current_messages = get_in(state, [:messages, system_level, direction]) || []
@@ -131,7 +131,7 @@ defmodule VsmPhoenix.VarietyEngineering.Metrics.VarietyCalculator do
   
   @impl true
   def handle_info(:calculate_metrics, state) do
-    current_time = System.monotonic_time(:millisecond)
+    current_time = System.system_time(:millisecond)
     
     # Calculate comprehensive metrics
     new_metrics = Enum.reduce([:s1, :s2, :s3, :s4, :s5], %{}, fn level, acc ->
