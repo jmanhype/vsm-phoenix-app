@@ -66,6 +66,11 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
       bot_info: nil
     }
     
+    # Start polling if token is configured
+    if bot_token do
+      Process.send_after(self(), :poll_updates, 1000)
+    end
+    
     Logger.info("🤖 Telegram Agent initialized as lightweight coordinator (was 3318 lines)")
     {:ok, state}
   end
@@ -133,6 +138,34 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     }
     
     {:reply, metrics, state}
+  end
+  
+  @impl true
+  def handle_info(:poll_updates, state) do
+    if state.bot_token do
+      case fetch_telegram_updates(state.bot_token, state.last_update_id + 1) do
+        {:ok, updates} when is_list(updates) and length(updates) > 0 ->
+          # Process each update
+          Enum.each(updates, fn update ->
+            process_update(update, state)
+          end)
+          
+          # Update the last seen update ID
+          new_last_id = get_last_update_id(updates)
+          new_state = if new_last_id > 0, do: %{state | last_update_id: new_last_id}, else: state
+          
+          # Schedule next poll
+          Process.send_after(self(), :poll_updates, 1000)
+          {:noreply, new_state}
+          
+        _ ->
+          # No updates or error, schedule next poll
+          Process.send_after(self(), :poll_updates, 2000)
+          {:noreply, state}
+      end
+    else
+      {:noreply, state}
+    end
   end
   
   @impl true
@@ -232,6 +265,26 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     "VSM Phoenix Metrics:\n" <>
     "- Memory: #{trunc(:erlang.memory(:total) / 1024 / 1024)}MB\n" <>
     "- Processes: #{:erlang.system_info(:process_count)}\n" <>
-    "- Uptime: #{System.uptime(:second)}s"
+    "- Uptime: #{:erlang.system_info(:uptime) |> elem(0)}s"
+  end
+  
+  defp process_update(update, state) do
+    # Extract message from update
+    with %{"message" => message} <- update,
+         %{"chat" => %{"id" => chat_id}} <- message,
+         %{"text" => text} <- message do
+      
+      # Check if it's a command
+      if String.starts_with?(text, "/") do
+        [command | _args] = String.split(text, " ")
+        process_command(command, chat_id, text)
+      else
+        # Echo non-command messages for now
+        Logger.info("🤖 Received message from #{chat_id}: #{text}")
+        send_telegram_message(state.bot_token, chat_id, "Echo: #{text}")
+      end
+    else
+      _ -> Logger.debug("🤖 Ignoring non-message update")
+    end
   end
 end
