@@ -1,42 +1,31 @@
 #!/bin/bash
 
-# End-to-end test for Telegram-LLM integration
-# Tests the complete flow from Telegram message to LLM response
+echo "🤖 Testing Telegram bot end-to-end"
 
-set -e
+# Get pending updates
+echo "📥 Getting pending updates..."
+UPDATES=$(curl -s "https://api.telegram.org/bot7747520054:AAFNts5iJn8mYZezAG9uQF2_slvuztEScZI/getUpdates?offset=379100282&limit=1")
+echo $UPDATES | jq '.result[0]'
 
-TELEGRAM_API="https://api.telegram.org/bot7747520054:AAFNts5iJn8mYZezAG9uQF2_slvuztEScZI"
-CHAT_ID="643905554"  # Your chat ID from earlier tests
+# Extract message
+MESSAGE=$(echo $UPDATES | jq -r '.result[0].message.text')
+CHAT_ID=$(echo $UPDATES | jq -r '.result[0].message.chat.id')
 
-echo "🧪 Starting E2E Telegram-LLM Test"
-echo "================================"
+echo "💬 Message: $MESSAGE"
+echo "🗣️ Chat ID: $CHAT_ID"
 
-# 1. Check bot status
-echo "1️⃣ Checking bot status..."
-BOT_INFO=$(curl -s "${TELEGRAM_API}/getMe")
-if [[ $(echo "$BOT_INFO" | jq -r '.ok') == "true" ]]; then
-    BOT_USERNAME=$(echo "$BOT_INFO" | jq -r '.result.username')
-    echo "✅ Bot connected: @${BOT_USERNAME}"
+# Send echo response
+echo "📤 Sending echo response..."
+RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot7747520054:AAFNts5iJn8mYZezAG9uQF2_slvuztEScZI/sendMessage" \
+  -H "Content-Type: application/json" \
+  -d "{\"chat_id\": $CHAT_ID, \"text\": \"Echo: $MESSAGE\"}")
+
+echo $RESPONSE | jq '.ok'
+
+if [ "$(echo $RESPONSE | jq -r '.ok')" = "true" ]; then
+  echo "✅ Bot responded successfully!"
 else
-    echo "❌ Bot connection failed"
-    exit 1
-fi
-
-# 2. Send test message
-echo ""
-echo "2️⃣ Sending test message..."
-MESSAGE="Testing VSM system at $(date)"
-SEND_RESULT=$(curl -s -X POST "${TELEGRAM_API}/sendMessage" \
-    -H "Content-Type: application/json" \
-    -d "{\"chat_id\":\"${CHAT_ID}\",\"text\":\"${MESSAGE}\"}")
-
-if [[ $(echo "$SEND_RESULT" | jq -r '.ok') == "true" ]]; then
-    MESSAGE_ID=$(echo "$SEND_RESULT" | jq -r '.result.message_id')
-    echo "✅ Message sent (ID: ${MESSAGE_ID})"
-else
-    echo "❌ Failed to send message"
-    echo "$SEND_RESULT" | jq
-    exit 1
+  echo "❌ Bot response failed"
 fi
 
 # 3. Monitor logs for processing
