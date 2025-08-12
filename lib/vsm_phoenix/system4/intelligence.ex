@@ -126,8 +126,8 @@ defmodule VsmPhoenix.System4.Intelligence do
       setup_amqp_intelligence(state)
     end
     
-    # Schedule periodic environmental scanning
-    schedule_environmental_scan()
+    # DISABLED: No more automatic environmental scanning with fake data
+    # schedule_environmental_scan()
     
     {:ok, %{state | tidewave_connection: tidewave}}
   end
@@ -429,17 +429,9 @@ defmodule VsmPhoenix.System4.Intelligence do
   
   @impl true
   def handle_info(:scheduled_scan, state) do
-    # Direct scan instead of self-call
-    case handle_call({:scan_environment, :scheduled}, nil, state) do
-      {:reply, _result, new_state} ->
-        Logger.debug("Scheduled scan completed")
-        schedule_environmental_scan()
-        {:noreply, new_state}
-      _ ->
-        Logger.warning("Scheduled scan failed")
-        schedule_environmental_scan()
-        {:noreply, state}
-    end
+    # DISABLED: No more fake scheduled scans
+    Logger.debug("Intelligence: Scheduled scan disabled - waiting for real data")
+    {:noreply, state}
   end
   
   @impl true

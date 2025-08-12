@@ -1247,12 +1247,11 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
   defp update_s1_agents(socket) do
     agents = VsmPhoenix.System1.Registry.list_agents()
     
-    # Calculate algedonic pulse rates per agent
+    # DISABLED: No more fake pulse rates - show real data only
     pulse_rates = Enum.map(agents, fn agent ->
-      # Simulated pulse rate based on agent activity
-      base_rate = :rand.uniform() * 5.0 + 2.0
-      adjusted_rate = if agent.alive, do: base_rate, else: 0.0
-      {agent.agent_id, adjusted_rate}
+      # Real pulse rate would come from actual agent metrics
+      # For now, show 0.0 until we have real activity
+      {agent.agent_id, 0.0}
     end)
     |> Enum.into(%{})
     

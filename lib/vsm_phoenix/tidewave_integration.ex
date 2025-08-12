@@ -32,10 +32,11 @@ defmodule VsmPhoenix.TidewaveIntegration do
       last_sync: nil
     }
     
-    if tidewave_enabled do
-      # Schedule periodic sync
-      :timer.send_interval(300_000, self(), :sync_data)  # Every 5 minutes
-    end
+    # DISABLED: No automatic syncing with fake data
+    # if tidewave_enabled do
+    #   # Schedule periodic sync
+    #   :timer.send_interval(300_000, self(), :sync_data)  # Every 5 minutes
+    # end
     
     {:ok, state}
   end
