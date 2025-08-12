@@ -252,9 +252,10 @@ defmodule VsmPhoenixV2.System5.Queen do
   end
 
   defp store_initial_queen_state(state) do
-    with :ok <- ContextStore.put_context(state.context_store_pid, :identity, state.identity_state),
-         :ok <- ContextStore.put_context(state.context_store_pid, :strategic_objectives, state.strategic_objectives),
-         :ok <- ContextStore.put_context(state.context_store_pid, :current_policies, state.current_policies) do
+    # Use the PID directly instead of going through registry lookup
+    with :ok <- GenServer.call(state.context_store_pid, {:put_context, :identity, state.identity_state}),
+         :ok <- GenServer.call(state.context_store_pid, {:put_context, :strategic_objectives, state.strategic_objectives}),
+         :ok <- GenServer.call(state.context_store_pid, {:put_context, :current_policies, state.current_policies}) do
       :ok
     else
       {:error, reason} ->
