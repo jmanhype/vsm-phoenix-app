@@ -184,7 +184,14 @@ defmodule VsmPhoenix.VarietyEngineering.Metrics.VarietyCalculator do
     end)
     
     new_entropy_history = Enum.reduce([:s1, :s2, :s3, :s4, :s5], %{}, fn level, acc ->
-      history = [new_metrics[level].entropy.input | state.entropy_history[level] || []]
+      # Safely extract entropy input value
+      entropy_input = case new_metrics[level] do
+        %{entropy: %{input: input}} when is_number(input) -> input
+        %{entropy: entropy} when is_number(entropy) -> entropy
+        _ -> 0.0
+      end
+      
+      history = [entropy_input | state.entropy_history[level] || []]
       |> Enum.take(20)  # Keep last 20 measurements
       Map.put(acc, level, history)
     end)
@@ -428,19 +435,28 @@ defmodule VsmPhoenix.VarietyEngineering.Metrics.VarietyCalculator do
     efficiencies = metrics
     |> Map.values()
     |> Enum.map(fn m ->
-      # Check if m is a map before accessing nested fields
-      if is_map(m) do
-        input_entropy = get_in(m, [:entropy, :input]) || 0
-        output_entropy = get_in(m, [:entropy, :output]) || 0
-        
-        if input_entropy > 0 do
-          # Efficiency is ratio of output to input entropy, capped at 1.0
-          min(output_entropy / input_entropy, 1.0)
-        else
+      # Handle different entropy formats
+      case m do
+        %{entropy: %{input: input, output: output}} when is_number(input) and is_number(output) ->
+          # Normal case: entropy is a map with input and output
+          if input > 0 do
+            # Efficiency is ratio of output to input entropy, capped at 1.0
+            min(output / input, 1.0)
+          else
+            0.0
+          end
+        %{entropy: entropy} when is_number(entropy) ->
+          # Entropy is just a number, assume it's already a ratio
+          min(entropy, 1.0)
+        %{entropy: _} ->
+          # Entropy exists but in unexpected format
           0.0
-        end
-      else
-        0.0  # Default efficiency for non-map values
+        _ when is_map(m) ->
+          # Map exists but no entropy field
+          0.0
+        _ ->
+          # Not even a map
+          0.0
       end
     end)
     
