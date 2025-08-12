@@ -547,7 +547,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Routing Efficiency</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@coordination_status, :routing_efficiency, 1.0)) %>
+                  <%= format_percentage(Map.get(@coordination_status, :routing_efficiency, 0.0)) %>
                 </span>
               </div>
               
@@ -561,7 +561,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Conflict Resolution Rate</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@coordination_status, :conflict_resolution_rate, 1.0)) %>
+                  <%= format_percentage(Map.get(@coordination_status, :conflict_resolution_rate, 0.0)) %>
                 </span>
               </div>
               
@@ -569,9 +569,9 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
                 <span class="text-gray-400">Flow Balance</span>
                 <span class={[
                   "font-mono",
-                  if(abs(Map.get(@coordination_status, :flow_balance_ratio, 1.0) - 1.0) > 0.2, do: "text-yellow-400", else: "text-green-400")
+                  if(abs(Map.get(@coordination_status, :flow_balance_ratio, 0.0) - 1.0) > 0.2, do: "text-yellow-400", else: "text-green-400")
                 ]}>
-                  <%= Float.round(Map.get(@coordination_status, :flow_balance_ratio, 1.0), 2) %>
+                  <%= Float.round(Map.get(@coordination_status, :flow_balance_ratio, 0.0), 2) %>
                 </span>
               </div>
             </div>
@@ -595,7 +595,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Success Ratio</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@operations_metrics, :success_ratio, 1.0)) %>
+                  <%= format_percentage(Map.get(@operations_metrics, :success_ratio, 0.0)) %>
                 </span>
               </div>
               
@@ -683,7 +683,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Resource Allocation Efficiency</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@audit_results, :efficiency, 0.85)) %>
+                  <%= format_percentage(Map.get(@audit_results, :efficiency, 0.0)) %>
                 </span>
               </div>
               
@@ -691,9 +691,9 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
                 <span class="text-gray-400">Resource Waste Ratio</span>
                 <span class={[
                   "font-mono",
-                  if(Map.get(@audit_results, :waste, 0.05) > 0.1, do: "text-red-400", else: "text-green-400")
+                  if(Map.get(@audit_results, :waste, 0.0) > 0.1, do: "text-red-400", else: "text-green-400")
                 ]}>
-                  <%= format_percentage(Map.get(@audit_results, :waste, 0.05)) %>
+                  <%= format_percentage(Map.get(@audit_results, :waste, 0.0)) %>
                 </span>
               </div>
               
@@ -897,7 +897,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Performance Score</span>
                 <span class="font-mono text-purple-400">
-                  <%= Float.round(Map.get(@performance_metrics, :performance_score, 1.0), 2) %>
+                  <%= Float.round(Map.get(@performance_metrics, :performance_score, 0.0), 2) %>
                 </span>
               </div>
               
@@ -935,7 +935,7 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Overall Health</span>
                 <span class="font-mono text-red-400">
-                  <%= Float.round(Map.get(@health_status, :overall_health, 1.0), 2) %>
+                  <%= Float.round(Map.get(@health_status, :overall_health, 0.0), 2) %>
                 </span>
               </div>
               
