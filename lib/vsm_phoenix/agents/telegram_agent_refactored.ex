@@ -80,6 +80,14 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   end
   
   @impl true
+  def handle_info({:updates_received, updates}, state) do
+    log_info("Received #{length(updates)} updates from Telegram")
+    # Process each update
+    new_state = process_updates(updates, state)
+    {:noreply, new_state}
+  end
+  
+  @impl true
   def handle_call({:send_message, chat_id, text, opts}, _from, state) do
     result = ApiClient.send_message(state.api_client, chat_id, text, opts)
     {:reply, result, state}
@@ -107,10 +115,12 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   
   defp poll_updates(state) do
     # DRY: Polling logic in one place
+    parent = self()
     spawn(fn ->
       case ApiClient.get_updates(state.api_client, state.polling_offset, 30) do
         {:ok, updates} ->
-          process_updates(updates, state)
+          # Send updates back to the GenServer
+          send(parent, {:updates_received, updates})
         {:error, reason} ->
           log_error("Polling failed: #{inspect(reason)}")
       end
@@ -118,7 +128,7 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
     
     # Schedule next poll
     timer = Process.send_after(self(), :poll, 1000)
-    %{state | polling_timer: timer}
+    state
   end
   
   defp process_updates([], state), do: state
@@ -165,9 +175,9 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
     
     # Convert processed message back to raw Telegram format for ConversationManager
     raw_message = %{
-      "text" => message[:content] || "",
+      "text" => Map.get(message, :content, ""),
       "chat" => %{"id" => message.chat_id, "type" => "private"},
-      "from" => message[:user] || %{},
+      "from" => Map.get(message, :user, %{}),
       "message_id" => System.unique_integer([:positive])
     }
     
@@ -186,7 +196,7 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
       {:error, reason} ->
         # Fallback to echo for now
         log_info("LLM failed (#{inspect(reason)}), using echo")
-        "Echo: #{message[:content] || inspect(message)}"
+        "Echo: #{Map.get(message, :content, inspect(message))}"
     end
     
     # Send response
