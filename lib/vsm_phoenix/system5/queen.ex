@@ -128,7 +128,7 @@ defmodule VsmPhoenix.System5.Queen do
       },
       # Agnostic VSM Policy Metrics
       policy_metrics: %{
-        coherence_score: 1.0,           # System alignment (0-1)
+        coherence_score: 0.0,           # Real: 0 until policies are analyzed
         policy_violations: [],          # Rule breaches with timestamps
         identity_drift: 0.0,           # Deviation from purpose (0-1)
         viability_index: 1.0,          # Overall health (0-1)
@@ -769,7 +769,7 @@ defmodule VsmPhoenix.System5.Queen do
       end)
       aligned_count / length(recent_decisions)
     else
-      0.8  # Default when no decisions yet
+      0.0  # Real: 0 when no decisions to measure alignment
     end
     
     # Check policy coherence
@@ -778,7 +778,7 @@ defmodule VsmPhoenix.System5.Queen do
       # More policies generally mean better coverage, but cap at reasonable level
       min(policy_count / 10, 1.0)
     else
-      0.5
+      0.0  # Real: 0 when no policies
     end
     
     # Check algedonic balance (pleasure vs pain signals)
@@ -812,7 +812,7 @@ defmodule VsmPhoenix.System5.Queen do
   
   defp calculate_algedonic_balance(signals) do
     if length(signals) == 0 do
-      0.8  # Neutral default
+      0.0  # Real: 0 when no signals
     else
       pleasure_count = Enum.count(signals, fn {type, _, _, _} -> type == :pleasure end)
       pain_count = Enum.count(signals, fn {type, _, _, _} -> type == :pain end)
@@ -824,7 +824,7 @@ defmodule VsmPhoenix.System5.Queen do
         # Transform to 0-1 scale where 0.5 ratio = 0.8 alignment
         0.6 + (pleasure_ratio * 0.4)
       else
-        0.8
+        0.0  # Real: 0 when no signals
       end
     end
   end
@@ -1385,7 +1385,7 @@ defmodule VsmPhoenix.System5.Queen do
     coverage_score = min(policy_count / 8, 1.0)  # Assume 8 policies for full coverage
     
     # Check for conflicting policies
-    conflict_score = 1.0  # Would be reduced if conflicts detected
+    conflict_score = 0.0  # Real: 0 until conflicts are actually analyzed
     
     # Check policy completeness
     essential_policies = [:governance, :adaptation, :resource_allocation, :identity_preservation]
