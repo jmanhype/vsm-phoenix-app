@@ -87,73 +87,64 @@ defmodule VsmPhoenixV2.CRDT.ContextStore do
   # GenServer Callbacks
 
   def handle_call({:put_context, key, value}, _from, state) do
-    # DeltaCrdt.put returns the updated crdt state, not :ok
-    result = DeltaCrdt.put(state.crdt, key, value)
+    # DeltaCrdt.put/3 returns the CRDT PID for chaining
+    # It doesn't return an error on success, just the PID
+    crdt_pid = DeltaCrdt.put(state.crdt, key, value)
     
-    case result do
-      crdt_pid when is_pid(crdt_pid) ->
-        Logger.debug("Context stored: #{inspect(key)} -> #{inspect(value)}")
-        {:reply, :ok, state}
-        
-      {:error, reason} ->
-        Logger.error("CRDT put failed for key #{inspect(key)}: #{inspect(reason)}")
-        {:reply, {:error, {:crdt_put_failed, reason}}, state}
-        
-      other ->
-        Logger.error("Unexpected CRDT put result: #{inspect(other)}")
-        {:reply, {:error, {:unexpected_crdt_result, other}}, state}
+    if is_pid(crdt_pid) do
+      Logger.debug("Context stored: #{inspect(key)} -> #{inspect(value)}")
+      {:reply, :ok, state}
+    else
+      # This should never happen with DeltaCrdt.put, but handle it just in case
+      Logger.error("Unexpected CRDT put result: #{inspect(crdt_pid)}")
+      {:reply, {:error, {:unexpected_crdt_result, crdt_pid}}, state}
     end
   end
 
   def handle_call({:get_context, key}, _from, state) do
-    case DeltaCrdt.read(state.crdt, key) do
-      {:ok, value} ->
-        {:reply, {:ok, value}, state}
-        
-      :error ->
+    # DeltaCrdt.get returns the value or nil if not found
+    case DeltaCrdt.get(state.crdt, key) do
+      nil ->
         {:reply, {:error, :key_not_found}, state}
+        
+      value ->
+        {:reply, {:ok, value}, state}
     end
   end
 
   def handle_call(:list_contexts, _from, state) do
-    case DeltaCrdt.to_map(state.crdt) do
-      {:ok, crdt_map} ->
-        keys = Map.keys(crdt_map)
-        {:reply, {:ok, keys}, state}
-        
-      {:error, reason} ->
-        Logger.error("Failed to list CRDT contexts: #{inspect(reason)}")
-        {:reply, {:error, {:crdt_read_failed, reason}}, state}
-    end
+    # DeltaCrdt.to_map returns the map directly
+    crdt_map = DeltaCrdt.to_map(state.crdt)
+    keys = Map.keys(crdt_map)
+    {:reply, {:ok, keys}, state}
   end
 
   def handle_call({:sync_neighbor, neighbor_pid}, _from, state) do
-    case DeltaCrdt.sync(state.crdt, neighbor_pid) do
-      :ok ->
-        Logger.info("Successfully synchronized with neighbor #{inspect(neighbor_pid)}")
-        {:reply, :ok, state}
-        
-      {:error, reason} ->
-        Logger.error("CRDT synchronization failed with #{inspect(neighbor_pid)}: #{inspect(reason)}")
-        {:reply, {:error, {:sync_failed, reason}}, state}
+    # Use set_neighbours to establish synchronization
+    # DeltaCrdt.set_neighbours expects a list of PIDs
+    current_neighbors = state.neighbors || []
+    new_neighbors = if neighbor_pid in current_neighbors do
+      current_neighbors
+    else
+      [neighbor_pid | current_neighbors]
     end
+    
+    DeltaCrdt.set_neighbours(state.crdt, new_neighbors)
+    Logger.info("Successfully set neighbor #{inspect(neighbor_pid)} for synchronization")
+    {:reply, :ok, %{state | neighbors: new_neighbors}}
   end
 
   def handle_call(:get_crdt_state, _from, state) do
-    case DeltaCrdt.to_map(state.crdt) do
-      {:ok, crdt_map} ->
-        debug_info = %{
-          node_id: state.node_id,
-          crdt_pid: state.crdt,
-          neighbors: state.neighbors,
-          context_count: map_size(crdt_map),
-          contexts: crdt_map
-        }
-        {:reply, {:ok, debug_info}, state}
-        
-      {:error, reason} ->
-        {:reply, {:error, {:crdt_state_read_failed, reason}}, state}
-    end
+    # DeltaCrdt.to_map returns the map directly
+    crdt_map = DeltaCrdt.to_map(state.crdt)
+    debug_info = %{
+      node_id: state.node_id,
+      crdt_pid: state.crdt,
+      neighbors: state.neighbors,
+      context_count: map_size(crdt_map),
+      contexts: crdt_map
+    }
+    {:reply, {:ok, debug_info}, state}
   end
 
   def handle_info({:crdt_update, _delta}, state) do
