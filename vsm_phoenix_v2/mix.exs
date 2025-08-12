@@ -57,7 +57,19 @@ defmodule VsmPhoenixV2.MixProject do
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      
+      # VSM-specific dependencies
+      {:amqp, "~> 3.3"},
+      {:delta_crdt, "~> 0.6.4"},
+      {:fuse, "~> 2.4"},
+      {:req, "~> 0.5.0"},
+      {:ex_gram, "~> 0.53"},
+      {:libcluster, "~> 3.3"},
+      {:elixir_uuid, "~> 1.2"},
+      {:stream_data, "~> 1.0", only: [:test, :dev]},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 
