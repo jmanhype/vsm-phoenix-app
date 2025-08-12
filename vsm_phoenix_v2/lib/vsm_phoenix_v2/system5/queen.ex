@@ -134,10 +134,9 @@ defmodule VsmPhoenixV2.System5.Queen do
         new_state = %{state | current_policies: updated_policies}
         
         # Store in CRDT - FAIL if storage fails
-        case ContextStore.put_context(
+        case GenServer.call(
           state.context_store_pid, 
-          {:policy, policy_domain}, 
-          new_policy
+          {:put_context, {:policy, policy_domain}, new_policy}
         ) do
           :ok ->
             Logger.info("Policy synthesized for domain #{policy_domain}")
@@ -155,10 +154,9 @@ defmodule VsmPhoenixV2.System5.Queen do
   end
 
   def handle_call({:update_strategic_objectives, new_objectives}, _from, state) do
-    case ContextStore.put_context(
+    case GenServer.call(
       state.context_store_pid,
-      :strategic_objectives,
-      new_objectives
+      {:put_context, :strategic_objectives, new_objectives}
     ) do
       :ok ->
         new_state = %{state | strategic_objectives: new_objectives}
@@ -265,7 +263,7 @@ defmodule VsmPhoenixV2.System5.Queen do
 
   defp compile_system_status(state) do
     try do
-      {:ok, crdt_state} = ContextStore.get_crdt_state(state.context_store_pid)
+      {:ok, crdt_state} = GenServer.call(state.context_store_pid, :get_crdt_state)
       
       status = %{
         node_id: state.node_id,
@@ -313,10 +311,9 @@ defmodule VsmPhoenixV2.System5.Queen do
         }
         
         # Store emergency state in CRDT
-        case ContextStore.put_context(
+        case GenServer.call(
           state.context_store_pid,
-          {:emergency_state, DateTime.utc_now()},
-          emergency_policies
+          {:put_context, {:emergency_state, DateTime.utc_now()}, emergency_policies}
         ) do
           :ok -> {:ok, emergency_policies}
           error -> error

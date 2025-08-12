@@ -87,14 +87,21 @@ defmodule VsmPhoenixV2.CRDT.ContextStore do
   # GenServer Callbacks
 
   def handle_call({:put_context, key, value}, _from, state) do
-    case DeltaCrdt.put(state.crdt, key, value) do
-      :ok ->
-        Logger.debug("Context stored: #{key} -> #{inspect(value)}")
+    # DeltaCrdt.put returns the updated crdt state, not :ok
+    result = DeltaCrdt.put(state.crdt, key, value)
+    
+    case result do
+      crdt_pid when is_pid(crdt_pid) ->
+        Logger.debug("Context stored: #{inspect(key)} -> #{inspect(value)}")
         {:reply, :ok, state}
         
       {:error, reason} ->
-        Logger.error("CRDT put failed for key #{key}: #{inspect(reason)}")
+        Logger.error("CRDT put failed for key #{inspect(key)}: #{inspect(reason)}")
         {:reply, {:error, {:crdt_put_failed, reason}}, state}
+        
+      other ->
+        Logger.error("Unexpected CRDT put result: #{inspect(other)}")
+        {:reply, {:error, {:unexpected_crdt_result, other}}, state}
     end
   end
 
