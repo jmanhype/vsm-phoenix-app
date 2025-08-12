@@ -167,6 +167,8 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   end
   
   defp process_with_llm(message, state) do
+    log_info("Processing message with LLM: #{inspect(message)}")
+    
     # Get conversation context from the global ConversationManager
     context = case ConversationManager.get_conversation_context(message.chat_id) do
       {:ok, ctx} -> ctx
@@ -269,10 +271,13 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   end
   
   defp process_update_pipeline(update, state) do
+    log_info("Processing update: #{inspect(update)}")
+    
     # DRY: Single pipeline for all update processing
-    with {:ok, processed} <- MessageProcessor.process_update(update, state.config) do
-      handle_processed_message(processed, state)
-    else
+    case MessageProcessor.process_update(update, state.config) do
+      {:ok, processed} ->
+        log_info("MessageProcessor returned: #{inspect(processed)}")
+        handle_processed_message(processed, state)
       error -> 
         log_error("Update processing failed: #{inspect(error)}")
         error
