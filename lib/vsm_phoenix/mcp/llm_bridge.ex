@@ -163,7 +163,7 @@ defmodule VsmPhoenix.MCP.LLMBridge do
       }]
     })
     
-    case HTTPoison.post(url, body, headers, timeout: 30_000, recv_timeout: 30_000) do
+    case HTTPoison.post(url, body, headers, [timeout: 60_000, recv_timeout: 60_000, hackney: [pool: false]]) do
       {:ok, %{status_code: 200, body: response_body}} ->
         case Jason.decode(response_body) do
           {:ok, %{"content" => [%{"text" => text}]}} ->
@@ -201,7 +201,15 @@ defmodule VsmPhoenix.MCP.LLMBridge do
       }]
     })
     
-    case HTTPoison.post(url, body, headers, timeout: 30_000, recv_timeout: 30_000) do
+    # Retry logic with exponential backoff
+    retry_with_backoff(fn ->
+      HTTPoison.post(url, body, headers, [
+        timeout: 60_000, 
+        recv_timeout: 60_000, 
+        hackney: [pool: false, timeout: 60_000, recv_timeout: 60_000]
+      ])
+    end, 3)
+    |> case do
       {:ok, %{status_code: 200, body: response_body}} ->
         case Jason.decode(response_body) do
           {:ok, %{"content" => [%{"text" => text}]}} ->
@@ -212,8 +220,25 @@ defmodule VsmPhoenix.MCP.LLMBridge do
         Logger.error("❌ Claude API error #{status_code}: #{error_body}")
         {:error, :api_error}
       {:error, reason} ->
-        Logger.error("❌ HTTP request failed: #{inspect(reason)}")
+        Logger.error("❌ HTTP request failed after retries: #{inspect(reason)}")
         {:error, :network_error}
+    end
+  end
+
+  defp retry_with_backoff(fun, retries_left, delay \\ 1000)
+  
+  defp retry_with_backoff(fun, 0, _delay) do
+    fun.()
+  end
+  
+  defp retry_with_backoff(fun, retries_left, delay) do
+    case fun.() do
+      {:error, %HTTPoison.Error{reason: :timeout}} when retries_left > 0 ->
+        Logger.warning("⚠️ HTTP timeout, retrying in #{delay}ms... (#{retries_left} retries left)")
+        Process.sleep(delay)
+        retry_with_backoff(fun, retries_left - 1, delay * 2)
+      result ->
+        result
     end
   end
 
