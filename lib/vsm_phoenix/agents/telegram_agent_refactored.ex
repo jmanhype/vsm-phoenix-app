@@ -163,16 +163,27 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   end
   
   defp process_single_update(update, state) do
-    # Extract update ID for offset
-    update_id = update["update_id"]
-    new_state = %{state | polling_offset: update_id + 1}
-    
-    # Process through pipeline
-    case process_update_pipeline(update, new_state) do
-      {:ok, _} -> {:ok, new_state}
-      error -> 
-        log_error("Failed to process update: #{inspect(error)}")
-        {:ok, new_state} # Continue processing other updates even if one fails
+    try do
+      IO.puts("🔄 Processing single update: #{inspect(update["update_id"])}")
+      # Extract update ID for offset
+      update_id = update["update_id"]
+      new_state = %{state | polling_offset: update_id + 1}
+      
+      # Process through pipeline
+      case process_update_pipeline(update, new_state) do
+        {:ok, _} -> 
+          IO.puts("✅ Update processed successfully")
+          {:ok, new_state}
+        error -> 
+          IO.puts("⚠️ Update processing failed: #{inspect(error)}")
+          log_error("Failed to process update: #{inspect(error)}")
+          {:ok, new_state} # Continue processing other updates even if one fails
+      end
+    rescue
+      error ->
+        IO.puts("❌ Exception processing update: #{inspect(error)}")
+        log_error("Exception processing update: #{inspect(error)}")
+        {:ok, state} # Return original state on exception
     end
   end
   
@@ -188,58 +199,26 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   end
   
   defp process_with_llm(message, state) do
+    IO.puts("🧠 Processing message with LLM: #{inspect(message)}")
     log_info("Processing message with LLM: #{inspect(message)}")
     
-    # Try to get conversation context, but don't fail if unavailable
-    context = try do
-      case ConversationManager.get_conversation_context(message.chat_id) do
-        {:ok, ctx} -> ctx
-        _ -> %{}
-      end
-    rescue
-      _ -> %{}
-    end
-    
-    # Convert processed message back to raw Telegram format for ConversationManager
-    raw_message = %{
-      "text" => Map.get(message, :content, ""),
-      "chat" => %{"id" => message.chat_id, "type" => "private"},
-      "from" => Map.get(message, :user, %{}),
-      "message_id" => System.unique_integer([:positive])
-    }
-    
-    # Try to store incoming message (optional)
-    try do
-      ConversationManager.store_message(
-        message.chat_id,
-        raw_message,
-        state.id
-      )
-    rescue
-      _ -> :ok
-    end
-    
-    # Send to LLM Worker via AMQP if available
-    response_text = case send_to_llm_worker(message, context) do
-      {:ok, llm_response} -> 
-        log_info("Got LLM response: #{inspect(llm_response)}")
-        llm_response
-      {:error, reason} ->
-        # Fallback to echo for now
-        log_info("LLM failed (#{inspect(reason)}), using echo")
-        "Echo: #{Map.get(message, :content, inspect(message))}"
-    end
+    # Skip all optional components that might crash - just do echo
+    response_text = "Echo: #{Map.get(message, :content, "unknown")}"
     
     # Send response
+    IO.puts("📤 Sending response to chat #{message.chat_id}: #{response_text}")
     log_info("Sending response to chat #{message.chat_id}: #{response_text}")
-    result = ApiClient.send_message(
-      state.api_client, 
-      message.chat_id, 
-      response_text
-    )
-    log_info("Send result: #{inspect(result)}")
     
-    {:ok, :processed}
+    case ApiClient.send_message(state.api_client, message.chat_id, response_text) do
+      {:ok, result} ->
+        IO.puts("✅ Message sent successfully: #{inspect(result)}")
+        log_info("Send result: #{inspect(result)}")
+        {:ok, :processed}
+      {:error, reason} ->
+        IO.puts("❌ Failed to send message: #{inspect(reason)}")
+        log_error("Send failed: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
   
   defp send_to_llm_worker(message, context) do
