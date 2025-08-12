@@ -47,6 +47,8 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   
   @impl true
   def init(config) do
+    IO.puts("🚀 TelegramAgent init called with config: #{inspect(config)}")
+    
     # Dependency injection - components are injected, not created
     state = %__MODULE__{
       id: config.id,
@@ -60,27 +62,36 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
     
     # Start polling if not in webhook mode
     if not config.webhook_mode do
-      send(self(), :start_polling)
+      IO.puts("📮 Webhook mode is false, scheduling polling...")
+      log_info("Scheduling polling to start...")
+      Process.send_after(self(), :start_polling, 100)
+    else
+      IO.puts("🌐 Webhook mode is true, not starting polling")
     end
     
+    IO.puts("✅ TelegramAgent init complete, PID: #{inspect(self())}")
     log_info("Started with config: #{inspect(config)}")
     {:ok, state}
   end
   
   @impl true
   def handle_info(:start_polling, state) do
+    IO.puts("🎬 handle_info(:start_polling) called, starting polling!")
+    log_info("Starting polling...")
     poll_updates(state)
     {:noreply, state}
   end
   
   @impl true  
   def handle_info(:poll, state) do
+    IO.puts("🔄 handle_info(:poll) called, continuing polling...")
     poll_updates(state)
     {:noreply, state}
   end
   
   @impl true
   def handle_info({:updates_received, updates}, state) do
+    IO.puts("📨 handle_info({:updates_received}) with #{length(updates)} updates")
     log_info("Received #{length(updates)} updates from Telegram")
     # Process each update
     new_state = process_updates(updates, state)
@@ -114,20 +125,30 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   ## Private Functions (Clean, focused, DRY)
   
   defp poll_updates(state) do
-    # DRY: Polling logic in one place
+    IO.puts("🔍 poll_updates called with offset: #{inspect(state.polling_offset)}")
+    log_info("Polling for updates with offset: #{inspect(state.polling_offset)}")
+    
+    # Store parent PID before spawning
     parent = self()
+    
+    # Make the API call in a spawned process
     spawn(fn ->
+      IO.puts("🌐 Making API call to get_updates...")
       case ApiClient.get_updates(state.api_client, state.polling_offset, 30) do
         {:ok, updates} ->
-          # Send updates back to the GenServer
+          IO.puts("✅ Got #{length(updates)} updates from Telegram API")
+          log_info("Got #{length(updates)} updates from Telegram")
+          # Send updates back to the GenServer (parent)
           send(parent, {:updates_received, updates})
         {:error, reason} ->
+          IO.puts("❌ Polling failed: #{inspect(reason)}")
           log_error("Polling failed: #{inspect(reason)}")
       end
     end)
     
     # Schedule next poll
-    timer = Process.send_after(self(), :poll, 1000)
+    IO.puts("⏰ Scheduling next poll in 1 second")
+    Process.send_after(self(), :poll, 1000)
     state
   end
   
@@ -169,9 +190,13 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   defp process_with_llm(message, state) do
     log_info("Processing message with LLM: #{inspect(message)}")
     
-    # Get conversation context from the global ConversationManager
-    context = case ConversationManager.get_conversation_context(message.chat_id) do
-      {:ok, ctx} -> ctx
+    # Try to get conversation context, but don't fail if unavailable
+    context = try do
+      case ConversationManager.get_conversation_context(message.chat_id) do
+        {:ok, ctx} -> ctx
+        _ -> %{}
+      end
+    rescue
       _ -> %{}
     end
     
@@ -183,12 +208,16 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
       "message_id" => System.unique_integer([:positive])
     }
     
-    # Store incoming message first
-    ConversationManager.store_message(
-      message.chat_id,
-      raw_message,
-      state.id
-    )
+    # Try to store incoming message (optional)
+    try do
+      ConversationManager.store_message(
+        message.chat_id,
+        raw_message,
+        state.id
+      )
+    rescue
+      _ -> :ok
+    end
     
     # Send to LLM Worker via AMQP if available
     response_text = case send_to_llm_worker(message, context) do

@@ -46,8 +46,11 @@ defmodule VsmPhoenix.Telegram.ApiClient do
   
   # Clean API methods - each does ONE thing
   def send_message(client, chat_id, text, opts \\ []) do
+    log_info("Sending message to chat #{chat_id}: #{text}")
     params = Map.merge(%{chat_id: chat_id, text: text}, Map.new(opts))
-    call_api(client, "sendMessage", params)
+    result = call_api(client, "sendMessage", params)
+    log_info("Send result: #{inspect(result)}")
+    result
   end
   
   def get_updates(client, offset \\ nil, timeout \\ 30) do
