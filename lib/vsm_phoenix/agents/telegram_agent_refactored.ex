@@ -199,25 +199,37 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   end
   
   defp process_with_llm(message, state) do
-    IO.puts("🧠 Processing message with LLM: #{inspect(message)}")
-    log_info("Processing message with LLM: #{inspect(message)}")
+    IO.puts("🧠 Processing message with LLM via AMQP: #{inspect(message)}")
+    log_info("Processing message with LLM via AMQP: #{inspect(message)}")
     
-    # Skip all optional components that might crash - just do echo
-    response_text = "Echo: #{Map.get(message, :content, "unknown")}"
-    
-    # Send response
-    IO.puts("📤 Sending response to chat #{message.chat_id}: #{response_text}")
-    log_info("Sending response to chat #{message.chat_id}: #{response_text}")
-    
-    case ApiClient.send_message(state.api_client, message.chat_id, response_text) do
-      {:ok, result} ->
-        IO.puts("✅ Message sent successfully: #{inspect(result)}")
-        log_info("Send result: #{inspect(result)}")
-        {:ok, :processed}
+    # Try to send to LLM worker via AMQP first
+    case send_to_llm_worker(message, %{}) do
+      {:ok, :sent} ->
+        # Message sent to LLM worker successfully
+        IO.puts("✅ Message sent to LLM worker via AMQP")
+        log_info("Message sent to LLM worker via AMQP")
+        {:ok, :processing_async}
+        
       {:error, reason} ->
-        IO.puts("❌ Failed to send message: #{inspect(reason)}")
-        log_error("Send failed: #{inspect(reason)}")
-        {:error, reason}
+        IO.puts("⚠️ AMQP failed (#{inspect(reason)}), falling back to echo")
+        log_info("AMQP failed (#{inspect(reason)}), falling back to echo")
+        
+        # Fallback to echo response
+        response_text = "Echo: #{Map.get(message, :content, "unknown")}"
+        
+        IO.puts("📤 Sending fallback response to chat #{message.chat_id}: #{response_text}")
+        log_info("Sending fallback response to chat #{message.chat_id}: #{response_text}")
+        
+        case ApiClient.send_message(state.api_client, message.chat_id, response_text) do
+          {:ok, result} ->
+            IO.puts("✅ Fallback message sent successfully: #{inspect(result)}")
+            log_info("Fallback send result: #{inspect(result)}")
+            {:ok, :processed}
+          {:error, send_reason} ->
+            IO.puts("❌ Failed to send fallback message: #{inspect(send_reason)}")
+            log_error("Fallback send failed: #{inspect(send_reason)}")
+            {:error, send_reason}
+        end
     end
   end
   
@@ -229,26 +241,42 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
         # Get channel from pool
         case VsmPhoenix.AMQP.ChannelPool.checkout(:telegram_llm_bridge) do
           {:ok, channel} ->
-            # Publish to LLM request exchange
+            # Generate unique request ID
+            request_id = "telegram_#{System.system_time(:millisecond)}_#{:rand.uniform(9999)}"
+            
+            # Build proper request format that LLM worker expects
             request = %{
-              message: message,
+              chat_id: message.chat_id,
+              text: message.content,
               context: context,
+              request_id: request_id,
               timestamp: System.system_time(:millisecond)
             }
             
+            # Create a response queue for this request (temporary)
+            response_queue = "telegram_response_#{request_id}"
+            {:ok, _} = AMQP.Queue.declare(channel, response_queue, auto_delete: true, exclusive: true)
+            
+            # Publish to LLM request exchange with reply_to
             AMQP.Basic.publish(
               channel,
               "vsm.llm.requests",
               "llm.request.conversation",
-              Jason.encode!(request)
+              Jason.encode!(request),
+              reply_to: response_queue,
+              correlation_id: request_id
             )
+            
+            # Start consuming response (async)
+            spawn(fn ->
+              consume_llm_response(channel, response_queue, request_id, message)
+            end)
             
             # Return channel to pool
             VsmPhoenix.AMQP.ChannelPool.checkin(channel)
             
-            # For now, return immediately with a placeholder
-            # In production, would wait for response on response queue
-            {:error, :async_not_implemented}
+            IO.puts("📨 Published message to AMQP: vsm.llm.requests with reply_to: #{response_queue}")
+            {:ok, :sent}
             
           {:error, reason} ->
             {:error, reason}
@@ -259,6 +287,51 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
     else
       # AMQP not available, return error to fall back to echo
       {:error, :amqp_disabled}
+    end
+  end
+  
+  defp consume_llm_response(channel, response_queue, request_id, original_message) do
+    # Consume response from LLM worker
+    case AMQP.Basic.consume(channel, response_queue) do
+      {:ok, _consumer_tag} ->
+        IO.puts("🎧 Listening for LLM response on queue: #{response_queue}")
+        receive do
+          {:basic_deliver, payload, meta} ->
+            # Process the response
+            case Jason.decode(payload) do
+              {:ok, response} ->
+                IO.puts("✅ Got LLM response: #{inspect(response)}")
+                send_llm_response_to_telegram(response, original_message)
+                AMQP.Basic.ack(channel, meta.delivery_tag)
+              {:error, reason} ->
+                IO.puts("❌ Failed to decode LLM response: #{inspect(reason)}")
+            end
+            
+          # Timeout after 30 seconds
+        after 
+          30_000 ->
+            IO.puts("⏰ LLM response timeout for request: #{request_id}")
+        end
+      {:error, reason} ->
+        IO.puts("❌ Failed to consume from response queue: #{inspect(reason)}")
+    end
+  end
+  
+  defp send_llm_response_to_telegram(response, original_message) do
+    # Extract response text
+    response_text = response["response"] || "No response from LLM"
+    
+    # Get API client (need to access from process state)
+    # For now, create a new one - in production, should pass state properly
+    api_client = VsmPhoenix.Telegram.ApiClient.new(System.get_env("TELEGRAM_BOT_TOKEN", "7747520054:AAFNts5iJn8mYZezAG9uQF2_slvuztEScZI"))
+    
+    IO.puts("📤 Sending LLM response to chat #{original_message.chat_id}: #{response_text}")
+    
+    case VsmPhoenix.Telegram.ApiClient.send_message(api_client, original_message.chat_id, response_text) do
+      {:ok, result} ->
+        IO.puts("✅ LLM response sent successfully: #{inspect(result)}")
+      {:error, reason} ->
+        IO.puts("❌ Failed to send LLM response: #{inspect(reason)}")
     end
   end
   
