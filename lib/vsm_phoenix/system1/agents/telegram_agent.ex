@@ -14,7 +14,6 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   require Logger
   
   @name __MODULE__
-  @bot_token Application.get_env(:vsm_phoenix, :telegram_bot_token)
   
   # Client API
   
@@ -48,7 +47,11 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
   def init(_opts) do
     Logger.info("🤖 Telegram Agent initializing as lightweight coordinator...")
     
-    if @bot_token do
+    # Get token at runtime from environment or config
+    bot_token = System.get_env("TELEGRAM_BOT_TOKEN") || 
+                get_in(Application.get_env(:vsm_phoenix, :vsm), [:telegram, :bot_token])
+    
+    if bot_token do
       Logger.info("🤖 Telegram bot token configured")
     else
       Logger.warn("🤖 No Telegram bot token configured - running in stub mode")
@@ -56,7 +59,7 @@ defmodule VsmPhoenix.System1.Agents.TelegramAgent do
     
     state = %{
       started_at: System.system_time(:millisecond),
-      bot_token: @bot_token,
+      bot_token: bot_token,
       messages_sent: 0,
       commands_processed: 0,
       last_update_id: 0,
