@@ -1,18 +1,10 @@
 [
   {
-    "id": "cmd-hooks-1755015210072",
+    "id": "cmd-hooks-1755016365102",
     "type": "hooks",
     "success": true,
-    "duration": 59.36858299999997,
-    "timestamp": 1755015210131,
-    "metadata": {}
-  },
-  {
-    "id": "cmd-hive-mind-1755016143653",
-    "type": "hive-mind",
-    "success": true,
-    "duration": 35.272459,
-    "timestamp": 1755016143689,
+    "duration": 5.577208999999996,
+    "timestamp": 1755016365107,
     "metadata": {}
   }
 ]

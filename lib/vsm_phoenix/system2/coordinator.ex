@@ -90,7 +90,7 @@ defmodule VsmPhoenix.System2.Coordinator do
   @impl true
   def handle_call({:coordinate_message, message, priority}, _from, state) do
     # Use Cortical Attention Engine for message scoring and routing
-    case CorticalAttentionEngine.score_message(message, priority) do
+    case CorticalAttentionEngine.score_attention(message, %{priority: priority}) do
       {:ok, scored_message} ->
         coordination_result = %{
           message_id: generate_message_id(),
