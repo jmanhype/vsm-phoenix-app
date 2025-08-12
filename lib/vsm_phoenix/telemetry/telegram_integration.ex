@@ -430,10 +430,9 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
   
   defp analyze_command_patterns do
     # Correlate command frequency with response times
-    {:ok, correlation} = SignalProcessor.correlate_signals(
-      @signal_ids.command_frequency,
-      @signal_ids.response_time
-    )
+    # Note: SignalProcessor correlation is temporarily disabled due to refactoring
+    # TODO: Implement correlation through RefactoredAnalogArchitect
+    correlation = %{coefficient: 0.0, confidence: 0.0}
     
     %{
       correlation: correlation,

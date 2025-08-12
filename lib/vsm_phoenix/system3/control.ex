@@ -875,10 +875,10 @@ defmodule VsmPhoenix.System3.Control do
     # Check if the freed resources would satisfy the request
     required
     |> Enum.all?(fn {resource_type, amount} ->
-      pool = state.resource_pools[resource_type] || state.resource_pools[String.to_atom(resource_type)]
+      pool = state.flow_pools[resource_type] || state.flow_pools[String.to_atom(resource_type)]
       if pool do
-        available = pool.total - pool.allocated
-        freed_amount = pool.allocated * estimated_freed
+        available = Map.get(pool, :total_capacity, 0) - Map.get(pool, :allocated_capacity, 0)
+        freed_amount = Map.get(pool, :allocated_capacity, 0) * estimated_freed
         (available + freed_amount) >= amount
       else
         false
