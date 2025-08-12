@@ -102,5 +102,21 @@
     "blocked": false,
     "reason": "approved",
     "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-12T11:56:41.476670",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
+  },
+  {
+    "timestamp": "2025-08-12T11:56:59.736596",
+    "tool_name": "",
+    "tool_input": {},
+    "blocked": false,
+    "reason": "approved",
+    "input_data": {}
   }
 ]
