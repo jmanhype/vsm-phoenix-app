@@ -16,8 +16,7 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   use VsmPhoenix.Behaviors.Resilient, max_retries: 3
   
   alias VsmPhoenix.Telegram.{ApiClient, MessageProcessor}
-  alias VsmPhoenix.Conversation.Manager, as: ConversationManager
-  alias VsmPhoenix.LLM.RequestPipeline
+  alias VsmPhoenix.TelegramBot.ConversationManager
   
   defstruct [
     :id,
@@ -54,8 +53,8 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
       config: config,
       api_client: ApiClient.new(config.bot_token),
       message_processor: MessageProcessor,
-      conversation_manager: ConversationManager.new(config.id),
-      llm_pipeline: RequestPipeline.new(config),
+      conversation_manager: nil, # ConversationManager is a separate GenServer
+      llm_pipeline: nil, # RequestPipeline not implemented yet
       polling_offset: nil
     }
     
@@ -92,7 +91,7 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
       id: state.id,
       polling: state.polling_timer != nil,
       offset: state.polling_offset,
-      conversations: ConversationManager.count_active(state.conversation_manager)
+      conversations: 0 # ConversationManager not integrated yet
     }
     {:reply, {:ok, status}, state}
   end
@@ -167,7 +166,9 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
     )
     
     # Process through LLM pipeline
-    case RequestPipeline.process(state.llm_pipeline, message, context) do
+    # TODO: Implement LLM processing
+    # case RequestPipeline.process(state.llm_pipeline, message, context) do
+    case {:ok, "Echo: #{message}"} do
       {:ok, response} ->
         # Send response
         ApiClient.send_message(
