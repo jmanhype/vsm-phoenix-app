@@ -181,18 +181,22 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
     # Send to LLM Worker via AMQP if available
     response_text = case send_to_llm_worker(message, context) do
       {:ok, llm_response} -> 
+        log_info("Got LLM response: #{inspect(llm_response)}")
         llm_response
-      {:error, _reason} ->
+      {:error, reason} ->
         # Fallback to echo for now
-        "Echo: #{inspect(message)}"
+        log_info("LLM failed (#{inspect(reason)}), using echo")
+        "Echo: #{message[:content] || inspect(message)}"
     end
     
     # Send response
-    ApiClient.send_message(
+    log_info("Sending response to chat #{message.chat_id}: #{response_text}")
+    result = ApiClient.send_message(
       state.api_client, 
       message.chat_id, 
       response_text
     )
+    log_info("Send result: #{inspect(result)}")
     
     {:ok, :processed}
   end

@@ -115,23 +115,31 @@ defmodule VsmPhoenix.ContextManager do
   def handle_call({:attach_context, type, key, context_data, opts}, _from, state) do
     context_key = build_context_key(type, key)
     
-    # Create context record with metadata
-    context_record = %{
+    # Normalize opts to ensure it's a map (convert keyword list if needed)
+    normalized_opts = case opts do
+      opts when is_list(opts) -> Enum.into(opts, %{})
+      opts when is_map(opts) -> opts
+      _ -> %{}
+    end
+    
+    # Create context record with metadata (exclude opts from signed data)
+    context_record_for_signing = %{
       type: type,
       key: key,
       data: context_data,
       attached_at: System.system_time(:millisecond),
       node_id: node(),
-      version: 1,
-      opts: opts
+      version: 1
     }
     
     # Add cryptographic signature if security required
-    signed_record = if opts[:cryptographic_integrity] do
-      signature = CryptoLayer.sign_message(context_record, node())
-      Map.put(context_record, :signature, signature)
+    signed_record = if normalized_opts[:cryptographic_integrity] do
+      signature = CryptoLayer.sign_message(context_record_for_signing, node())
+      context_record_for_signing
+      |> Map.put(:signature, signature)
+      |> Map.put(:opts, normalized_opts)
     else
-      context_record
+      Map.put(context_record_for_signing, :opts, normalized_opts)
     end
     
     # Store in CRDT based on context type
