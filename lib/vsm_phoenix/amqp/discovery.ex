@@ -523,7 +523,10 @@ defmodule VsmPhoenix.AMQP.Discovery do
   
   defp publish_discovery_message(message, state) do
     if state.channel do
-      routing_key = "discovery.#{message.type |> String.downcase()}"
+      # Fix: Access type field correctly - messages use atom keys internally
+      # but may have string keys from JSON decoding
+      message_type = message[:type] || message["type"] || "unknown"
+      routing_key = "discovery.#{message_type |> String.downcase()}"
       
       # Wrap with security if available
       secured_message = if function_exported?(Security, :wrap_secure_message, 3) do
