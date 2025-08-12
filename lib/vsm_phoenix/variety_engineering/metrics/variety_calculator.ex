@@ -428,14 +428,19 @@ defmodule VsmPhoenix.VarietyEngineering.Metrics.VarietyCalculator do
     efficiencies = metrics
     |> Map.values()
     |> Enum.map(fn m ->
-      input_entropy = get_in(m, [:entropy, :input]) || 0
-      output_entropy = get_in(m, [:entropy, :output]) || 0
-      
-      if input_entropy > 0 do
-        # Efficiency is ratio of output to input entropy, capped at 1.0
-        min(output_entropy / input_entropy, 1.0)
+      # Check if m is a map before accessing nested fields
+      if is_map(m) do
+        input_entropy = get_in(m, [:entropy, :input]) || 0
+        output_entropy = get_in(m, [:entropy, :output]) || 0
+        
+        if input_entropy > 0 do
+          # Efficiency is ratio of output to input entropy, capped at 1.0
+          min(output_entropy / input_entropy, 1.0)
+        else
+          0.0
+        end
       else
-        0.0
+        0.0  # Default efficiency for non-map values
       end
     end)
     
