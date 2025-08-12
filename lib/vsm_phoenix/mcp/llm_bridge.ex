@@ -163,7 +163,7 @@ defmodule VsmPhoenix.MCP.LLMBridge do
       }]
     })
     
-    case HTTPoison.post(url, body, headers) do
+    case HTTPoison.post(url, body, headers, timeout: 30_000, recv_timeout: 30_000) do
       {:ok, %{status_code: 200, body: response_body}} ->
         case Jason.decode(response_body) do
           {:ok, %{"content" => [%{"text" => text}]}} ->
@@ -201,7 +201,7 @@ defmodule VsmPhoenix.MCP.LLMBridge do
       }]
     })
     
-    case HTTPoison.post(url, body, headers) do
+    case HTTPoison.post(url, body, headers, timeout: 30_000, recv_timeout: 30_000) do
       {:ok, %{status_code: 200, body: response_body}} ->
         case Jason.decode(response_body) do
           {:ok, %{"content" => [%{"text" => text}]}} ->
