@@ -214,11 +214,11 @@ defmodule VsmPhoenix.Infrastructure.SystemicCoordinationMetrics do
       redirected_messages: 0,
       message_volume_per_second: 0.0,
       avg_message_latency_ms: 0.0,
-      routing_efficiency: 1.0,
+      routing_efficiency: 0.0,  # Real: 0 until messages are actually routed
       
       # Synchronization metrics
       total_sync_events: 0,
-      sync_effectiveness: 1.0,
+      sync_effectiveness: 0.0,  # Real: 0 until sync actually happens
       sync_frequency: 0.0,
       avg_units_per_sync: 0.0,
       
@@ -226,11 +226,11 @@ defmodule VsmPhoenix.Infrastructure.SystemicCoordinationMetrics do
       total_conflicts: 0,
       resolved_conflicts: 0,
       unresolved_conflicts: 0,
-      conflict_resolution_rate: 1.0,
+      conflict_resolution_rate: 0.0,  # Real: 0 until conflicts are resolved
       avg_resolution_time_ms: 0.0,
       
       # Flow balance metrics
-      flow_balance_ratio: 1.0,
+      flow_balance_ratio: 0.0,  # Real: 0 until flow is measured
       unit_flow_imbalances: %{},
       
       # Metadata
@@ -286,7 +286,7 @@ defmodule VsmPhoenix.Infrastructure.SystemicCoordinationMetrics do
     routing_efficiency = if total_messages > 0 do
       direct_messages / total_messages
     else
-      1.0
+      0.0  # Real: 0 when no messages routed
     end
     
     updated_metrics = Map.put(updated_metrics, :routing_efficiency, routing_efficiency)
@@ -342,7 +342,7 @@ defmodule VsmPhoenix.Infrastructure.SystemicCoordinationMetrics do
     # Update resolution rate
     total = updated_metrics.total_conflicts
     resolved = updated_metrics.resolved_conflicts
-    resolution_rate = if total > 0, do: resolved / total, else: 1.0
+    resolution_rate = if total > 0, do: resolved / total, else: 0.0  # Real: 0 when no conflicts
     
     updated_metrics = Map.put(updated_metrics, :conflict_resolution_rate, resolution_rate)
     |> Map.put(:last_updated, :erlang.system_time(:millisecond))
@@ -428,7 +428,7 @@ defmodule VsmPhoenix.Infrastructure.SystemicCoordinationMetrics do
       messages_per_second: Float.round(messages_per_second, 3),
       direct_messages: direct_count,
       redirected_messages: redirected_count,
-      direct_ratio: if(message_count > 0, do: Float.round(direct_count / message_count, 3), else: 1.0)
+      direct_ratio: if(message_count > 0, do: Float.round(direct_count / message_count, 3), else: 0.0)  # Real: 0 when no messages
     }
   end
   
@@ -443,8 +443,8 @@ defmodule VsmPhoenix.Infrastructure.SystemicCoordinationMetrics do
     
     if length(messages) == 0 do
       %{
-        efficiency_score: 1.0,
-        direct_percentage: 100.0,
+        efficiency_score: 0.0,  # Real: 0 when no messages routed
+        direct_percentage: 0.0,  # Real: 0 when no messages
         avg_redirect_penalty: 0.0,
         routing_patterns: %{}
       }
@@ -490,7 +490,7 @@ defmodule VsmPhoenix.Infrastructure.SystemicCoordinationMetrics do
   end
   
   defp calculate_flow_balance_ratio(flows) when flows == %{} do
-    %{overall_balance: 1.0, unit_imbalances: %{}}
+    %{overall_balance: 0.0, unit_imbalances: %{}}  # Real: 0 when no flow data
   end
   defp calculate_flow_balance_ratio(flows) do
     # Calculate balance for each unit
@@ -520,7 +520,7 @@ defmodule VsmPhoenix.Infrastructure.SystemicCoordinationMetrics do
     overall_balance = if length(balance_scores) > 0 do
       Enum.sum(balance_scores) / length(balance_scores)
     else
-      1.0
+      0.0  # Real: 0 when no flow measured
     end
     
     %{

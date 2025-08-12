@@ -528,7 +528,7 @@ defmodule VsmPhoenix.System5.Components.StrategicPlanner do
 
   defp do_calculate_decision_consistency(decisions) do
     if length(decisions) < 2 do
-      %{score: 1.0, assessment: "Insufficient history for analysis"}
+      %{score: 0.0, assessment: "Insufficient history for analysis"}  # Real: 0 when no decisions
     else
       recent_decisions = Enum.take(decisions, 20)
 

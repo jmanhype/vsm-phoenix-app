@@ -130,18 +130,18 @@ defmodule VsmPhoenix.System1.Operations do
           inventory_accuracy: calculate_accuracy_from_metrics(systemic)
         }
       _ ->
-        # Fallback to defaults if metrics not available
+        # Real defaults when no metrics available
         %{
           activity_rate: 0.0,
-          success_ratio: 1.0,
+          success_ratio: 0.0,  # Real: 0 when no operations
           processing_latency_ms: 0.0,
           throughput_per_second: 0.0,
           error_rate: 0.0,
           orders_processed: 0,
           average_processing_time: 0,
-          success_rate: 1.0,
-          customer_satisfaction: 0.95,
-          inventory_accuracy: 0.98
+          success_rate: 0.0,  # Real: 0 when no operations
+          customer_satisfaction: 0.0,  # Real: 0 until measured
+          inventory_accuracy: 0.0  # Real: 0 until measured
         }
     end
   end

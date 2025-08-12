@@ -832,7 +832,7 @@ defmodule VsmPhoenix.System5.Queen do
   defp calculate_decision_consistency(decisions) do
     # Analyze consistency of recent decisions
     if length(decisions) < 2 do
-      1.0  # Perfect consistency with fewer than 2 decisions
+      0.0  # Real: 0 when no decisions to measure consistency
     else
       recent_decisions = Enum.take(decisions, 10)
       

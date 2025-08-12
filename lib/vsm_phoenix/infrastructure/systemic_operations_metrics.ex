@@ -175,7 +175,7 @@ defmodule VsmPhoenix.Infrastructure.SystemicOperationsMetrics do
       throughput_per_minute: 0.0,
       
       # Ratios
-      success_ratio: 1.0,
+      success_ratio: 0.0,  # Real: 0 until operations succeed
       failure_ratio: 0.0,
       error_ratio: 0.0,
       
@@ -302,7 +302,7 @@ defmodule VsmPhoenix.Infrastructure.SystemicOperationsMetrics do
     error_rate = error / time_span_seconds
     
     # Calculate ratios
-    success_ratio = if total > 0, do: success / total, else: 1.0
+    success_ratio = if total > 0, do: success / total, else: 0.0  # Real: 0 when no operations
     failure_ratio = if total > 0, do: failure / total, else: 0.0
     error_ratio = if total > 0, do: error / total, else: 0.0
     
@@ -347,7 +347,7 @@ defmodule VsmPhoenix.Infrastructure.SystemicOperationsMetrics do
         end_time: now,
         total_operations: 0,
         activity_rate: 0.0,
-        success_ratio: 1.0,
+        success_ratio: 0.0,  # Real: 0 when no operations
         avg_latency_ms: 0.0,
         throughput: 0.0,
         error_rate: 0.0

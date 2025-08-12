@@ -95,7 +95,7 @@ defmodule VsmPhoenix.System3.Control do
       flow_pools: initialize_flow_pools(flow_patterns),
       allocations: %{},
       pattern_metrics: %{
-        allocation_efficiency: 1.0,
+        allocation_efficiency: 0.0,  # Real: 0 until allocations happen
         flow_utilization: 0.0,
         waste_ratio: 0.0,
         constraint_violations: [],
@@ -2267,7 +2267,7 @@ defmodule VsmPhoenix.System3.Control do
   defp calculate_allocation_efficiency(state, flow_patterns) do
     # Allocation Efficiency - used vs allocated ratio
     if map_size(state.allocations) == 0 do
-      1.0
+      0.0  # Real: 0 when no allocations
     else
       total_allocated = calculate_total_allocated_flows(state.allocations)
       total_used = calculate_total_used_flows(flow_patterns)
@@ -2275,7 +2275,7 @@ defmodule VsmPhoenix.System3.Control do
       if total_allocated > 0 do
         Float.round(total_used / total_allocated, 3)
       else
-        1.0
+        0.0  # Real: 0 when nothing allocated
       end
     end
   end
@@ -3185,7 +3185,7 @@ defmodule VsmPhoenix.System3.Control do
       {flow_type, %{
         utilization: if(pool.total_capacity > 0, do: pool.allocated_capacity / pool.total_capacity, else: 0),
         available: pool.total_capacity - pool.allocated_capacity - pool.reserved_capacity,
-        efficiency: if(pool.allocated_capacity > 0, do: pool.actual_usage / pool.allocated_capacity, else: 1.0)
+        efficiency: if(pool.allocated_capacity > 0, do: pool.actual_usage / pool.allocated_capacity, else: 0.0)  # Real: 0 when no allocation
       }}
     end)
     |> Map.new()

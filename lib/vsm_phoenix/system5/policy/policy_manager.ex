@@ -386,7 +386,7 @@ defmodule VsmPhoenix.System5.Policy.PolicyManager do
                    |> Enum.filter(&is_number/1)
     
     if policy_values == [] do
-      1.0
+      0.0  # Real: 0 when no policies to measure coherence
     else
       # Calculate variance as inverse of coherence
       mean = Enum.sum(policy_values) / length(policy_values)

@@ -43,7 +43,7 @@ defmodule VsmPhoenix.PerformanceMonitor do
         message_throughput: nil
       },
       anomalies: [],
-      performance_score: 1.0,
+      performance_score: 0.0,  # Real: 0 until performance is measured
       metrics_cache: %{}
     }
     
