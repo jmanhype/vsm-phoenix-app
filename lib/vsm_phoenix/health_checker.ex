@@ -168,7 +168,7 @@ defmodule VsmPhoenix.HealthChecker do
       :system4 -> VsmPhoenix.System4.Intelligence
       :system3 -> VsmPhoenix.System3.Control
       :system2 -> VsmPhoenix.System2.Coordinator
-      :system1 -> VsmPhoenix.System1.Operations
+      :system1 -> :operations_context  # Operations uses :operations_context as its name
     end
     
     case Process.whereis(process_name) do
