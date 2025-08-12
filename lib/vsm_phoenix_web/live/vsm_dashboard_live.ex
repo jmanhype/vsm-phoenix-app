@@ -396,35 +396,35 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Policy Coherence</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@queen_metrics, :coherence, 0.95)) %>
+                  <%= format_percentage(Map.get(@queen_metrics, :coherence, Map.get(@queen_metrics, :policy_coherence, 0.95))) %>
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Identity Preservation</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@queen_metrics, :coherence, 0.92)) %>
+                  <%= format_percentage(Map.get(@queen_metrics, :identity_preservation, Map.get(@queen_metrics, :identity_coherence, 0.92))) %>
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Strategic Alignment</span>
                 <span class="font-mono text-blue-400">
-                  <%= format_percentage(Map.get(@queen_metrics, :strategic_alignment, 0.89)) %>
+                  <%= format_percentage(Map.get(@queen_metrics, :strategic_alignment, Map.get(@queen_metrics, :strategic_coherence, 0.89))) %>
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Decision Consistency</span>
                 <span class="font-mono text-blue-400">
-                  <%= format_percentage(Map.get(@queen_metrics, :decision_consistency, 0.90)) %>
+                  <%= format_percentage(Map.get(@queen_metrics, :decision_consistency, Map.get(@queen_metrics, :decision_confidence, 0.90))) %>
                 </span>
               </div>
               
               <div class="mt-4 p-3 bg-gray-700 rounded">
                 <div class="text-sm text-gray-400 mb-1">Active Policies</div>
                 <div class="text-sm">
-                  <%= for policy <- Map.get(@queen_metrics, :policies, ["governance", "adaptation", "resource"]) do %>
+                  <%= for policy <- Map.get(@queen_metrics, :active_policies, Map.get(@queen_metrics, :policies, ["governance", "adaptation", "resource"])) do %>
                     <span class="inline-block bg-purple-600 rounded px-2 py-1 text-xs mr-1 mb-1">
                       <%= policy %>
                     </span>
@@ -445,21 +445,21 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Environmental Scan</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@intelligence_status, :scan_coverage, 0.87)) %>
+                  <%= format_percentage(Map.get(@intelligence_status, :scan_coverage, Map.get(@intelligence_status, :environmental_scanning, 0.87))) %>
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Adaptation Readiness</span>
                 <span class="font-mono text-yellow-400">
-                  <%= format_percentage(Map.get(@intelligence_status, :adaptation_readiness, 0.91)) %>
+                  <%= format_percentage(Map.get(@intelligence_status, :adaptation_readiness, Map.get(@intelligence_status, :variety_amplification, 0.91))) %>
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Innovation Index</span>
                 <span class="font-mono text-blue-400">
-                  <%= format_percentage(Map.get(@intelligence_status, :innovation_capacity, 0.74)) %>
+                  <%= format_percentage(Map.get(@intelligence_status, :innovation_capacity, Map.get(@intelligence_status, :anomaly_detection, 0.74))) %>
                 </span>
               </div>
               
@@ -485,14 +485,14 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Resource Efficiency</span>
                 <span class="font-mono text-green-400">
-                  <%= format_percentage(Map.get(@control_metrics, :efficiency, 0.83)) %>
+                  <%= format_percentage(Map.get(@control_metrics, :efficiency, Map.get(@control_metrics, :resource_efficiency, 0.83))) %>
                 </span>
               </div>
               
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Flow Utilization</span>
                 <span class="font-mono text-yellow-400">
-                  <%= format_percentage(Map.get(@control_metrics, :flow_utilization, 0.76)) %>
+                  <%= format_percentage(Map.get(@control_metrics, :flow_utilization, Map.get(@control_metrics, :utilization, 0.76))) %>
                 </span>
               </div>
               
