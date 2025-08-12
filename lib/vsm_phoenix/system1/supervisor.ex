@@ -28,28 +28,39 @@ defmodule VsmPhoenix.System1.Supervisor do
   - :config - Agent-specific configuration
   """
   def spawn_agent(agent_type, opts \\ []) do
-    agent_id = Keyword.get(opts, :id, generate_agent_id(agent_type))
-    config = Keyword.get(opts, :config, %{})
+    # Handle both Map (for refactored telegram) and Keyword list formats
+    {agent_id, config} = case opts do
+      %{id: id} = map_config -> 
+        {id, map_config}  # For refactored telegram agent
+      keyword_list when is_list(keyword_list) ->
+        {Keyword.get(keyword_list, :id, generate_agent_id(agent_type)),
+         Keyword.get(keyword_list, :config, %{})}
+    end
     
     agent_module = case agent_type do
       :sensor -> VsmPhoenix.System1.Agents.SensorAgent
       :worker -> VsmPhoenix.System1.Agents.WorkerAgent
       :api -> VsmPhoenix.System1.Agents.ApiAgent
       :llm_worker -> VsmPhoenix.System1.Agents.LLMWorkerAgent
-      :telegram -> VsmPhoenix.System1.Agents.TelegramAgent
+      :telegram -> VsmPhoenix.Agents.TelegramAgent
       _ -> raise ArgumentError, "Unknown agent type: #{agent_type}"
     end
     
     Logger.info("🔧 Creating child_spec with config: #{inspect(config)}")
     
-    child_spec = {
-      agent_module,
-      [
-        id: agent_id,
-        config: config,
-        registry: :skip_registration
-      ]
-    }
+    # For refactored telegram agent, pass the config directly
+    child_spec = if agent_type == :telegram do
+      {agent_module, config}
+    else
+      {
+        agent_module,
+        [
+          id: agent_id,
+          config: config,
+          registry: :skip_registration
+        ]
+      }
+    end
     
     case DynamicSupervisor.start_child(__MODULE__, child_spec) do
       {:ok, pid} ->

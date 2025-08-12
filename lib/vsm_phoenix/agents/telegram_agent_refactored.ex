@@ -218,6 +218,7 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   end
   
   defp via_tuple(id) do
-    {:via, Registry, {VsmPhoenix.System1.Registry, id}}
+    # Use direct process name instead of registry
+    String.to_atom("telegram_agent_#{id}")
   end
 end

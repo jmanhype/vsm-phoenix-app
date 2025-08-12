@@ -26,8 +26,8 @@ defmodule VsmPhoenix.System1.TelegramInit do
       Logger.info("🤖 Auto-spawning Telegram bot...")
       
       case VsmPhoenix.System1.Supervisor.spawn_agent(:telegram, 
-        id: "telegram_main",
-        config: %{
+        %{
+          id: "telegram_main",
           bot_token: telegram_config[:bot_token],
           webhook_mode: telegram_config[:webhook_mode] || false,
           authorized_chats: telegram_config[:authorized_chats] || [],
