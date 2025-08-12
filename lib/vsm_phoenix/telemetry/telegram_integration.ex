@@ -430,9 +430,10 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
   
   defp analyze_command_patterns do
     # Correlate command frequency with response times
-    # Note: SignalProcessor correlation is temporarily disabled due to refactoring
-    # TODO: Implement correlation through RefactoredAnalogArchitect
-    correlation = %{coefficient: 0.0, confidence: 0.0}
+    {:ok, cmd_data} = RefactoredAnalogArchitect.get_signal_data(@signal_ids.command_frequency, %{last_n: 1000})
+    {:ok, response_data} = RefactoredAnalogArchitect.get_signal_data(@signal_ids.response_time, %{last_n: 1000})
+    
+    correlation = calculate_correlation(cmd_data.samples, response_data.samples)
     
     %{
       correlation: correlation,
@@ -604,8 +605,31 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
   end
   
   defp detect_command_clusters do
-    # Simplified clustering
-    %{clusters: [], method: :dbscan}
+    # Get command frequency data and group by command type
+    {:ok, cmd_data} = RefactoredAnalogArchitect.get_signal_data(@signal_ids.command_frequency, %{last_n: 1000})
+    
+    # Group samples by command metadata
+    command_groups = Enum.group_by(cmd_data.samples, fn sample ->
+      Map.get(sample.metadata || %{}, :command, :unknown)
+    end)
+    
+    # Calculate frequency clusters
+    clusters = Enum.map(command_groups, fn {command, samples} ->
+      %{
+        command: command,
+        frequency: length(samples),
+        avg_timestamp: calculate_avg_timestamp(samples),
+        peak_usage_hours: identify_peak_usage_hours(samples)
+      }
+    end)
+    |> Enum.sort_by(& &1.frequency, :desc)
+    
+    %{
+      clusters: clusters,
+      method: :frequency_grouping,
+      total_commands: length(cmd_data.samples),
+      unique_commands: length(command_groups)
+    }
   end
   
   defp identify_performance_bottlenecks(correlation) do
@@ -637,5 +661,65 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
   defp schedule_analysis do
     # Analyze every 30 seconds
     Process.send_after(self(), :analyze_signals, 30_000)
+  end
+
+  # Additional Helper Functions
+  
+  defp calculate_correlation(cmd_samples, response_samples) do
+    if length(cmd_samples) > 1 and length(response_samples) > 1 do
+      # Simple Pearson correlation coefficient
+      n = min(length(cmd_samples), length(response_samples))
+      cmd_values = cmd_samples |> Enum.take(n) |> Enum.map(& &1.y)
+      response_values = response_samples |> Enum.take(n) |> Enum.map(& &1.y)
+      
+      cmd_mean = Enum.sum(cmd_values) / n
+      response_mean = Enum.sum(response_values) / n
+      
+      numerator = Enum.zip(cmd_values, response_values)
+      |> Enum.map(fn {x, y} -> (x - cmd_mean) * (y - response_mean) end)
+      |> Enum.sum()
+      
+      cmd_variance = Enum.map(cmd_values, fn x -> (x - cmd_mean) * (x - cmd_mean) end) |> Enum.sum()
+      response_variance = Enum.map(response_values, fn y -> (y - response_mean) * (y - response_mean) end) |> Enum.sum()
+      
+      denominator = :math.sqrt(cmd_variance * response_variance)
+      
+      coefficient = if denominator == 0, do: 0.0, else: numerator / denominator
+      confidence = if n > 10, do: :math.sqrt(n - 2) / :math.sqrt(1 - coefficient * coefficient), else: 0.0
+      
+      %{coefficient: coefficient, confidence: min(confidence, 1.0), samples: n}
+    else
+      %{coefficient: 0.0, confidence: 0.0, samples: 0}
+    end
+  end
+  
+  defp calculate_avg_timestamp(samples) do
+    if length(samples) > 0 do
+      timestamps = Enum.map(samples, & &1.x)
+      Enum.sum(timestamps) / length(timestamps)
+    else
+      0
+    end
+  end
+  
+  defp identify_peak_usage_hours(samples) do
+    # Group by hour of day and find peaks
+    hourly_usage = Enum.group_by(samples, fn sample ->
+      # Convert microsecond timestamp to hour
+      datetime = DateTime.from_unix!(sample.x, :microsecond)
+      datetime.hour
+    end)
+    
+    # Find hours with above-average usage
+    avg_usage = if map_size(hourly_usage) > 0 do
+      total_samples = Enum.sum(Enum.map(hourly_usage, fn {_, samples} -> length(samples) end))
+      total_samples / 24
+    else
+      0
+    end
+    
+    Enum.filter(hourly_usage, fn {_hour, samples} -> length(samples) > avg_usage end)
+    |> Enum.map(fn {hour, _} -> "#{String.pad_leading(to_string(hour), 2, "0")}:00" end)
+    |> Enum.sort()
   end
 end

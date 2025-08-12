@@ -12,6 +12,7 @@ defmodule VsmPhoenix.Telemetry.ContextFusionEngine do
   use GenServer
   require Logger
   alias VsmPhoenix.Telemetry.PatternDetector
+  alias VsmPhoenix.Telemetry.RefactoredAnalogArchitect
 
   @context_types [
     :system_phase,      # Current VSM system phase (1-5)
