@@ -163,10 +163,18 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
       _ -> %{}
     end
     
+    # Convert processed message back to raw Telegram format for ConversationManager
+    raw_message = %{
+      "text" => message[:content] || "",
+      "chat" => %{"id" => message.chat_id, "type" => "private"},
+      "from" => message[:user] || %{},
+      "message_id" => System.unique_integer([:positive])
+    }
+    
     # Store incoming message first
     ConversationManager.store_message(
       message.chat_id,
-      message,
+      raw_message,
       state.id
     )
     
