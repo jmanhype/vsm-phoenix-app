@@ -1119,7 +1119,16 @@ defmodule VsmPhoenixWeb.VSMDashboardLive do
   defp update_viability_score(socket) do
     viability_score = try do
       viability = Queen.evaluate_viability()
-      viability.system_health
+      # Check if we got a viability_index or system_health
+      cond do
+        is_map(viability) and Map.has_key?(viability, :viability_index) ->
+          viability.viability_index
+        is_map(viability) and Map.has_key?(viability, :system_health) ->
+          viability.system_health  
+        true ->
+          Logger.warning("Unexpected viability format: #{inspect(viability)}")
+          0.0
+      end
     rescue
       e ->
         Logger.error("Failed to evaluate viability: #{inspect(e)}")

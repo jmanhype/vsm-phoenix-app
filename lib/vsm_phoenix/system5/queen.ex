@@ -49,7 +49,18 @@ defmodule VsmPhoenix.System5.Queen do
   
   def evaluate_viability do
     # NEW: Delegate to ViabilityEvaluator
-    ViabilityEvaluator.evaluate_viability()
+    case ViabilityEvaluator.evaluate_viability() do
+      {:ok, viability_data} -> viability_data
+      {:error, _reason} -> 
+        # Fallback to default viability metrics if evaluator fails
+        %{
+          system_health: 0.0,
+          adaptation_capacity: 0.0,
+          resource_efficiency: 0.0,
+          identity_coherence: 0.0,
+          viability_index: 0.0
+        }
+    end
   end
   
   def get_strategic_direction do
