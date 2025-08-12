@@ -14,8 +14,19 @@ defmodule VsmPhoenixV2.Application do
       {Phoenix.PubSub, name: VsmPhoenixV2.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: VsmPhoenixV2.Finch},
-      # Start a worker by calling: VsmPhoenixV2.Worker.start_link(arg)
-      # {VsmPhoenixV2.Worker, arg},
+      
+      # VSM System Registries
+      {Registry, keys: :unique, name: VsmPhoenixV2.CRDTRegistry},
+      {Registry, keys: :unique, name: VsmPhoenixV2.System5Registry},
+      {Registry, keys: :unique, name: VsmPhoenixV2.System4Registry},
+      {Registry, keys: :unique, name: VsmPhoenixV2.System3Registry},
+      {Registry, keys: :unique, name: VsmPhoenixV2.PersistenceRegistry},
+      {Registry, keys: :unique, name: VsmPhoenixV2.ResilienceRegistry},
+      {Registry, keys: :unique, name: VsmPhoenixV2.TelegramRegistry},
+      
+      # VSM Core Systems
+      VsmPhoenixV2.VSMSupervisor,
+      
       # Start to serve requests, typically the last entry
       VsmPhoenixV2Web.Endpoint
     ]

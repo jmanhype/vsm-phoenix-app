@@ -157,6 +157,7 @@ defmodule VsmPhoenix.Application do
       VsmPhoenix.System5.Policy.PolicyManager,
       VsmPhoenix.System5.Viability.ViabilityEvaluator,
       VsmPhoenix.System5.Decision.DecisionEngine,
+      VsmPhoenix.System5.Components.StrategicPlanner,
       
       # System 5 - Queen Policy Governance (lightweight orchestrator)
       VsmPhoenix.System5.Queen,

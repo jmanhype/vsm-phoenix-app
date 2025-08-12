@@ -59,8 +59,7 @@ defmodule VsmPhoenixV2.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
       
-      # VSM-specific dependencies
-      {:amqp, "~> 3.3"},
+      # VSM-specific dependencies  
       {:delta_crdt, "~> 0.6.4"},
       {:fuse, "~> 2.4"},
       {:req, "~> 0.5.0"},

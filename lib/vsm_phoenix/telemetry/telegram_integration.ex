@@ -628,7 +628,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
       clusters: clusters,
       method: :frequency_grouping,
       total_commands: length(cmd_data.samples),
-      unique_commands: length(command_groups)
+      unique_commands: map_size(command_groups)
     }
   end
   
