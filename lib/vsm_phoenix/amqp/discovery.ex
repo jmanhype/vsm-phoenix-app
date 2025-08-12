@@ -26,6 +26,7 @@ defmodule VsmPhoenix.AMQP.Discovery do
   @heartbeat_interval 2_000  # 2 seconds
   @agent_timeout 15_000      # 15 seconds before considering agent dead
   @gossip_fanout 3           # Number of peers to gossip to
+  @debug_unknown_messages Application.compile_env(:vsm_phoenix, :debug_discovery_messages, false)
   
   # Message types for discovery protocol
   @msg_announce "ANNOUNCE"
@@ -615,8 +616,42 @@ defmodule VsmPhoenix.AMQP.Discovery do
   end
   
   defp process_discovery_message(msg, state) do
-    Logger.warning("Discovery: Unknown message type: #{inspect(msg["type"])}")
-    state
+    # Best practice: Don't log unknown messages in production as it can flood logs
+    # Instead, track metrics and only log in debug mode
+    case msg do
+      %{"type" => nil} ->
+        # Silently ignore messages with nil type - common in discovery protocols
+        state
+      
+      %{"type" => type} when is_binary(type) ->
+        # Track unknown message types for monitoring but don't log each one
+        :telemetry.execute(
+          [:vsm, :discovery, :unknown_message],
+          %{count: 1},
+          %{message_type: type}
+        )
+        
+        # Only log if debug mode is enabled
+        if @debug_unknown_messages do
+          Logger.debug("Discovery: Unknown message type: #{type}")
+        end
+        
+        state
+      
+      _ ->
+        # Malformed messages - track but don't log
+        :telemetry.execute(
+          [:vsm, :discovery, :malformed_message],
+          %{count: 1},
+          %{}
+        )
+        
+        if @debug_unknown_messages do
+          Logger.debug("Discovery: Malformed message received: #{inspect(msg)}")
+        end
+        
+        state
+    end
   end
   
   defp schedule_broadcast do
