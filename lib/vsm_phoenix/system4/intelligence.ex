@@ -1093,8 +1093,8 @@ defmodule VsmPhoenix.System4.Intelligence do
     pattern_diversity = calculate_pattern_diversity(environmental_data)
     
     # Adaptation success rate affects innovation capacity
-    # (Would get from adaptation history in full implementation)
-    adaptation_factor = 0.3
+    # Use real adaptation data - 0.0 until we have real adaptations
+    adaptation_factor = 0.0
     
     # Environmental complexity drives innovation need
     environmental_complexity = calculate_environmental_complexity(environmental_data)
