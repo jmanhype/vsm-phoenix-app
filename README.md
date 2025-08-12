@@ -9,6 +9,8 @@
   [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://jmanhype.github.io/vsm-phoenix-app/)
   
   [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://jmanhype.github.io/vsm-phoenix-app/)
+  
+  [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://jmanhype.github.io/vsm-phoenix-app/)
 
 A complete Phoenix application implementing Stafford Beer's Viable Systems Model (VSM) with advanced cybernetic features including recursive spawning, MCP integration, AMQP messaging, real-time monitoring, and algedonic signal processing.
 
