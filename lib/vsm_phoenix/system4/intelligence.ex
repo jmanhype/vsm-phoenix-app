@@ -13,6 +13,9 @@ defmodule VsmPhoenix.System4.Intelligence do
   use GenServer
   require Logger
   
+  # Delegate to proper refactored components
+  alias VsmPhoenix.System4.Intelligence.{AdaptationEngine, Scanner, Analyzer}
+  
   @name __MODULE__
   
   # Client API

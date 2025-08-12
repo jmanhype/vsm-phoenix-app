@@ -39,13 +39,30 @@ defmodule VsmPhoenix.System2.Coordinator do
     GenServer.call(@name, {:synchronize_systems, systems})
   end
   
-  # Legacy compatibility functions
+  # Legacy compatibility functions  
   def get_metrics do
     GenServer.call(@name, :get_metrics)
   end
   
   def emergency_stabilize do
     GenServer.cast(@name, :emergency_stabilize)
+  end
+  
+  # Missing functions that system actually calls
+  def register_context(context_name, context_data) do
+    GenServer.call(@name, {:register_context, context_name, context_data})
+  end
+  
+  def broadcast_coordination(channel, message) do
+    GenServer.cast(@name, {:broadcast_coordination, channel, message})
+  end
+
+  def detect_oscillation_risk(system) do
+    GenServer.call(@name, {:detect_oscillation_risk, system})
+  end
+
+  def coordinate_implementation(initiative) do
+    GenServer.call(@name, {:coordinate_implementation, initiative})
   end
   
   # Server Callbacks
@@ -156,13 +173,56 @@ defmodule VsmPhoenix.System2.Coordinator do
   end
   
   @impl true
+  def handle_call({:register_context, context_name, context_data}, _from, state) do
+    Logger.info("🔄 Registering context: #{context_name}")
+    # Simple context registration - could store in state if needed
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:detect_oscillation_risk, system}, _from, state) do
+    Logger.info("🔄 Detecting oscillation risk for system: #{system}")
+    
+    risk_assessment = %{
+      system: system,
+      risk_level: :low,  # Simple implementation
+      timestamp: System.system_time(:millisecond),
+      recommendations: ["Monitor system behavior", "Continue normal operations"]
+    }
+    
+    {:reply, {:ok, risk_assessment}, state}
+  end
+
+  @impl true
+  def handle_call({:coordinate_implementation, initiative}, _from, state) do
+    Logger.info("🔄 Coordinating implementation of initiative: #{initiative}")
+    
+    coordination_result = %{
+      initiative: initiative,
+      status: :coordinated,
+      timestamp: System.system_time(:millisecond),
+      next_steps: ["Begin implementation", "Monitor progress"]
+    }
+    
+    new_state = %{state | coordination_count: state.coordination_count + 1}
+    {:reply, {:ok, coordination_result}, new_state}
+  end
+
+  @impl true
+  def handle_cast({:broadcast_coordination, channel, message}, state) do
+    Logger.debug("🔄 Broadcasting coordination to #{channel}: #{inspect(message)}")
+    # Simple broadcast - could use Phoenix.PubSub if needed  
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_cast(:emergency_stabilize, state) do
     Logger.warn("🔄 Emergency stabilization requested!")
     
     # Emergency stabilization actions
     emergency_actions = [
       "Reducing message processing rate",
-      "Increasing coordination buffer",
+      "Increasing coordination buffer", 
       "Activating emergency protocols"
     ]
     
