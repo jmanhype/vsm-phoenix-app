@@ -250,10 +250,11 @@ defmodule VsmPhoenix.Resilience.GodObjectBehavior do
         Logger.error("🚨 EMERGENCY: All resilience patterns failed for #{operation_name} in #{__MODULE__}")
         
         # Emit critical algedonic signal
-        AlgedonicSignals.emit_signal({
-          :pain,
-          intensity: 1.0,
-          context: :emergency_fallback_activated
+        VsmPhoenix.System5.Components.AlgedonicProcessor.send_pain_signal(1.0, %{
+          source: __MODULE__,
+          context: :emergency_fallback_activated,
+          operation: operation_name,
+          severity: :critical
         })
         
         {:error, {:emergency_fallback, operation_name, context}}

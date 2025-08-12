@@ -299,4 +299,79 @@ defmodule VsmPhoenix.System4.Intelligence do
   defp assess_complexity_level(_), do: :low
   
   defp estimate_processing_requirements(_variety_data), do: %{cpu: :low, memory: :medium, network: :low}
+
+  # Missing function that's being called from other modules - delegate to AdaptationEngine
+  def generate_adaptation_proposal(challenge) do
+    AdaptationEngine.generate_proposal(challenge)
+  end
+
+  def get_system_health do
+    # Aggregate health from Scanner and other intelligence components
+    scanner_health = case Scanner.get_tidewave_status() do
+      {:ok, status} -> %{scanner: :healthy, tidewave_status: status}
+      {:error, _} -> %{scanner: :degraded, tidewave_status: :unknown}
+    end
+    
+    adaptation_health = case AdaptationEngine.get_adaptation_metrics() do
+      {:ok, metrics} -> %{adaptation_engine: :healthy, metrics: metrics}
+      {:error, _} -> %{adaptation_engine: :degraded, metrics: %{}}
+    end
+    
+    %{
+      overall_status: :operational,
+      components: Map.merge(scanner_health, adaptation_health),
+      timestamp: System.system_time(:millisecond)
+    }
+  end
+
+  def integrate_tidewave_insights(insights) do
+    GenServer.cast(@name, {:integrate_tidewave_insights, insights})
+  end
+
+  def analyze_variety_patterns(variety_data, scope) do
+    GenServer.call(@name, {:analyze_variety_patterns, variety_data, scope})
+  end
+
+  def get_intelligence_state do
+    GenServer.call(@name, :get_intelligence_state)
+  end
+
+  def request_adaptation_proposals(request) do
+    GenServer.cast(@name, {:request_adaptation_proposals, request})
+  end
+
+
+  @impl true
+  def handle_call({:analyze_variety_patterns, variety_data, scope}, _from, state) do
+    analysis = %{
+      pattern_count: if(is_map(variety_data), do: map_size(variety_data), else: 0),
+      scope: scope,
+      complexity_score: calculate_variety_score(variety_data),
+      recommendations: ["Monitor patterns", "Adjust thresholds"]
+    }
+    {:reply, {:ok, analysis}, state}
+  end
+
+  @impl true
+  def handle_call(:get_intelligence_state, _from, state) do
+    intelligence_state = %{
+      scan_status: if(state.scans_performed > 0, do: :active, else: :initializing),
+      environmental_readiness: state.adaptation_readiness,
+      learning_progress: state.innovation_index,
+      threat_assessment: :low
+    }
+    {:reply, {:ok, intelligence_state}, state}
+  end
+
+  @impl true  
+  def handle_cast({:integrate_tidewave_insights, insights}, state) do
+    Logger.info("🔍 Integrating Tidewave insights: #{inspect(insights)}")
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_cast({:request_adaptation_proposals, request}, state) do
+    Logger.info("🔍 Adaptation proposal requested: #{inspect(request)}")
+    {:noreply, state}
+  end
 end

@@ -17,10 +17,12 @@ defmodule VsmPhoenix.System5.AlgedonicSignals do
   - {:neutral, intensity: 0.0-1.0, context: map}
   
   Examples:
+      # For quick usage, use the simple interface:
       iex> AlgedonicSignals.emit_signal({:pain, intensity: 0.8, context: :telegram_api_failure})
       :ok
       
-      iex> AlgedonicSignals.emit_signal({:pleasure, intensity: 0.6, context: :circuit_breaker_recovered})
+      # For more detailed context, use AlgedonicProcessor directly:
+      iex> AlgedonicProcessor.send_pain_signal(0.8, %{source: MyModule, reason: :api_failure})
       :ok
   """
   def emit_signal(signal) do

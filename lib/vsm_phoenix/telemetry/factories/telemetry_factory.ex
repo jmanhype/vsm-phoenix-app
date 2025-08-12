@@ -190,20 +190,32 @@ defmodule VsmPhoenix.Telemetry.Factories.TelemetryFactory do
     case signal_type do
       :performance -> 
         if :trend in config.analysis_modes do
-          VsmPhoenix.Telemetry.PerformanceSignalProcessor
+          # Fallback to default processor if specialized one doesn't exist
+          module_or_fallback(VsmPhoenix.Telemetry.PerformanceSignalProcessor)
         else
-          VsmPhoenix.Telemetry.BasicSignalProcessor
+          module_or_fallback(VsmPhoenix.Telemetry.BasicSignalProcessor)
         end
       :conversation ->
         if :semantic in config.analysis_modes do
-          VsmPhoenix.Telemetry.ConversationSignalProcessor
+          module_or_fallback(VsmPhoenix.Telemetry.ConversationSignalProcessor)
         else
-          VsmPhoenix.Telemetry.BasicSignalProcessor
+          module_or_fallback(VsmPhoenix.Telemetry.BasicSignalProcessor)
         end
       :system_health ->
-        VsmPhoenix.Telemetry.HealthSignalProcessor
+        module_or_fallback(VsmPhoenix.Telemetry.HealthSignalProcessor)
       _ ->
         VsmPhoenix.Telemetry.SignalProcessor  # Default processor
+    end
+  end
+
+  # Helper to gracefully fallback to default processor if specialized ones don't exist
+  defp module_or_fallback(module) do
+    if Code.ensure_loaded?(module) do
+      module
+    else
+      SharedLogging.log_telemetry_event(:warning, :factory,
+        "Specialized processor #{inspect(module)} not available, using default SignalProcessor")
+      VsmPhoenix.Telemetry.SignalProcessor
     end
   end
 

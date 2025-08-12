@@ -232,7 +232,7 @@ defmodule VsmPhoenix.Resilience.RefactoredIntegration do
     }
     
     # This would typically be done through PolicyManager
-    PolicyManager.update_policy(:attention_configuration, attention_config)
+    PolicyManager.set_policy(:attention_configuration, attention_config)
   end
   
   defp setup_secure_resilience_routing do
