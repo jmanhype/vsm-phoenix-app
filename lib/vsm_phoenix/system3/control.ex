@@ -865,8 +865,15 @@ defmodule VsmPhoenix.System3.Control do
     # Estimate if the optimization can free enough resources
     estimated_freed = optimization.estimated_improvement
     
+    # Handle both map formats - direct resources or wrapped in .resources
+    required = if is_map(request) and Map.has_key?(request, :resources) do
+      request.resources
+    else
+      request
+    end
+    
     # Check if the freed resources would satisfy the request
-    request.resources
+    required
     |> Enum.all?(fn {resource_type, amount} ->
       pool = state.resource_pools[resource_type] || state.resource_pools[String.to_atom(resource_type)]
       if pool do

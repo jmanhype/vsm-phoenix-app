@@ -12,8 +12,8 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
   use GenServer
   require Logger
   
+  alias VsmPhoenix.Telemetry.RefactoredAnalogArchitect
   alias VsmPhoenix.Telemetry.{
-    RefactoredAnalogArchitect,
     SignalProcessor,
     PatternDetector,
     AdaptiveController,
@@ -60,7 +60,7 @@ defmodule VsmPhoenix.Telemetry.TelegramIntegration do
   def init(_opts) do
     Logger.info("📱🎛️ Initializing Telegram-Analog Telemetry Integration...")
     
-    # Register signals with AnalogArchitect
+    # Register signals with RefactoredAnalogArchitect
     register_telegram_signals()
     
     # Set up adaptive thresholds
