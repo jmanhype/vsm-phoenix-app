@@ -186,7 +186,8 @@ defmodule VsmPhoenix.TelegramBot.ConversationManager do
   
   def handle_call({:get_conversation_context, chat_id}, _from, state) do
     # Get recent conversation context for prompt generation
-    case get_conversation_history(chat_id, limit: 10, include_context: true) do
+    # Call handle_call directly to avoid recursive GenServer call
+    case handle_call({:get_conversation_history, chat_id, [limit: 10, include_context: true]}, nil, state) do
       {:ok, history} ->
         # Get user preferences
         user_prefs = get_user_preferences_internal(chat_id)

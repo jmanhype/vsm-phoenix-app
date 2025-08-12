@@ -26,10 +26,19 @@ defmodule VsmPhoenix.Telegram.MessageProcessor do
   
   # DRY: Single entry point for all messages
   def process_update(update, context) do
-    update
+    result = update
     |> extract_message()
     |> route_message(context)
-    |> log_operation("Message processing")
+    
+    # Log and return the result
+    case result do
+      {:ok, processed} -> 
+        log_info("Processed update: #{inspect(processed.type)}")
+        {:ok, processed}
+      error -> 
+        log_error("Failed to process update: #{inspect(error)}")
+        error
+    end
   end
   
   # DRY: Extract message from various update types

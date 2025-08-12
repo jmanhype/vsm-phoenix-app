@@ -137,13 +137,11 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
     new_state = %{state | polling_offset: update_id + 1}
     
     # Process through pipeline
-    with {:ok, processed} <- MessageProcessor.process_update(update, state.config),
-         {:ok, _} <- handle_processed_message(processed, new_state) do
-      {:ok, new_state}
-    else
-      error ->
-        log_error("Update processing failed: #{inspect(error)}")
-        error
+    case process_update_pipeline(update, new_state) do
+      {:ok, _} -> {:ok, new_state}
+      error -> 
+        log_error("Failed to process update: #{inspect(error)}")
+        {:ok, new_state} # Continue processing other updates even if one fails
     end
   end
   
@@ -250,10 +248,13 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   
   defp process_update_pipeline(update, state) do
     # DRY: Single pipeline for all update processing
-    update
-    |> MessageProcessor.process_update(state.config)
-    |> handle_processed_message(state)
-    |> log_operation("Update processing")
+    with {:ok, processed} <- MessageProcessor.process_update(update, state.config) do
+      handle_processed_message(processed, state)
+    else
+      error -> 
+        log_error("Update processing failed: #{inspect(error)}")
+        error
+    end
   end
   
   defp via_tuple(id) do
