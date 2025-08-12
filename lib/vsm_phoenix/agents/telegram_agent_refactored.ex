@@ -53,8 +53,8 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
       config: config,
       api_client: ApiClient.new(config.bot_token),
       message_processor: MessageProcessor,
-      conversation_manager: nil, # ConversationManager is a separate GenServer
-      llm_pipeline: nil, # RequestPipeline not implemented yet
+      conversation_manager: :global_genserver, # Using global ConversationManager GenServer
+      llm_pipeline: :pending_implementation, # RequestPipeline not implemented yet
       polling_offset: nil
     }
     
@@ -91,7 +91,7 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
       id: state.id,
       polling: state.polling_timer != nil,
       offset: state.polling_offset,
-      conversations: 0 # ConversationManager not integrated yet
+      conversations: get_active_conversation_count()
     }
     {:reply, {:ok, status}, state}
   end
@@ -159,32 +159,70 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   end
   
   defp process_with_llm(message, state) do
-    # Get conversation context
-    context = ConversationManager.get_context(
-      state.conversation_manager, 
-      message.chat_id
+    # Get conversation context from the global ConversationManager
+    context = case ConversationManager.get_conversation_context(message.chat_id) do
+      {:ok, ctx} -> ctx
+      _ -> %{}
+    end
+    
+    # Store incoming message first
+    ConversationManager.store_message(
+      message.chat_id,
+      message,
+      state.id
     )
     
-    # Process through LLM pipeline
-    # TODO: Implement LLM processing
-    # case RequestPipeline.process(state.llm_pipeline, message, context) do
-    case {:ok, "Echo: #{message}"} do
-      {:ok, response} ->
-        # Send response
-        ApiClient.send_message(
-          state.api_client, 
-          message.chat_id, 
-          response.text
-        )
-        # Update conversation
-        ConversationManager.add_exchange(
-          state.conversation_manager,
-          message.chat_id,
-          message.content,
-          response.text
-        )
-      error ->
-        error
+    # Send to LLM Worker via AMQP if available
+    response_text = case send_to_llm_worker(message, context) do
+      {:ok, llm_response} -> 
+        llm_response
+      {:error, _reason} ->
+        # Fallback to echo for now
+        "Echo: #{inspect(message)}"
+    end
+    
+    # Send response
+    ApiClient.send_message(
+      state.api_client, 
+      message.chat_id, 
+      response_text
+    )
+    
+    {:ok, :processed}
+  end
+  
+  defp send_to_llm_worker(message, context) do
+    # Try to send to LLM worker via AMQP
+    try do
+      # Get channel from pool
+      case VsmPhoenix.AMQP.ChannelPool.checkout(:telegram_llm_bridge) do
+        {:ok, channel} ->
+          # Publish to LLM request exchange
+          request = %{
+            message: message,
+            context: context,
+            timestamp: System.system_time(:millisecond)
+          }
+          
+          AMQP.Basic.publish(
+            channel,
+            "vsm.llm.requests",
+            "llm.request.conversation",
+            Jason.encode!(request)
+          )
+          
+          # Return channel to pool
+          VsmPhoenix.AMQP.ChannelPool.checkin(:telegram_llm_bridge, channel)
+          
+          # For now, return immediately with a placeholder
+          # In production, would wait for response on response queue
+          {:error, :async_not_implemented}
+          
+        {:error, reason} ->
+          {:error, reason}
+      end
+    rescue
+      e -> {:error, e}
     end
   end
   
@@ -221,5 +259,13 @@ defmodule VsmPhoenix.Agents.TelegramAgent do
   defp via_tuple(id) do
     # Use direct process name instead of registry
     String.to_atom("telegram_agent_#{id}")
+  end
+  
+  defp get_active_conversation_count do
+    # Get conversation stats from the global ConversationManager
+    case ConversationManager.get_conversation_stats() do
+      {:ok, stats} -> Map.get(stats, :conversations_stored, 0)
+      _ -> 0
+    end
   end
 end
