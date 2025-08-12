@@ -564,9 +564,8 @@ defmodule VsmPhoenix.System3.Control do
     end
     
     if can_allocate?(required, pools) do
-      updated_pools = deduct_resources(pools, required)
       allocation_id = generate_allocation_id()
-      {:ok, updated_pools, allocation_id}
+      {:ok, allocation_id}
     else
       {:error, :insufficient_resources}
     end
@@ -591,15 +590,11 @@ defmodule VsmPhoenix.System3.Control do
     
     if freed_resources_sufficient?(optimization, request, state) do
       new_state = apply_optimization(optimization, state)
-      attempt_allocation(request, new_state.resource_pools)
-      |> case do
-        {:ok, pools, id} -> 
-          {:ok, %{new_state | resource_pools: pools}, id}
-        error -> 
-          error
-      end
+      # Simply return the optimized state - allocation handler will retry
+      new_state
     else
-      {:error, :cannot_optimize_sufficiently}
+      # Return original state if optimization failed
+      state
     end
   end
   
@@ -3388,7 +3383,6 @@ defmodule VsmPhoenix.System3.Control do
     end)
   end
 
-  defp generate_allocation_id, do: Ecto.UUID.generate()
 
   defp calculate_total_allocated(state) do
     state.allocations
