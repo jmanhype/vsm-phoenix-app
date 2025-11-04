@@ -569,8 +569,32 @@ defmodule VsmPhoenix.System1.Context do
         THIS IS THE VSMCP PROTOCOL!
         AMQP enables recursive MCP-like communication between meta-systems
         """
-        # TODO: Real AMQP connection
-        {:ok, :fake_channel}
+        recursive_depth = Map.get(meta_state, :recursive_depth, 1)
+
+        if System.get_env("DISABLE_AMQP") == "true" do
+          {:ok, nil}
+        else
+          case VsmPhoenix.AMQP.ConnectionManager.get_channel(:recursive) do
+            {:ok, channel} ->
+              # Declare recursive exchange for this depth level
+              exchange_name = "vsm.recursive.depth#{recursive_depth}"
+              :ok = AMQP.Exchange.declare(channel, exchange_name, :topic, durable: true)
+
+              # Create queue for meta-system communication
+              queue_name = "vsm.meta.#{:erlang.phash2(meta_state)}"
+              {:ok, _} = AMQP.Queue.declare(channel, queue_name, durable: true)
+
+              # Bind queue to recursive exchange
+              :ok = AMQP.Queue.bind(channel, queue_name, exchange_name, routing_key: "meta.#")
+
+              Logger.info("🔄 Recursive AMQP channel established at depth #{recursive_depth}")
+              {:ok, channel}
+
+            {:error, reason} ->
+              Logger.error("Failed to establish recursive AMQP: #{inspect(reason)}")
+              {:error, reason}
+          end
+        end
       end
       
       # Helper functions
@@ -590,7 +614,7 @@ defmodule VsmPhoenix.System1.Context do
       defp calculate_resource_usage(state) do
         # Calculate resource usage based on active operations
         active_ops = Map.get(state, :active_operations, %{})
-        
+
         if map_size(active_ops) == 0 do
           %{cpu: 0.0, memory: 0.0, io: 0.0}
         else
@@ -603,39 +627,7 @@ defmodule VsmPhoenix.System1.Context do
           }
         end
       end
-      
-      defp setup_audit_amqp(context_name) do
-        if System.get_env("DISABLE_AMQP") == "true" do
-          nil
-        else
-          case VsmPhoenix.AMQP.ConnectionManager.get_channel(:audit) do
-          {:ok, channel} ->
-            try do
-              # Declare queue for this context's audit commands
-              queue_name = "vsm.s1.#{context_name}.command"
-              {:ok, _queue} = AMQP.Queue.declare(channel, queue_name, durable: true)
-              
-              # Bind to audit exchange
-              :ok = AMQP.Queue.bind(channel, queue_name, "vsm.audit", routing_key: queue_name)
-              
-              # Start consuming
-              {:ok, _consumer_tag} = AMQP.Basic.consume(channel, queue_name)
-              
-              Logger.info("🔍 #{context_name}: Audit AMQP setup complete, listening on #{queue_name}")
-              channel
-            rescue
-              error ->
-                Logger.error("#{context_name}: Failed to setup audit AMQP: #{inspect(error)}")
-                nil
-            end
-            
-          {:error, reason} ->
-            Logger.error("#{context_name}: Could not get audit channel: #{inspect(reason)}")
-            nil
-          end
-        end
-      end
-      
+
       defp handle_audit_command(message, meta, causality_info, state) do
         Logger.warning("🔍 #{@context_name}: AUDIT BYPASS - Direct inspection requested")
         

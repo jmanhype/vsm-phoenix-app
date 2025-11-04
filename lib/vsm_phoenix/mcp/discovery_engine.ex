@@ -38,16 +38,29 @@ defmodule VsmPhoenix.MCP.DiscoveryEngine do
   """
   def run_strategy(:magg_kits) do
     Logger.debug("Running MAGG kit discovery")
-    
-    case System.cmd("magg", ["kit", "list"], stderr_to_stdout: true) do
-      {output, 0} ->
-        servers = parse_magg_kits(output)
-        Logger.info("Found #{length(servers)} servers from MAGG kits")
-        Map.new(servers, fn server -> {server.id, server} end)
-      
-      {error, _} ->
-        Logger.error("MAGG kit discovery failed: #{error}")
+
+    case System.find_executable("magg") do
+      nil ->
+        Logger.warning("MAGG executable not found in PATH, skipping MAGG kit discovery")
         %{}
+
+      _magg_path ->
+        try do
+          case System.cmd("magg", ["kit", "list"], stderr_to_stdout: true) do
+            {output, 0} ->
+              servers = parse_magg_kits(output)
+              Logger.info("Found #{length(servers)} servers from MAGG kits")
+              Map.new(servers, fn server -> {server.id, server} end)
+
+            {error, exit_code} ->
+              Logger.error("MAGG kit discovery failed (exit code: #{exit_code}): #{error}")
+              %{}
+          end
+        rescue
+          e in ErlangError ->
+            Logger.error("MAGG command execution error: #{inspect(e)}")
+            %{}
+        end
     end
   end
 
