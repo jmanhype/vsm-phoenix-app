@@ -1,4 +1,6 @@
 # VSM Phoenix App
+  
+  [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://jmanhype.github.io/vsm-phoenix-app/)
 
 Phoenix LiveView application implementing Stafford Beer's Viable System Model (VSM). Provides a web dashboard for a 5-level cybernetic hierarchy with AMQP messaging, CRDT state, and LLM-based policy synthesis.
 
